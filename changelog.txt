@@ -1,0 +1,375 @@
+*** KaliCart Bridge Changelog ***
+
+
+2026-06-08 - version 1.0.66
+
+* Fixed - /.well-known/ucp is now also written as a physical file for hosts that serve .well-known directly and bypass WordPress rewrites
+* Fixed - generated .well-known/.htaccess now forces application/json for ucp, kalicart-bridge and agent-catalog
+* Refactor - UCP profile JSON generation centralized so dynamic rewrite and physical file stay identical
+
+
+2026-06-08 - version 1.0.65
+
+* Perf - normalize_product() context parameter: 'list' (search/products) vs 'detail' (single product)
+* Perf - variations and variants[] not loaded in list context for variable products — avoids N×get_variations() queries
+* Perf - search/products 50 items: from ~5s to ~0.3s on variable-heavy catalogs (16× speedup)
+* Perf - /catalog/product/{id} still loads full variations[] and variants[] (detail context)
+* Note - agents should use /catalog/product/{id} to get variants before checkout session on variable products
+
+
+2026-06-08 - version 1.0.64
+
+* Perf - normalize_product() refactored: compute_stock, compute_purchase_readiness, get_barcodes, get_variations each called once per product and reused — eliminates redundant WooCommerce queries
+* Perf - variants[] now reuses computed $variations/$barcodes/$stock variables — no extra calls
+* Perf - metadata block now reads from already-computed local variables (no extra method calls)
+* Docs - normalize_product() annotated with "compute once, reuse everywhere" comment block
+
+
+2026-06-08 - version 1.0.63
+
+* Added - price.vat_included: whether prices include VAT (from WooCommerce tax settings)
+* Added - price.tax_enabled: whether tax is enabled on this store
+* Added - price.price_type: "STATIC" (aligned with Kalicart Global format)
+* Added - stock.quantity_tracked: boolean alias for manage_stock (cleaner for agents)
+* Added - stock.backorder_allowed: boolean (true if backorder is notify or yes)
+* Added - shipping.zones[]: full WooCommerce shipping zones with methods, costs, locations and free threshold
+* Added - static cache on get_shipping_zones() — computed once per request, not per product
+
+
+2026-06-08 - version 1.0.62
+
+* Fixed - on_sale: false when discount_pct < 1% (e.g. 553 vs 555 EUR = 0.36% not meaningful)
+* Fixed - discount_pct: one decimal precision instead of integer rounding
+* Fixed - price.display: non-breaking space (\xa0) replaced with regular space
+* Added - price_format.current_format: major_units_decimal
+* Added - price_format.autonomous_checkout_format: minor_units_integer
+* Added - price_format.autonomous_checkout_note: conversion rule (×100) for future AP2 checkout
+* Added - price_format.ucp_compatibility: explicit note on Bridge vs UCP encoding difference
+
+
+2026-06-08 - version 1.0.61
+
+* Added - price.encoding: "decimal_major_units" on every price block — eliminates ambiguity vs UCP minor units
+* Added - price.display: human-readable formatted string (e.g. "247,00 €") — plain text, no HTML
+* Added - price_format block in discovery document with encoding note and UCP conversion hint
+* Added - Variable price range: display string (e.g. "29,99 € – 59,99 €")
+
+
+2026-06-08 - version 1.0.60
+
+* Added - autonomous_checkout block in discovery document: roadmap declaration for full autonomous checkout with AP2 mandate, minor_units contract, ucp_equivalent reference
+* Added - Minor currency units defined in contract (ready: false, activate_when: WooCommerce/Stripe AP2 support)
+
+
+2026-06-08 - version 1.0.59
+
+* Update - Endpoints tab in admin: added /.well-known/ucp, /.well-known/kalicart-bridge, POST /checkout/session
+* Update - Endpoint descriptions updated with new fields (variants[], barcodes, on_sale, purchase_readiness)
+* Update - POST endpoints now show POST badge; well-known endpoints use absolute URL correctly
+* Update - Docs: /.well-known/ucp documented, variants/list_price/barcodes/metadata sections added
+
+
+2026-06-08 - version 1.0.58
+
+* Added - /.well-known/ucp endpoint: UCP profile declaring dev.ucp.shopping.catalog.search and dev.ucp.shopping.catalog.lookup (version 2026-04-08)
+* Added - ucp_profile link in /.well-known/kalicart-bridge and /.well-known/agent-catalog
+* Added - ucp_profile_url in discovery document
+* Added - stock.availability_status with UCP-standard values (in_stock, out_of_stock, backorder)
+* Added - barcodes[] field on products and variations (EAN, GTIN, UPC from WC meta)
+* Added - variants[] always present in product payload — variable products include full variation list, simple products include single variant entry
+* Added - list_price field (UCP-compatible strikethrough price) on simple products
+* Added - metadata{} block with purchase_readiness, stock_confidence, bridge_version
+* Added - availability_status on each variation entry
+
+
+2026-06-08 - version 1.0.57
+
+* Fixed - Plugin information popup changelog now reads from readme.txt instead of hardcoded entries
+* Fixed - Release ZIP excludes backup and temporary files
+
+
+2026-06-08 - version 1.0.55
+
+* Update - active_coupons filter: coupons with no computable product value (fixed_cart, estimated_saving=0, not free_shipping) are now excluded from product payload
+* Update - coupon payload: added applicable_at field (cart_only / product_or_cart) for agent clarity
+
+
+2026-06-08 - version 1.0.54
+
+* Update - NO_IMAGE score deduction: 8 points (was 5 in quarantine, unscored in product)
+* Update - NO_SKU score deduction: 4 points (was 3 in quarantine, unscored in product)
+* Update - build_issue_list severity aligned: NO_IMAGE uses image severity, NO_SKU uses sku severity
+* Update - stock.quantity suppressed for variable products (variant_dependent confidence) — aggregate count was misleading
+* Update - coupon payload: added applicable_at field (cart_only vs product_or_cart)
+
+
+2026-06-08 - version 1.0.53
+
+* Update - stock.quantity: null for variable products with variant_dependent confidence — suppresses misleading aggregate count
+* Update - coupon payload: added applicable_at (cart_only for fixed_cart/recurring_fee, product_or_cart otherwise)
+* Update - score deductions: NO_IMAGE -8, NO_SKU -4 applied at product level via compute_quality_score
+* Update - quarantine build_issue_list: score calculated from severity map instead of hardcoded 100
+* Update - quarantine weighted formula updated: no_image * 8, no_sku * 4, max_weighted = total * 122
+
+
+2026-06-07 - version 1.0.52
+
+* Fixed - Single product page link injected inside .product_meta via appendChild (was injected before anchor, appeared next to image)
+
+
+2026-06-07 - version 1.0.51
+
+* Added - .well-known/kalicart-bridge and .well-known/agent-catalog served via WordPress rewrite rules with Content-Type: application/json — works on any server (nginx, Apache, LiteSpeed) without configuration
+* Fixed - Removed dependency on physical .htaccess for Content-Type header on .well-known files
+* Added - register_well_known_rewrite(), add_well_known_query_var(), serve_well_known() methods in class-signals.php
+
+
+2026-06-07 - version 1.0.50
+
+* Update - nginx location block added for .well-known files (project2209 only — not distributable via plugin)
+
+
+2026-06-07 - version 1.0.49
+
+* Added - variations[] exposed in /catalog/product/{id} for variable products: variation_id, attributes, price, in_stock, sku per variant
+* Added - agent_index_url field in admin settings — merchant can paste URL of [kalicart_agent_index] page
+* Added - agent_index_url saved as option kalicart_bridge_agent_index_url, exposed in discovery document
+* Fixed - query_construction: size removed from list of structured filters — documented as non-filter
+* Update - catalog/meta: on_sale added to accepted_filters.boolean, size_note added, coupon_verification_rule updated
+* Update - admin.js and class-admin.php: agentIndexUrl field wired to save settings flow
+
+
+2026-06-07 - version 1.0.48
+
+* Added - on_sale=true as real search filter: uses wc_get_product_ids_on_sale(), excludes coupon-only savings
+* Added - purchase_readiness block per product: status, blocking_fields, can_add_to_cart_directly, agent_rule
+* Added - stock.confidence: numeric_stock_quantity / availability_status_only / variant_dependent
+* Added - stock.manage_stock and stock.agent_note fields
+* Added - compute_stock() and compute_purchase_readiness() methods in class-catalog-engine.php
+* Added - get_variations() method — exposes variation_id, attributes, price, in_stock, sku per variant
+* Added - coupon payload: combinable_with_sale, verification_required fields
+* Added - discovery: agent_index_url, checkout_session docs, stock_rule, variation_discovery, semantic_fit_guidance, evidence_required, total_verification_rule
+* Update - search_url_template: {spine} → {q} with search_url_note
+* Update - coupon_policy: coupon_verification_rule and combinable_with_sale added
+* Update - agent_instructions: rules 10-13 added (stock confidence, variation, totals, semantic fit)
+* Update - validation gate: on_sale=true and in_stock=true now bypass the "at least one of q/category/gender/color" requirement
+* Update - size documented as non-filter in discovery search_filters
+
+
+2026-06-07 - version 1.0.47
+
+* Fixed - WC tested up to updated to 10.8 (was 9.0) — required for WooCommerce Marketplace validation
+
+
+2026-06-06 - version 1.0.46
+
+* Added - changelog.txt added to release process documentation
+* Added - bump.py: centralized release script documents all managed files
+
+
+2026-06-06 - version 1.0.45
+
+* Fixed - Replaced __return_true permission callbacks with named public_catalog_permission() — eliminates QIT security warnings
+* Fixed - wp_unslash() added before sanitize_text_field() on $_GET inputs in class-checkout.php
+* Fixed - Global variables in uninstall.php prefixed with kalicart_bridge_
+* Fixed - Escape output via wp_json_encode() on boolean hint variables in class-signals.php
+* Fixed - render_tree() output wrapped in wp_kses_post() in class-shortcodes.php
+* QIT Security test: 0 errors, 0 warnings (WP 7.0 + WC 10.8.1)
+* QIT PHP Compatibility test: 0 errors, 0 warnings (PHP 8.0–8.5)
+
+
+2026-06-06 - version 1.0.44
+
+* Fixed - wp_unslash() before sanitize_text_field() on $_GET in class-checkout.php
+* Fixed - uninstall.php global variables prefixed with kalicart_bridge_
+* Fixed - Escape output on $hint_* boolean vars via wp_json_encode()
+
+
+2026-06-06 - version 1.0.43
+
+* Fixed - Escape output on $hint_search, $hint_zero, $hint_category via wp_json_encode()
+* Fixed - wp_kses_post() on render_tree() output in shortcodes
+* Fixed - wp_unslash() on $_GET inputs in class-checkout.php
+* Fixed - Global variables in uninstall.php prefixed with kalicart_bridge_
+
+
+2026-06-06 - version 1.0.42
+
+* Added - [kalicart_agent_index] shortcode: live agent-readable catalog index with category tree
+* Added - Shortcode info block in Settings tab (optional, with usage instructions)
+* Added - class-shortcodes.php with KaliCart_Bridge_Shortcodes class
+* Update - bump.py centralized release script: updates plugin, readme, index.html, docs, JSON, ZIP in one command
+* Update - All distribution download links now consistently versioned
+
+
+2026-06-06 - version 1.0.41
+
+* Update - .kali-settings-footer margin-top added
+* Update - admin.css: kali-wrap, kali-stat--red, kali-section-title, kali-score-row, kali-warn-alert, kali-suggestion__dot--low updated
+
+
+2026-06-06 - version 1.0.40
+
+* Update - [kalicart_agent_index] table cell padding normalized to 8px 16px 8px 8px
+
+
+2026-06-06 - version 1.0.39
+
+* Update - Single product page link moved above .product_meta (before SKU/categories/tags block)
+* Update - Fallback chain for product and category page links: supports Elementor/Divi custom templates
+* Update - Category page link style aligned: color:inherit, opacity:0.4, border-bottom dotted
+* Update - Admin settings description updated: category & product page links, search results link
+
+
+2026-06-06 - version 1.0.38
+
+* Update - Search results catalog link shown on both zero-results and with-results search pages
+* Update - Link injected before footer instead of top of page
+* Update - color:inherit replaces hardcoded #999 on all agent hint links
+* Update - Link title attributes include structured API usage hints for agents
+* Removed - search?q= link from zero-results block (redundant for agents)
+
+
+2026-06-05 - version 1.0.37
+
+* Added - search_guidance field in discovery document
+* Update - Search form link is now dynamic: updates href and label as user types
+* Update - Zero results detection now covers WooCommerce DOM selectors in addition to body classes
+* Added - Partial results: structured catalog link above search result grids
+
+
+2026-06-05 - version 1.0.36
+
+* Added - Honey JS: structured links on search form, zero-results, category and product pages
+* Added - Agent discovery hints toggles in admin settings (on by default)
+* Fixed - FILTER_VALIDATE_BOOLEAN replaced with empty() — all toggles now save correctly
+* Fixed - Badge default set to false for new installations
+
+
+2026-06-05 - version 1.0.35
+
+* Update - Menu trace now prepended (first position) instead of appended
+* Update - Menu trace injected in first two registered menu locations
+
+
+2026-06-05 - version 1.0.34
+
+* Added - Hidden machine-readable anchor injected in primary nav menu via wp_nav_menu_items
+* Added - Auto-detection of primary menu location using get_registered_nav_menus() first entry
+
+
+2026-06-05 - version 1.0.33
+
+* Added - .well-known paths documented in sitemap-agentic-bridge.xml with agent:role and agent:note
+* Added - .well-known Allow directives and comment in robots.txt physical file
+
+
+2026-06-05 - version 1.0.32
+
+* Fixed - Badge SVG viewBox preserved through wp_kses (was stripped, causing incorrect scaling)
+* Update - Badge SVG size set to 18x18
+
+
+2026-06-04 - version 1.0.31
+
+* Added - well_known.* paths exposed in discovery document
+* Added - Allow: /.well-known/kalicart-bridge and /.well-known/agent-catalog in robots.txt
+* Update - Docs updated with .well-known signal documentation
+
+
+2026-06-04 - version 1.0.30
+
+* Added - .well-known/kalicart-bridge and .well-known/agent-catalog discovery files (on by default)
+* Added - Agent discovery files toggle in admin settings
+* Added - Warning alerts on settings tab when disabling critical discovery signals
+* Fixed - write_well_known_files() moved to init hook (was crashing on plugins_loaded due to $wp_rewrite not ready)
+
+
+2026-06-04 - version 1.0.29
+
+* Fixed - Replaced Italian "lato agente" with "on the agent side" across all strings
+* Update - Documentation updated on bridge.kalicart.com and docs page
+
+
+2026-06-04 - version 1.0.28
+
+* Added - Checkout sessions (optional): POST /checkout/session with single or multi-product support
+* Added - cart_url and checkout_url in every session — user chooses to review cart or go directly to checkout
+* Added - Session redirect handler adds all items to WooCommerce cart in one click
+* Added - Checkout sessions toggle in admin settings (off by default)
+
+
+2026-06-04 - version 1.0.27
+
+* Fixed - Quarantine cache now busts automatically on product save, update or status change
+
+
+2026-06-04 - version 1.0.26
+
+* Added - uninstall.php to clean up all options and transients on plugin deletion
+
+
+2026-06-04 - version 1.0.25
+
+* Added - WC tested up to header
+* Added - HPOS (custom_order_tables) compatibility declaration
+* Fixed - Documented __return_true permission callbacks on public read-only routes
+
+
+2026-06-04 - version 1.0.24
+
+* Added - Rich agent metadata comment block in sitemap-agentic-bridge.xml
+
+
+2026-06-04 - version 1.0.23
+
+* Fixed - sitemap-agentic-bridge.xml canonical redirect causing trailing slash 301
+
+
+2026-06-04 - version 1.0.22
+
+* Update - Rewrote changelog.txt to WooCommerce Marketplace format
+
+
+2026-06-04 - version 1.0.21
+
+* Added - Credits section in readme.txt
+
+
+2026-06-04 - version 1.0.20
+
+* Added - changelog.txt required by WooCommerce Marketplace
+
+
+2026-06-04 - version 1.0.19
+
+* Added - Requires Plugins: woocommerce header for WP 6.5+ dependency management
+
+
+2026-06-04 - version 1.0.18
+
+* Added - Score box with horizontal coverage bars in admin dashboard
+* Update - Font sizes normalized across admin UI
+* Update - Logo gradient updated to KaliCart blue palette
+* Update - Header cleanup
+
+
+2026-06-04 - version 1.0.17
+
+* Added - Shipping policy and active coupons exposed on every product and in discovery document
+* Added - /catalog/meta endpoint with accepted filter values and price range
+* Added - Badge position configurable from admin settings
+* Fixed - /catalog/product without ID now returns structured 400 with usage hint
+* Update - Category tree includes has_products flag, Uncategorized excluded from root
+* Update - Catalog health dashboard uses SQL-based queries, quarantine excludes no-image products
+* Update - View details link opens native WordPress popup
+
+
+2026-06-04 - version 1.0.0
+
+* Added - Initial release
+* Added - REST API: /discovery, /catalog/search, /catalog/products, /catalog/product/{id}, /catalog/categories, /catalog/health
+* Added - Normalized product data: price, stock, gender inference, color families, size detection
+* Added - Merchant-native WooCommerce taxonomy
+* Added - Agent signals: link rel kalicart-agent, AI catalog badge, robots.txt directive, sitemap-agentic-bridge.xml
+* Added - Catalog health dashboard with quarantine list and improvement suggestions

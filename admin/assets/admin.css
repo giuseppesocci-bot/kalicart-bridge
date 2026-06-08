@@ -1,0 +1,835 @@
+/* KaliCart Bridge — Admin UI */
+
+:root {
+  --kb-acc:       #3858e9;
+  --kb-acc-s:     #2a45cc;
+  --kb-acc-bg:    rgba(56,88,233,.06);
+  --kb-bg:        #f7f7f8;
+  --kb-surface:   #ffffff;
+  --kb-surface2:  #f3f3f5;
+  --kb-border:    rgba(0,0,0,.08);
+  --kb-border2:   rgba(0,0,0,.14);
+  --kb-text:      #111116;
+  --kb-muted:     #6b6b7a;
+  --kb-muted2:    #9a9aaa;
+  --kb-green:     #1a7f3c;
+  --kb-red:       #c0392b;
+  --kb-yellow:    #b07a00;
+  --kb-radius:    8px;
+  --kb-radius-sm: 6px;
+  --kb-font-mono: ui-monospace,"Cascadia Code","Fira Code",monospace;
+  --kb-shadow:    0 1px 2px rgba(0,0,0,.05);
+}
+
+/* ── Wrap ─────────────────────────────────────────────────────────────────── */
+.kali-wrap {
+  width: 96%;
+  margin: 24px 10px;
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color: var(--kb-text);
+  font-size: 13px;
+  max-width: 1480px;
+}
+.kali-wrap * { box-sizing: border-box; }
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.kali-header {
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius);
+  padding: 14px 20px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: var(--kb-shadow);
+}
+.kali-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kali-header .logo a {
+  display: inline-flex;
+  align-items: center;
+  color: #171717;
+  text-decoration: none;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+.logo-mark {
+  display: inline-block;
+  background: linear-gradient(135deg,#3858e9 0%,#0d31d7 50%,#8a9fff 100%);
+  color: #f7f8fb;
+  padding: 0 0 2px 16px;
+  border-radius: 3px;
+  line-height: 1.25em;
+}
+.logo-mark__letter {
+  display: inline-block;
+  font-style: normal;
+  font-weight: 600;
+  margin-right: -4px;
+}
+.kali-header__product {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kb-muted);
+  letter-spacing: .02em;
+}
+.kali-version {
+  font-size: 13px;
+  font-family: var(--kb-font-mono);
+  background: var(--kb-surface2);
+  border: 1px solid var(--kb-border);
+  border-radius: 99px;
+  padding: 2px 8px;
+  color: var(--kb-muted);
+}
+.kali-header__tagline {
+  font-size: 13px;
+  color: var(--kb-muted2);
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.kali-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius);
+  padding: 3px;
+  margin-bottom: 8px;
+  width: fit-content;
+  box-shadow: var(--kb-shadow);
+}
+.kali-tab {
+  background: transparent;
+  border: none;
+  color: var(--kb-muted);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: var(--kb-radius-sm);
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  font-family: inherit;
+}
+.kali-tab:hover { background: var(--kb-surface2); color: var(--kb-text); }
+.kali-tab--active { background: var(--kb-acc); color: #fff; }
+
+/* ── Panels ───────────────────────────────────────────────────────────────── */
+.kali-panel {
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius);
+  padding: 24px;
+  box-shadow: var(--kb-shadow);
+}
+
+/* ── Loading ──────────────────────────────────────────────────────────────── */
+.kali-loading {
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius);
+  padding: 56px;
+  text-align: center;
+  color: var(--kb-muted);
+  box-shadow: var(--kb-shadow);
+}
+.kali-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--kb-border2);
+  border-top-color: var(--kb-acc);
+  border-radius: 50%;
+  animation: kali-spin .7s linear infinite;
+  margin: 0 auto 14px;
+}
+@keyframes kali-spin { to { transform: rotate(360deg); } }
+
+/* ── Score ring ───────────────────────────────────────────────────────────── */
+.kali-score-ring-wrap {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-bottom: 20px;
+  background: var(--kb-surface2);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius);
+  padding: 20px 24px;
+}
+.kali-score-ring { display: block; }
+.kali-score-ring__bg    { stroke: #e4e4e8; }
+.kali-score-ring__fill  {
+  stroke: var(--kb-acc);
+  transition: stroke-dashoffset 1s cubic-bezier(.4,0,.2,1), stroke .3s;
+}
+.kali-score-ring__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.kali-score-ring__label span {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--kb-text);
+  letter-spacing: -.02em;
+}
+.kali-score-ring__label small {
+  font-size: 13px;
+  color: var(--kb-muted2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+/* ── Stats grid ───────────────────────────────────────────────────────────── */
+.kali-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.kali-stats-grid--6 { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 900px) { .kali-stats-grid--6 { grid-template-columns: repeat(3, 1fr); } }
+.kali-stat {
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius);
+  padding: 14px 16px;
+  transition: border-color .12s;
+}
+.kali-stat__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--kb-text);
+  line-height: 1;
+  letter-spacing: -.02em;
+  margin-bottom: 4px;
+}
+.kali-stat__label {
+  font-size: 13px;
+  color: var(--kb-muted2);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.kali-stat--green .kali-stat__value { color: var(--kb-green); }
+.kali-stat--red .kali-stat__value { color: #ef4444; }
+.kali-stat--clickable { cursor: pointer; }
+.kali-stat--clickable:hover { border-color: var(--kb-acc); }
+.kali-stat--clickable:focus { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
+
+/* ── Section title ────────────────────────────────────────────────────────── */
+.kali-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--kb-muted2);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Issues grid ──────────────────────────────────────────────────────────── */
+.kali-issues-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.kali-issue {
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color .12s;
+}
+.kali-issue:hover { border-color: var(--kb-border2); }
+.kali-issue:focus { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
+.kali-issue__icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kali-issue__icon img,
+.kali-issue__icon svg {
+  width: 18px;
+  height: 18px;
+  opacity: .5;
+}
+.kali-issue__count {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--kb-text);
+  transition: color .3s;
+}
+.kali-issue__label {
+  font-size: 13px;
+  color: var(--kb-muted2);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-top: 2px;
+  margin-left: 5px;
+}
+
+/* ── Suggestions ──────────────────────────────────────────────────────────── */
+.kali-suggestions { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+.kali-suggestion {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  padding: 10px 14px;
+  transition: border-color .12s;
+}
+.kali-suggestion:hover { border-color: var(--kb-border2); }
+.kali-suggestion__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+  position: relative;
+}
+.kali-suggestion__dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+.kali-suggestion__dot--high::after   { background: var(--kb-red); }
+.kali-suggestion__dot--medium::after { background: var(--kb-yellow); }
+.kali-suggestion__dot--low::after { background: #ffc149; }
+.kali-suggestion__content { flex: 1; }
+.kali-suggestion__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--kb-text);
+  margin-bottom: 2px;
+}
+.kali-suggestion__detail { font-size: 13px; color: var(--kb-muted); }
+.kali-suggestion__affected {
+  font-size: 13px;
+  font-family: var(--kb-font-mono);
+  background: var(--kb-surface2);
+  border: 1px solid var(--kb-border);
+  border-radius: 99px;
+  padding: 2px 8px;
+  color: var(--kb-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: center;
+}
+.kali-suggestion__affected:hover { border-color: var(--kb-border2); }
+
+/* ── Quarantine intro ─────────────────────────────────────────────────────── */
+.kali-q-intro { margin-bottom: 16px; }
+.kali-q-intro strong { font-size: 13px; font-weight: 600; color: var(--kb-text); }
+.kali-q-intro p { font-size: 14px; color: var(--kb-muted); margin-top: 4px; }
+.kali-q-filter { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.kali-q-filter button {
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--kb-border);
+  background: var(--kb-surface);
+  color: var(--kb-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color .12s, color .12s;
+}
+.kali-q-filter button:hover { border-color: var(--kb-acc); color: var(--kb-acc); }
+.kali-hint {
+  font-size: 14px;
+  color: var(--kb-muted);
+  margin-bottom: 14px;
+}
+
+/* ── Quarantine list ──────────────────────────────────────────────────────── */
+.kali-quarantine-list { display: flex; flex-direction: column; gap: 6px; }
+.kali-q-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  padding: 10px 14px;
+  transition: border-color .12s;
+}
+.kali-q-item:hover { border-color: var(--kb-border2); }
+.kali-q-item__score {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: center;
+  line-height: 1;
+}
+.kali-q-item__body { flex: 1; min-width: 0; }
+.kali-q-item__name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--kb-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 5px;
+}
+.kali-q-item__name--link { color: var(--kb-acc); text-decoration: none; }
+.kali-q-item__name--link:hover { text-decoration: underline; }
+.kali-q-item__flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.kali-q-item__edit {
+  font-size: 13px;
+  color: var(--kb-acc);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.kali-q-item__edit:hover { text-decoration: underline; }
+.kali-flag {
+  font-size: 13px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: var(--kb-font-mono);
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.kali-flag--high   { background: #fde8e8; color: #9b1c1c; }
+.kali-flag--medium { background: #fef3e2; color: #7a4500; }
+.kali-flag--low    { background: var(--kb-acc-bg); color: var(--kb-acc-s); }
+
+/* ── Endpoints ────────────────────────────────────────────────────────────── */
+.kali-endpoint-head {
+  background: var(--kb-surface2);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kali-link-tag-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+.kali-link-tag-wrap code {
+  font-family: var(--kb-font-mono);
+  font-size: 13px;
+  color: var(--kb-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kali-file-links {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.kali-file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-family: var(--kb-font-mono);
+  color: var(--kb-acc);
+  text-decoration: none;
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  padding: 3px 10px;
+  background: var(--kb-surface);
+  transition: border-color .12s;
+}
+.kali-file-link:hover { border-color: var(--kb-acc); }
+.kali-endpoint-list { display: flex; flex-direction: column; gap: 4px; }
+.kali-endpoint {
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  overflow: hidden;
+  transition: border-color .12s;
+}
+.kali-endpoint__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.kali-endpoint__header:hover { background: var(--kb-surface2); }
+.kali-method {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--kb-font-mono);
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--kb-acc-bg);
+  color: var(--kb-acc);
+  border: 1px solid rgba(56,88,233,.15);
+  letter-spacing: .04em;
+}
+.kali-endpoint__path {
+  font-family: var(--kb-font-mono);
+  font-size: 13px;
+  color: var(--kb-text);
+  flex: 1;
+}
+.kali-endpoint__desc { font-size: 13px; color: var(--kb-muted); }
+.kali-endpoint__auth {
+  font-size: 13px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: #fef3e2;
+  color: #7a4500;
+  border: 1px solid rgba(176,122,0,.2);
+  font-weight: 600;
+}
+.kali-endpoint__body {
+  border-top: 1px solid var(--kb-border);
+  padding: 12px 14px;
+  display: none;
+}
+.kali-endpoint__body.open { display: block; }
+.kali-endpoint__url {
+  font-family: var(--kb-font-mono);
+  font-size: 13px;
+  color: var(--kb-muted);
+  word-break: break-all;
+  margin-bottom: 10px;
+}
+.kali-endpoint__url a { color: var(--kb-acc); text-decoration: none; }
+.kali-endpoint__url a:hover { text-decoration: underline; }
+.kali-preview-btn {
+  font-size: 13px;
+  color: var(--kb-acc);
+  background: none;
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: var(--kb-font-mono);
+  margin-bottom: 8px;
+  transition: border-color .12s;
+}
+.kali-preview-btn:hover { border-color: var(--kb-acc); }
+.kali-endpoint__preview {
+  background: var(--kb-surface2);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  padding: 12px;
+  font-size: 13px;
+  font-family: var(--kb-font-mono);
+  color: var(--kb-muted);
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre;
+  word-break: break-word;
+}
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+.kali-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--kb-font-mono);
+}
+.kali-badge--red { background: #fde8e8; color: #9b1c1c; border: 1px solid rgba(192,57,43,.2); }
+
+/* ── Settings ─────────────────────────────────────────────────────────────── */
+.kali-settings-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 20px; }
+.kali-toggle-group {
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  overflow: hidden;
+}
+.kali-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.kali-toggle-group .kali-toggle-row {
+  background: var(--kb-surface);
+  border: none;
+  border-radius: 0;
+}
+.kali-toggle-row:hover { background: var(--kb-surface2); }
+.kali-toggle-info { flex: 1; }
+.kali-toggle-info strong { display: block; font-size: 14px; font-weight: 600; color: var(--kb-text); margin-bottom: 2px; }
+.kali-toggle-info span { font-size: 13px; color: var(--kb-muted); }
+.kali-toggle-info code { font-family: var(--kb-font-mono); font-size: 13px; background: var(--kb-surface2); padding: 1px 4px; border-radius: 3px; }
+.kali-toggle { position: relative; flex-shrink: 0; }
+.kali-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.kali-toggle__slider {
+  display: block;
+  width: 36px;
+  height: 20px;
+  background: #d1d5db;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background .2s;
+  position: relative;
+}
+.kali-toggle__slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,.15);
+}
+.kali-toggle input:checked + .kali-toggle__slider { background: var(--kb-acc); }
+.kali-toggle input:checked + .kali-toggle__slider::after { transform: translateX(16px); }
+
+/* ── Badge position picker ────────────────────────────────────────────────── */
+.kali-badge-position {
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--kb-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--kb-surface);
+}
+.kali-pos-label { font-size: 13px; color: var(--kb-muted); white-space: nowrap; }
+.kali-pos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  flex: 1;
+}
+.kali-pos-btn {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 8px;
+  border-radius: var(--kb-radius-sm);
+  border: 1px solid var(--kb-border);
+  background: var(--kb-surface2);
+  color: var(--kb-muted);
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.kali-pos-btn:hover { border-color: var(--kb-acc); color: var(--kb-acc); }
+.kali-pos-btn--active {
+  background: var(--kb-acc-bg);
+  border-color: var(--kb-acc);
+  color: var(--kb-acc);
+  font-weight: 600;
+}
+
+/* ── Settings footer ──────────────────────────────────────────────────────── */
+.kali-settings-footer { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+.kali-saved-notice { font-size: 13px; color: var(--kb-green); }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.kali-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: var(--kb-radius-sm);
+  border: 1px solid var(--kb-border2);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  font-family: inherit;
+}
+.kali-btn:hover { opacity: .85; }
+.kali-btn--primary { background: var(--kb-acc); border-color: var(--kb-acc); color: #fff; }
+.kali-btn--primary:hover { background: var(--kb-acc-s); border-color: var(--kb-acc-s); opacity: 1; }
+.kali-btn--secondary { background: var(--kb-surface); color: var(--kb-text); }
+.kali-btn--secondary:hover { background: var(--kb-surface2); opacity: 1; }
+.kali-btn--icon { background: var(--kb-surface); color: var(--kb-muted); padding: 6px 8px; }
+.kali-btn--icon:hover { background: var(--kb-surface2); opacity: 1; }
+
+/* ── Refresh row ──────────────────────────────────────────────────────────── */
+.kali-refresh-wrap { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.kali-last-updated { font-size: 13px; color: var(--kb-muted2); font-family: var(--kb-font-mono); }
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+.kali-empty {
+  text-align: center;
+  padding: 28px;
+  color: var(--kb-muted);
+  font-size: 14px;
+  border: 1px dashed var(--kb-border2);
+  border-radius: var(--kb-radius-sm);
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+.kali-endpoint__preview::-webkit-scrollbar { width: 5px; }
+.kali-endpoint__preview::-webkit-scrollbar-track { background: transparent; }
+.kali-endpoint__preview::-webkit-scrollbar-thumb { background: var(--kb-border2); border-radius: 99px; }
+
+/* ── Coverage (legacy, mantenuta per compatibilità) ───────────────────────── */
+.kali-coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.kali-coverage-card {
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  padding: 12px 14px;
+}
+.kali-coverage-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kb-muted2);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.kali-coverage-bar {
+  height: 4px;
+  background: var(--kb-surface2);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.kali-coverage-bar__fill {
+  height: 100%;
+  background: var(--kb-acc);
+  border-radius: 99px;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+.kali-coverage-card__pct {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--kb-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Score box + barre ────────────────────────────────────────────────────── */
+.kali-score-row {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  margin-bottom: 20px;
+  background: #f6f6f6;
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius);
+  padding: 20px 24px;
+}
+.kali-score-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  padding-right: 20px;
+  border-right: 1px solid var(--kb-border);
+  gap: 4px;
+}
+.kali-score-box__num {
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--kb-text);
+}
+.kali-score-box__lbl {
+  font-size: 13px;
+  color: var(--kb-muted2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.kali-bars-wrap { flex: 1; }
+.kali-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.kali-bar-row:last-child { margin-bottom: 0; }
+.kali-bar-lbl {
+  font-size: 14px;
+  color: var(--kb-muted);
+  width: 80px;
+  flex-shrink: 0;
+}
+.kali-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--kb-border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.kali-bar__fill {
+  height: 100%;
+  background: var(--kb-acc);
+  border-radius: 99px;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+.kali-bar-pct {
+  font-size: 14px;
+  font-family: var(--kb-font-mono);
+  color: var(--kb-muted);
+  width: 38px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Warning alert ───────────────────────────────────────────────────────── */
+.kali-warn-alert {
+  background: #fffbeb;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #a73d00;
+  line-height: 1.5;
+  border: 1px solid #e5c4b1;
+}
+.kali-warn-alert strong {
+  font-weight: 600;
+  margin-right: 4px;
+}
