@@ -1,6 +1,14 @@
 *** KaliCart Bridge Changelog ***
 
 
+2026-06-09 - version 1.0.71
+
+* UX - Refund and Returns Policy URL field moved to top of Settings tab
+* UX - Field renamed to "Refund and Returns Policy URL" (WooCommerce standard naming)
+* UX - Site URL pre-filled, merchant enters only the page slug
+* UX - Badge changed from SUGGESTION to REQUIRED
+
+
 2026-06-09 - version 1.0.70
 
 * Fix - Configure link in NO_RETURN_POLICY suggestion now correctly switches to Settings tab via JS

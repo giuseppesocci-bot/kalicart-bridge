@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.70
+Stable tag: 1.0.71
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -112,6 +112,10 @@ sections.changelog nel JSON di aggiornamento viene auto-sincronizzato dal readme
 Non aggiornare mai sections.changelog manualmente.
 
 == Changelog ==
+
+= 1.0.71 =
+* UX - Refund and Returns Policy URL field moved to top of Settings tab
+* UX - Site URL pre-filled, merchant enters only the page slug
 
 = 1.0.70 =
 * Fix - Configure link in suggestion correctly switches to Settings tab

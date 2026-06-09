@@ -62,6 +62,7 @@ class KaliCart_Bridge_Admin {
             'robots_enabled' => (bool) get_option( 'kalicart_bridge_robots_enabled', true ),
             'sitemap_enabled' => (bool) get_option( 'kalicart_bridge_sitemap_enabled', true ),
             'return_policy_url'  => get_option( 'kalicart_bridge_return_policy_url', '' ),
+            'site_url'           => trailingslashit( get_site_url() ),
         ] );
     }
 

@@ -452,7 +452,8 @@
     fd.append( 'hint_category',      $( 'toggleHintCategory' )?.checked ? '1' : '0' );
     fd.append( 'badge_position',  badgePosition );
     fd.append( 'agent_index_url', $( 'agentIndexUrl' )?.value?.trim() ?? '' );
-    fd.append( 'return_policy_url', $( 'returnPolicyUrl' )?.value?.trim() ?? '' );
+    const slug = $( 'returnPolicySlug' )?.value?.trim() ?? '';
+    fd.append( 'return_policy_url', slug ? ( KaliBridge.site_url.replace(/\/$/, '') + '/' + slug.replace(/^\//, '') ) : '' );
 
     fetch( KaliBridge.ajax_url, { method: 'POST', body: fd, credentials: 'same-origin' } )
       .then( r => r.json() )

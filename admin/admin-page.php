@@ -160,6 +160,30 @@
 
   <!-- TAB: SETTINGS -->
   <div id="kali-tab-settings" class="kali-panel" style="display:none">
+
+    <div style="margin-bottom:24px;padding:16px 20px;background:#fff8f0;border:1px solid #f0a000;border-radius:8px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">
+        <span style="display:inline-block;background:#f0a000;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;margin-top:2px;">REQUIRED</span>
+        <div>
+          <strong style="font-size:13px;color:#1d2327;">Refund and Returns Policy URL</strong>
+          <p style="font-size:12px;color:#666;margin:4px 0 0;">
+            Add your refund and returns policy page so AI agents can inform buyers about your return conditions.
+            Without this, the catalog health score is reduced by 10 points.
+          </p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0;border:1px solid #f0a000;border-radius:4px;overflow:hidden;">
+        <span style="padding:6px 10px;background:#f9f9f9;border-right:1px solid #f0a000;font-size:13px;color:#555;white-space:nowrap;"><?php echo esc_html( trailingslashit( get_site_url() ) ); ?></span>
+        <input type="text" id="returnPolicySlug" placeholder="refund-policy"
+          value="<?php
+            $full = get_option( 'kalicart_bridge_return_policy_url', '' );
+            $base = trailingslashit( get_site_url() );
+            echo esc_attr( $full ? ltrim( str_replace( $base, '', $full ), '/' ) : '' );
+          ?>"
+          style="flex:1;padding:6px 10px;border:none;font-size:13px;outline:none;" />
+      </div>
+    </div>
+
     <div class="kali-section-title">Signal settings</div>
     <div class="kali-settings-list">
 
@@ -264,25 +288,6 @@
           value="<?php echo esc_attr( get_option( 'kalicart_bridge_agent_index_url', '' ) ); ?>"
           style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;" />
         <span style="font-size:12px;color:#999;">Paste the URL of the page where you added the shortcode</span>
-      </div>
-    </div>
-
-    <div style="margin-top:24px;padding:16px 20px;background:#fff8f0;border:1px solid #f0a000;border-radius:8px;">
-      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
-        <span style="display:inline-block;background:#f0a000;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;margin-top:1px;">SUGGESTION</span>
-        <div>
-          <strong style="font-size:13px;color:#1d2327;">Return policy URL</strong>
-          <p style="font-size:12px;color:#666;margin:4px 0 0;">
-            Add your return and refund policy page URL so AI agents can inform buyers about your return conditions.
-            Without this, agents cannot answer return-related questions and your catalog health score is reduced by 10 points.
-          </p>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <input type="url" id="returnPolicyUrl" placeholder="https://yoursite.com/refund-policy"
-          value="<?php echo esc_attr( get_option( 'kalicart_bridge_return_policy_url', '' ) ); ?>"
-          style="flex:1;padding:6px 10px;border:1px solid #f0a000;border-radius:4px;font-size:13px;" />
-        <span style="font-size:12px;color:#999;">Paste the URL of your returns &amp; refunds policy page</span>
       </div>
     </div>
 
