@@ -1,6 +1,13 @@
 *** KaliCart Bridge Changelog ***
 
 
+2026-06-09 - version 1.0.68
+
+* Fix - NO_RETURN_POLICY suggestion priority set to high (red dot, appears at top of suggestions list)
+* Fix - NO_RETURN_POLICY suggestion shows "Configure →" link to Settings tab instead of "0 products" label
+* Fix - suggestion items without affected count no longer render products button
+
+
 2026-06-09 - version 1.0.67
 
 * Added - Return policy URL field in Settings (merchant-provided URL to return/refund policy page)

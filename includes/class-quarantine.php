@@ -391,11 +391,10 @@ class KaliCart_Bridge_Quarantine {
         if ( empty( $return_policy_url ) ) {
             $settings_url = admin_url( 'admin.php?page=kalicart-bridge#settings' );
             $s[] = [
-                'priority'  => 'medium',
+                'priority'  => 'high',
                 'code'      => 'NO_RETURN_POLICY',
                 'label'     => 'Configure return policy URL',
                 'detail'    => 'Agents cannot inform buyers about your return conditions. Add your return policy page URL in Settings.',
-                'affected'  => 0,
                 'admin_url' => $settings_url,
             ];
         }

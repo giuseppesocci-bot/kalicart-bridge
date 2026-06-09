@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.67
+Stable tag: 1.0.68
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -112,6 +112,11 @@ sections.changelog nel JSON di aggiornamento viene auto-sincronizzato dal readme
 Non aggiornare mai sections.changelog manualmente.
 
 == Changelog ==
+
+= 1.0.68 =
+* Fix - NO_RETURN_POLICY suggestion priority high (red dot, top of list)
+* Fix - NO_RETURN_POLICY shows Configure link instead of 0 products label
+* Fix - suggestions without affected count no longer render products button
 
 = 1.0.67 =
 * Added - Return policy URL field in Settings
