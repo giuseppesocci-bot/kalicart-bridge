@@ -29,6 +29,7 @@
         btn.classList.add( 'kali-tab--active' );
         const panel = $( 'kali-tab-' + btn.dataset.tab );
         if ( panel ) panel.style.display = 'block';
+        if ( btn.dataset.tab === 'settings' ) updateReturnPolicyBlock();
       } );
     } );
   }
@@ -38,6 +39,7 @@
     $$( '.kali-panel' ).forEach( p => ( p.style.display = 'none' ) );
     const panel = $( 'kali-tab-' + name );
     if ( panel ) panel.style.display = 'block';
+    if ( name === 'settings' ) updateReturnPolicyBlock();
   }
 
   function initIssueClicks() {
@@ -404,6 +406,7 @@
     } );
 
     $( 'btnSaveSettings' )?.addEventListener( 'click', saveSettings );
+    $( 'returnPolicySlug' )?.addEventListener( 'input', updateReturnPolicyBlock );
 
     // Alert gialli su toggle critici
     const WARNINGS = {
@@ -438,6 +441,36 @@
     if ( wrap ) wrap.style.display = $( 'toggleBadge' )?.checked ? 'flex' : 'none';
   }
 
+  function updateReturnPolicyBlock() {
+    const block    = $( 'returnPolicyBlock' );
+    const badgeEl  = $( 'returnPolicyBadge' );
+    const wrapEl   = $( 'returnPolicyWrap' );
+    const prefixEl = $( 'returnPolicyPrefix' );
+    const linkEl   = $( 'returnPolicyTestLink' );
+    if ( ! block ) return;
+
+    const slug       = ( $( 'returnPolicySlug' )?.value ?? '' ).trim();
+    const configured = slug.length > 0;
+    const color      = configured ? '#00a32a' : '#f0a000';
+    const bg         = configured ? '#f0fff4' : '#fff8f0';
+
+    block.style.background  = bg;
+    block.style.borderColor = color;
+    if ( badgeEl )  { badgeEl.style.background = color; badgeEl.textContent = configured ? 'CONFIGURED' : 'REQUIRED'; }
+    if ( wrapEl )   { wrapEl.style.borderColor = color; }
+    if ( prefixEl ) { prefixEl.style.borderRightColor = color; }
+    if ( linkEl ) {
+      if ( configured ) {
+        const fullUrl = KaliBridge.site_url.replace( /\/$/, '' ) + '/' + slug.replace( /^\//, '' );
+        linkEl.style.display = 'block';
+        linkEl.innerHTML = `<a href="${ fullUrl }" target="_blank" rel="noopener" style="color:#00a32a;">&#x1F517; Test link: ${ fullUrl }</a>`;
+      } else {
+        linkEl.style.display = 'none';
+        linkEl.innerHTML = '';
+      }
+    }
+  }
+
   function saveSettings() {
     const fd = new FormData();
     fd.append( 'action',          'kalicart_save_settings' );
@@ -462,23 +495,8 @@
           const notice = $( 'settingsSaved' );
           if ( notice ) { notice.style.display = 'inline'; setTimeout( () => ( notice.style.display = 'none' ), 2500 ); }
 
-          // Aggiorna colore blocco return policy in tempo reale
-          const rpBlock = document.querySelector( '#returnPolicySlug' )?.closest( 'div[style*="border-radius:8px"]' );
-          const rpSlug  = $( 'returnPolicySlug' )?.value?.trim() ?? '';
-          if ( rpBlock ) {
-            const configured = rpSlug.length > 0;
-            const color = configured ? '#00a32a' : '#f0a000';
-            const bg    = configured ? '#f0fff4' : '#fff8f0';
-            const badge = configured ? 'CONFIGURED' : 'REQUIRED';
-            rpBlock.style.background   = bg;
-            rpBlock.style.borderColor  = color;
-            const badgeEl = rpBlock.querySelector( 'span[style*="font-weight:700"]' );
-            if ( badgeEl ) { badgeEl.style.background = color; badgeEl.textContent = badge; }
-            const inputWrap = rpBlock.querySelector( 'div[style*="overflow:hidden"]' );
-            if ( inputWrap ) { inputWrap.style.borderColor = color; }
-            const prefixEl = inputWrap?.querySelector( 'span' );
-            if ( prefixEl ) { prefixEl.style.borderRightColor = color; }
-          }
+          updateReturnPolicyBlock();
+          loadHealth( true );
         }
       } );
   }

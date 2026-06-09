@@ -1,6 +1,14 @@
 *** KaliCart Bridge Changelog ***
 
 
+2026-06-09 - version 1.0.74
+
+* UX - Return policy block uses stable DOM ids (returnPolicyBlock, returnPolicyBadge, returnPolicyWrap, returnPolicyPrefix, returnPolicyTestLink)
+* UX - Block color and test link update in real-time on input change, on save, and on tab switch
+* UX - Health report force-refreshed after save so overview suggestions update immediately
+* Fix - Configure link in NO_RETURN_POLICY suggestion correctly switches to Settings tab
+
+
 2026-06-09 - version 1.0.73
 
 * Fix - Return policy block color updates in real-time after save — green when set, orange when cleared
