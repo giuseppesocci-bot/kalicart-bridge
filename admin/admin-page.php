@@ -267,6 +267,25 @@
       </div>
     </div>
 
+    <div style="margin-top:24px;padding:16px 20px;background:#fff8f0;border:1px solid #f0a000;border-radius:8px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+        <span style="display:inline-block;background:#f0a000;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;margin-top:1px;">SUGGESTION</span>
+        <div>
+          <strong style="font-size:13px;color:#1d2327;">Return policy URL</strong>
+          <p style="font-size:12px;color:#666;margin:4px 0 0;">
+            Add your return and refund policy page URL so AI agents can inform buyers about your return conditions.
+            Without this, agents cannot answer return-related questions and your catalog health score is reduced by 10 points.
+          </p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="url" id="returnPolicyUrl" placeholder="https://yoursite.com/refund-policy"
+          value="<?php echo esc_attr( get_option( 'kalicart_bridge_return_policy_url', '' ) ); ?>"
+          style="flex:1;padding:6px 10px;border:1px solid #f0a000;border-radius:4px;font-size:13px;" />
+        <span style="font-size:12px;color:#999;">Paste the URL of your returns &amp; refunds policy page</span>
+      </div>
+    </div>
+
     <div class="kali-settings-footer">
       <button id="btnSaveSettings" class="kali-btn kali-btn--primary">Save settings</button>
       <span id="settingsSaved" class="kali-saved-notice" style="display:none">&#x2713; Saved</span>

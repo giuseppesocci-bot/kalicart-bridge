@@ -1,6 +1,15 @@
 *** KaliCart Bridge Changelog ***
 
 
+2026-06-09 - version 1.0.67
+
+* Added - Return policy URL field in Settings (merchant-provided URL to return/refund policy page)
+* Added - return_policy object in discovery endpoint: configured, url, note for agents
+* Added - NO_RETURN_POLICY suggestion (medium priority) in health dashboard when URL not configured
+* Added - Health score penalty: -10 points on average_score when return policy URL is missing
+* UX - Return policy field displayed with orange SUGGESTION badge above Save button in Settings
+
+
 2026-06-08 - version 1.0.66
 
 * Fixed - /.well-known/ucp is now also written as a physical file for hosts that serve .well-known directly and bypass WordPress rewrites

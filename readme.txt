@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.66
+Stable tag: 1.0.67
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -112,6 +112,12 @@ sections.changelog nel JSON di aggiornamento viene auto-sincronizzato dal readme
 Non aggiornare mai sections.changelog manualmente.
 
 == Changelog ==
+
+= 1.0.67 =
+* Added - Return policy URL field in Settings
+* Added - return_policy object in discovery endpoint (configured, url, agent note)
+* Added - NO_RETURN_POLICY suggestion (medium priority) in health dashboard
+* Added - Health score penalty: -10 points when return policy URL is missing
 
 = 1.0.66 =
 * Fixed - /.well-known/ucp is written as a physical file for hosts that bypass WordPress rewrites on .well-known paths

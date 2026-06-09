@@ -124,6 +124,10 @@ class KaliCart_Bridge_Quarantine {
         $issues_weighted = ( $bad_title * 25 + $no_desc * 30 + $no_cat * 30 + $no_price * 25 + $no_image * 8 + $no_sku * 4 );
         $max_weighted    = $total * 122;
         $avg_score       = $total > 0 ? max( 0, (int) round( 100 - ( $issues_weighted / max( 1, $max_weighted ) ) * 100 ) ) : 100;
+        // Penalità store-level: return policy non configurata
+        if ( empty( get_option( 'kalicart_bridge_return_policy_url', '' ) ) ) {
+            $avg_score = max( 0, $avg_score - 10 );
+        }
 
         // ── Prodotti segnalati per issue ─────────────────────────────────────
         $issue_product_ids = self::get_issue_product_ids( $wpdb, $uncategorized_id );
@@ -381,6 +385,20 @@ class KaliCart_Bridge_Quarantine {
         if ( $no_cat > 0 )    $s[] = [ 'priority' => 'high',   'code' => 'NO_CATEGORY',    'label' => 'Assign categories',        'detail' => 'Uncategorized products are invisible to category-based agent queries.','affected' => $no_cat,   'admin_url' => $admin_url ];
         if ( $no_price > 0 )  $s[] = [ 'priority' => 'medium', 'code' => 'ZERO_PRICE',     'label' => 'Fix zero-price products',  'detail' => 'Products with no price are excluded from commerce-intent pipelines.',  'affected' => $no_price, 'admin_url' => $admin_url ];
         if ( $no_sku > 0 )    $s[] = [ 'priority' => 'low',    'code' => 'NO_SKU',         'label' => 'Add SKU codes',            'detail' => 'SKUs enable precise product identification and deduplication by agents.','affected' => $no_sku,   'admin_url' => $admin_url ];
+
+        // Return policy suggestion
+        $return_policy_url = get_option( 'kalicart_bridge_return_policy_url', '' );
+        if ( empty( $return_policy_url ) ) {
+            $settings_url = admin_url( 'admin.php?page=kalicart-bridge#settings' );
+            $s[] = [
+                'priority'  => 'medium',
+                'code'      => 'NO_RETURN_POLICY',
+                'label'     => 'Configure return policy URL',
+                'detail'    => 'Agents cannot inform buyers about your return conditions. Add your return policy page URL in Settings.',
+                'affected'  => 0,
+                'admin_url' => $settings_url,
+            ];
+        }
 
         return $s;
     }

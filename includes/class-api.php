@@ -166,6 +166,16 @@ class KaliCart_Bridge_API {
             ],
 
             'merchant_shipping_policy' => $shipping_policy,
+            'return_policy'           => ( function() {
+                $url = get_option( 'kalicart_bridge_return_policy_url', '' );
+                if ( empty( $url ) ) return [ 'configured' => false ];
+                $page = get_posts( [ 'post_type' => 'page', 'post_status' => 'publish', 'meta_query' => [], 'numberposts' => 1, 'fields' => 'ids' ] );
+                return [
+                    'configured' => true,
+                    'url'        => esc_url( $url ),
+                    'note'       => 'Merchant-provided return and refund policy page. Consult before presenting purchase decisions to buyers.',
+                ];
+            } )(),
 
             'coupon_policy' => [
                 'source'                  => 'live_woocommerce_coupons',

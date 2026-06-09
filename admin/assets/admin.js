@@ -446,6 +446,7 @@
     fd.append( 'hint_category',      $( 'toggleHintCategory' )?.checked ? '1' : '0' );
     fd.append( 'badge_position',  badgePosition );
     fd.append( 'agent_index_url', $( 'agentIndexUrl' )?.value?.trim() ?? '' );
+    fd.append( 'return_policy_url', $( 'returnPolicyUrl' )?.value?.trim() ?? '' );
 
     fetch( KaliBridge.ajax_url, { method: 'POST', body: fd, credentials: 'same-origin' } )
       .then( r => r.json() )

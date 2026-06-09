@@ -61,6 +61,7 @@ class KaliCart_Bridge_Admin {
             'badge_enabled' => (bool) get_option( 'kalicart_bridge_badge_enabled', true ),
             'robots_enabled' => (bool) get_option( 'kalicart_bridge_robots_enabled', true ),
             'sitemap_enabled' => (bool) get_option( 'kalicart_bridge_sitemap_enabled', true ),
+            'return_policy_url'  => get_option( 'kalicart_bridge_return_policy_url', '' ),
         ] );
     }
 
@@ -121,6 +122,7 @@ class KaliCart_Bridge_Admin {
             'hint_zero'          => filter_input( INPUT_POST, 'hint_zero',          FILTER_VALIDATE_BOOLEAN ),
             'hint_category'      => filter_input( INPUT_POST, 'hint_category',      FILTER_VALIDATE_BOOLEAN ),
             'agent_index_url'    => esc_url_raw( filter_input( INPUT_POST, 'agent_index_url', FILTER_SANITIZE_URL ) ?? '' ),
+            'return_policy_url'  => esc_url_raw( filter_input( INPUT_POST, 'return_policy_url', FILTER_SANITIZE_URL ) ?? '' ),
         ];
 
         update_option( 'kalicart_bridge_badge_enabled',   $settings['badge_enabled'] );
@@ -133,6 +135,7 @@ class KaliCart_Bridge_Admin {
         update_option( 'kalicart_bridge_hint_zero',          $settings['hint_zero'] );
         update_option( 'kalicart_bridge_hint_category',      $settings['hint_category'] );
         update_option( 'kalicart_bridge_agent_index_url',    $settings['agent_index_url'] ?: null );
+        update_option( 'kalicart_bridge_return_policy_url',  $settings['return_policy_url'] ?: null );
         if ( $settings['well_known_enabled'] ) {
             KaliCart_Bridge_Signals::write_well_known_files();
         }
