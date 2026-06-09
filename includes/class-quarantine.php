@@ -399,6 +399,8 @@ class KaliCart_Bridge_Quarantine {
             ];
         }
 
+        $priority_order = [ 'high' => 0, 'medium' => 1, 'low' => 2 ];
+        usort( $s, fn( $a, $b ) => ( $priority_order[ $a['priority'] ] ?? 9 ) <=> ( $priority_order[ $b['priority'] ] ?? 9 ) );
         return $s;
     }
 }

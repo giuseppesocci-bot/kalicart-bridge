@@ -1,6 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
 
+2026-06-09 - version 1.0.69
+
+* Fix - suggestions sorted by priority (high → medium → low) so NO_RETURN_POLICY always appears at top
+
+
 2026-06-09 - version 1.0.68
 
 * Fix - NO_RETURN_POLICY suggestion priority set to high (red dot, appears at top of suggestions list)
