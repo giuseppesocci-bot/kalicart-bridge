@@ -1,6 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
 
+2026-06-09 - version 1.0.72
+
+* UX - Refund and Returns Policy block turns green (CONFIGURED) when URL is saved, orange (REQUIRED) when missing
+
+
 2026-06-09 - version 1.0.71
 
 * UX - Refund and Returns Policy URL field moved to top of Settings tab
