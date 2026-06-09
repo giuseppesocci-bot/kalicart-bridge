@@ -461,6 +461,24 @@
         if ( res.success ) {
           const notice = $( 'settingsSaved' );
           if ( notice ) { notice.style.display = 'inline'; setTimeout( () => ( notice.style.display = 'none' ), 2500 ); }
+
+          // Aggiorna colore blocco return policy in tempo reale
+          const rpBlock = document.querySelector( '#returnPolicySlug' )?.closest( 'div[style*="border-radius:8px"]' );
+          const rpSlug  = $( 'returnPolicySlug' )?.value?.trim() ?? '';
+          if ( rpBlock ) {
+            const configured = rpSlug.length > 0;
+            const color = configured ? '#00a32a' : '#f0a000';
+            const bg    = configured ? '#f0fff4' : '#fff8f0';
+            const badge = configured ? 'CONFIGURED' : 'REQUIRED';
+            rpBlock.style.background   = bg;
+            rpBlock.style.borderColor  = color;
+            const badgeEl = rpBlock.querySelector( 'span[style*="font-weight:700"]' );
+            if ( badgeEl ) { badgeEl.style.background = color; badgeEl.textContent = badge; }
+            const inputWrap = rpBlock.querySelector( 'div[style*="overflow:hidden"]' );
+            if ( inputWrap ) { inputWrap.style.borderColor = color; }
+            const prefixEl = inputWrap?.querySelector( 'span' );
+            if ( prefixEl ) { prefixEl.style.borderRightColor = color; }
+          }
         }
       } );
   }

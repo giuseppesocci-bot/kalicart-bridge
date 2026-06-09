@@ -1,6 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
 
+2026-06-09 - version 1.0.73
+
+* Fix - Return policy block color updates in real-time after save — green when set, orange when cleared
+
+
 2026-06-09 - version 1.0.72
 
 * UX - Refund and Returns Policy block turns green (CONFIGURED) when URL is saved, orange (REQUIRED) when missing
