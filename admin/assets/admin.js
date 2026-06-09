@@ -177,11 +177,14 @@
             </div>
             ${ s.affected != null
               ? `<button class="kali-suggestion__affected" type="button" data-view-issue="${ esc( s.code ) }">${ s.affected } products</button>`
-              : ( s.admin_url ? `<a class="kali-suggestion__affected" href="${ esc( s.admin_url ) }" style="text-decoration:none;">Configure →</a>` : '' )
+              : ( s.admin_url ? `<button class="kali-suggestion__affected" type="button" data-switch-tab="settings">Configure →</button>` : '' )
             }
           </div>` ).join( '' );
       container.querySelectorAll( '[data-view-issue]' ).forEach( btn => {
         btn.addEventListener( 'click', () => showIssueProducts( btn.dataset.viewIssue ) );
+      } );
+      container.querySelectorAll( '[data-switch-tab]' ).forEach( btn => {
+        btn.addEventListener( 'click', () => switchTab( btn.dataset.switchTab ) );
       } );
     }
 

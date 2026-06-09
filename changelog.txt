@@ -1,6 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
 
+2026-06-09 - version 1.0.70
+
+* Fix - Configure link in NO_RETURN_POLICY suggestion now correctly switches to Settings tab via JS
+
+
 2026-06-09 - version 1.0.69
 
 * Fix - suggestions sorted by priority (high → medium → low) so NO_RETURN_POLICY always appears at top
