@@ -211,7 +211,7 @@ class KaliCart_Bridge_API {
                 'health_url'            => rest_url( KALICART_BRIDGE_API_NS . '/catalog/health' ),
                 'authentication'        => 'none',
                 'read_only'             => true,
-                'cache'                 => 'public, max-age=60',
+                'cache'                 => 'public, max-age=300, stale-while-revalidate=900',
 
                 'query_construction' => [
                     'rule'    => 'CRITICAL. q must contain ONLY the bare product noun (the spine). Every attribute (category, gender, color, price) MUST go in its own structured filter, never inside q. size is NOT a search filter — use product detail after candidate selection. Stacking attributes into q returns 0 results.',
@@ -243,7 +243,7 @@ class KaliCart_Bridge_API {
             ],
 
             'ucp_profile_url'  => home_url( '/.well-known/ucp' ),
-            'agent_index_url'  => get_option( 'kalicart_bridge_agent_index_url', null ),
+            'agent_index_url'  => ( get_option( 'kalicart_bridge_agent_index_url', '' ) ?: null ),
             'agent_index_note' => 'If set, this URL points to a merchant-published page using the [kalicart_agent_index] shortcode — a navigable directory of all endpoints and category tree. null means the merchant has not published an agent index page.',
 
             'checkout_session' => [
@@ -298,6 +298,7 @@ class KaliCart_Bridge_API {
                 'required_for_variable_products' => true,
                 'source'     => 'product detail endpoint: /catalog/product/{id} exposes attributes and available variations',
                 'agent_rule' => 'Do not quote exact final price until a variation is selected. Price may differ per variant. Use purchase_readiness.blocking_fields to know which attributes are required.',
+                'list_context_note' => 'In list and search responses, variants is an empty array for variable products (performance). Fetch /catalog/product/{id} for the full variants list. variants is always an array, never null.',
             ],
 
             'semantic_fit_guidance' => 'Before proposing checkout, verify that the selected product satisfies the user functional need — not only category or keyword similarity. A product in the right category may still be wrong for the use case.',

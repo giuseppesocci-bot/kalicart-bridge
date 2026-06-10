@@ -189,7 +189,7 @@ class KaliCart_Bridge_Catalog_Engine {
         // variations only in detail context — avoids N×get_variations() queries in list/search
         $variations = ( $context === 'detail' && $type === 'variable' ) ? self::get_variations( $p ) : null;
 
-        // variants[] — detail: full list; list: lightweight single entry for simple, null for variable
+        // variants[] — detail: full list; list: lightweight single entry for simple, empty array for variable (UCP: always an array)
         if ( $context === 'detail' ) {
             $variants = $type === 'variable'
                 ? $variations
@@ -203,7 +203,7 @@ class KaliCart_Bridge_Catalog_Engine {
                     'barcodes'            => $barcodes,
                 ] ];
         } else {
-            // list context: simple products get single variant, variable products get null (use /product/{id})
+            // list context: simple products get single variant, variable products get [] (use /product/{id} for full variants)
             $variants = $type !== 'variable'
                 ? [ [
                     'variation_id'        => $id,
@@ -214,7 +214,7 @@ class KaliCart_Bridge_Catalog_Engine {
                     'sku'                 => $p->get_sku() ?: null,
                     'barcodes'            => $barcodes,
                 ] ]
-                : null;
+                : [];
         }
 
         return [
@@ -307,9 +307,9 @@ class KaliCart_Bridge_Catalog_Engine {
                         $free_thresholds[] = $min;
                     }
                 } elseif ( $method_id === 'flat_rate' ) {
-                    $row['cost'] = isset( $method->cost ) && $method->cost !== '' ? (string) $method->cost : null;
+                    $row['cost'] = isset( $method->cost ) && $method->cost !== '' ? self::normalize_cost( $method->cost ) : null;
                 } elseif ( isset( $method->cost ) && $method->cost !== '' ) {
-                    $row['cost'] = (string) $method->cost;
+                    $row['cost'] = self::normalize_cost( $method->cost );
                 }
                 if ( ! empty( $settings ) ) {
                     $row['settings_public_note'] = 'Method has WooCommerce settings; exact final price remains checkout authority.';
@@ -319,12 +319,16 @@ class KaliCart_Bridge_Catalog_Engine {
             if ( empty( $methods ) ) {
                 continue;
             }
-            $out_zones[] = [
+            $zone_row = [
                 'id' => (int) ( $zone['zone_id'] ?? 0 ),
                 'name' => (string) ( $zone['zone_name'] ?? 'Rest of the world' ),
                 'locations' => self::normalize_shipping_zone_locations( (array) ( $zone['zone_locations'] ?? [] ) ),
-                'methods' => $methods,
             ];
+            if ( empty( $zone['zone_locations'] ) ) {
+                $zone_row['locations_note'] = 'Zone has no explicit regions configured in WooCommerce. Coverage cannot be inferred from this document — WooCommerce checkout determines applicability.';
+            }
+            $zone_row['methods'] = $methods;
+            $out_zones[] = $zone_row;
         }
 
         $free_thresholds = array_values( array_unique( array_filter( $free_thresholds, fn( $v ) => $v !== null ) ) );
@@ -998,6 +1002,15 @@ class KaliCart_Bridge_Catalog_Engine {
     }
 
     // ── Quarantine ───────────────────────────────────────────────────────────
+
+
+    /**
+     * Shipping cost: numeric values as float (machine-computable),
+     * WooCommerce cost formulas (e.g. "10 + 2*[qty]") kept as string — never silently truncated.
+     */
+    private static function normalize_cost( $cost ) {
+        return is_numeric( $cost ) ? (float) $cost : (string) $cost;
+    }
 
     public static function compute_quarantine_flags( WC_Product $p, array $categories, array $images ): array {
         $flags = [];

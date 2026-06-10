@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.74
+Stable tag: 1.0.75
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -112,6 +112,15 @@ sections.changelog nel JSON di aggiornamento viene auto-sincronizzato dal readme
 Non aggiornare mai sections.changelog manualmente.
 
 == Changelog ==
+
+= 1.0.75 =
+* API - variants is always an array, never null - list/search return [] for variable products
+* API - discovery documents list-context variants behavior (list_context_note)
+* API - cache claim aligned with real Cache-Control header
+* API - agent_index_url emits real null when not configured
+* API - shipping costs numeric when computable, Woo formulas kept as string
+* API - shipping zones without regions expose an honest locations_note
+* API - .well-known discovery files include plugin version
 
 = 1.0.74 =
 * UX - Return policy block updates in real-time (input, save, tab switch)

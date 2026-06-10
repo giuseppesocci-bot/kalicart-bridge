@@ -1,6 +1,17 @@
 *** KaliCart Bridge Changelog ***
 
 
+2026-06-10 - version 1.0.75
+
+* API - variants is always an array, never null - list/search responses return [] for variable products (full list via product detail)
+* API - discovery declares list_context_note in variation_discovery documenting the variants list behavior
+* API - public_catalog.cache claim aligned with the real Cache-Control header (max-age=300, stale-while-revalidate=900)
+* API - agent_index_url emits real null when not configured (was empty string)
+* API - shipping method costs are numeric when computable; WooCommerce cost formulas kept as string, never silently truncated
+* API - shipping zones without configured regions expose locations_note clarifying that coverage is determined by WooCommerce checkout
+* API - .well-known/kalicart-bridge and agent-catalog now include the plugin version
+
+
 2026-06-09 - version 1.0.74
 
 * UX - Return policy block uses stable DOM ids (returnPolicyBlock, returnPolicyBadge, returnPolicyWrap, returnPolicyPrefix, returnPolicyTestLink)

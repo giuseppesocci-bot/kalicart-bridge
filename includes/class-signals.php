@@ -351,6 +351,7 @@ class KaliCart_Bridge_Signals {
 
         $payload = wp_json_encode( [
             'type'          => 'kalicart-merchant-bridge-v1',
+            'version'       => KALICART_BRIDGE_VERSION,
             'name'          => get_bloginfo( 'name' ),
             'discovery'     => rest_url( KALICART_BRIDGE_API_NS . '/discovery' ),
             'catalog_api'   => rest_url( KALICART_BRIDGE_API_NS . '/catalog' ),
