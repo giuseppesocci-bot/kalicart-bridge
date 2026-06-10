@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-10 - version 1.0.76
+
+* Feature - KaliCart Global indexing consent: new toggle in Settings, OPT-OUT model (active by default). Single option kalicart_bridge_global_consent drives intent_flags.global_indexable, intent_flags.federated_search_source and crawler_policy.allow_global_indexing in the discovery document
+* UX - Disabling the consent toggle shows a yellow warning alert (same pattern as robots/sitemap/badge toggles)
+
+
 
 2026-06-10 - version 1.0.75
 

@@ -392,6 +392,7 @@
     if ( $( 'toggleHintZero' ) )     $( 'toggleHintZero' ).checked     = KaliBridge.hint_zero;
     if ( $( 'toggleHintCategory' ) ) $( 'toggleHintCategory' ).checked = KaliBridge.hint_category;
     if ( $( 'toggleRobots' ) )  $( 'toggleRobots' ).checked  = KaliBridge.robots_enabled;
+    if ( $( 'toggleGlobalConsent' ) ) $( 'toggleGlobalConsent' ).checked = KaliBridge.global_consent;
     if ( $( 'toggleSitemap' ) ) $( 'toggleSitemap' ).checked = KaliBridge.sitemap_enabled;
 
     syncPositionWrap();
@@ -412,6 +413,7 @@
     const WARNINGS = {
       toggleBadge:      'Disabling the AI catalog badge removes a key discovery signal for agents browsing the storefront DOM. Agents that rely on body anchors will not find your catalog.',
       toggleRobots:     'Disabling the robots.txt directive removes the crawl permission for AI agents. Some agents check robots.txt before querying any endpoint.',
+      toggleGlobalConsent: 'Disabling Global indexing consent removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Direct agent access to this store stays active.',
       toggleSitemap:    'Disabling the agentic sitemap removes the structured endpoint map that agents use to enumerate your catalog surfaces.',
       toggleWellKnown:  'Disabling .well-known discovery files removes the first-probe signal used by agents that check standard discovery paths before loading your storefront.',
     };
@@ -477,6 +479,7 @@
     fd.append( 'nonce',           KaliBridge.nonce );
     fd.append( 'badge_enabled',   $( 'toggleBadge' )?.checked   ? '1' : '0' );
     fd.append( 'robots_enabled',  $( 'toggleRobots' )?.checked  ? '1' : '0' );
+    fd.append( 'global_consent',  $( 'toggleGlobalConsent' )?.checked ? '1' : '0' );
     fd.append( 'sitemap_enabled',  $( 'toggleSitemap' )?.checked  ? '1' : '0' );
     fd.append( 'checkout_enabled',  $( 'toggleCheckout' )?.checked  ? '1' : '0' );
     fd.append( 'well_known_enabled', $( 'toggleWellKnown' )?.checked    ? '1' : '0' );

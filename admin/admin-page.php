@@ -233,6 +233,14 @@
 
       <label class="kali-toggle-row">
         <div class="kali-toggle-info">
+          <strong>KaliCart Global indexing consent</strong>
+          <span>Allows KaliCart Global to index this catalog and include it in federated agent search. Published in the discovery document as <code>crawler_policy.allow_global_indexing</code> and <code>intent_flags</code>. Read-only: Global never writes to your store.</span>
+        </div>
+        <div class="kali-toggle"><input type="checkbox" id="toggleGlobalConsent"><span class="kali-toggle__slider"></span></div>
+      </label>
+
+      <label class="kali-toggle-row">
+        <div class="kali-toggle-info">
           <strong>Checkout sessions <span style="font-size:11px;font-weight:500;background:var(--kb-acc-bg);color:var(--kb-acc);border:1px solid rgba(56,88,233,.2);border-radius:99px;padding:1px 8px;vertical-align:middle">optional</span></strong>
           <span>Enables <code>POST /checkout/session</code> — agent creates a session, merchant gets a checkout URL, human completes payment on WooCommerce. No OAuth, no PII, no payment on the agent side.</span>
         </div>

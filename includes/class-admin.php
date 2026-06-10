@@ -60,6 +60,7 @@ class KaliCart_Bridge_Admin {
             'rest_base'     => rest_url( KALICART_BRIDGE_API_NS ),
             'badge_enabled' => (bool) get_option( 'kalicart_bridge_badge_enabled', true ),
             'robots_enabled' => (bool) get_option( 'kalicart_bridge_robots_enabled', true ),
+            'global_consent' => (bool) get_option( 'kalicart_bridge_global_consent', true ),
             'sitemap_enabled' => (bool) get_option( 'kalicart_bridge_sitemap_enabled', true ),
             'return_policy_url'  => get_option( 'kalicart_bridge_return_policy_url', '' ),
             'site_url'           => trailingslashit( get_site_url() ),
@@ -115,6 +116,7 @@ class KaliCart_Bridge_Admin {
         $settings = [
             'badge_enabled'   => filter_input( INPUT_POST, 'badge_enabled',   FILTER_VALIDATE_BOOLEAN ),
             'robots_enabled'  => filter_input( INPUT_POST, 'robots_enabled',  FILTER_VALIDATE_BOOLEAN ),
+            'global_consent'  => filter_input( INPUT_POST, 'global_consent',  FILTER_VALIDATE_BOOLEAN ),
             'sitemap_enabled'  => filter_input( INPUT_POST, 'sitemap_enabled', FILTER_VALIDATE_BOOLEAN ),
             'badge_position'   => sanitize_text_field( wp_unslash( $_POST['badge_position'] ?? 'bottom-right' ) ),
             'checkout_enabled'  => filter_input( INPUT_POST, 'checkout_enabled',  FILTER_VALIDATE_BOOLEAN ),
@@ -128,6 +130,7 @@ class KaliCart_Bridge_Admin {
 
         update_option( 'kalicart_bridge_badge_enabled',   $settings['badge_enabled'] );
         update_option( 'kalicart_bridge_robots_enabled',  $settings['robots_enabled'] );
+        update_option( 'kalicart_bridge_global_consent',  $settings['global_consent'] );
         update_option( 'kalicart_bridge_sitemap_enabled', $settings['sitemap_enabled'] );
         update_option( 'kalicart_bridge_badge_position',   $settings['badge_position'] );
         update_option( 'kalicart_bridge_checkout_enabled',  $settings['checkout_enabled'] );

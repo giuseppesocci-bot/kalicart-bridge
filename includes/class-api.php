@@ -138,15 +138,15 @@ class KaliCart_Bridge_API {
 
             'intent_flags' => [
                 'single_merchant_only'    => true,
-                'global_indexable'        => false,
-                'federated_search_source' => false,
+                'global_indexable'        => (bool) get_option( 'kalicart_bridge_global_consent', true ),
+                'federated_search_source' => (bool) get_option( 'kalicart_bridge_global_consent', true ),
                 'agent_read_surface'      => true,
             ],
 
             'crawler_policy' => [
                 'allow_llm_training'   => false,
                 'allow_live_agent_reads' => true,
-                'allow_global_indexing' => false,
+                'allow_global_indexing' => (bool) get_option( 'kalicart_bridge_global_consent', true ),
             ],
 
             'capabilities' => [

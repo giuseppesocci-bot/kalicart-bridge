@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.75
+Stable tag: 1.0.76
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -112,6 +112,10 @@ sections.changelog nel JSON di aggiornamento viene auto-sincronizzato dal readme
 Non aggiornare mai sections.changelog manualmente.
 
 == Changelog ==
+
+= 1.0.76 =
+* Feature - KaliCart Global indexing consent toggle in Settings, opt-out model (active by default), single option kalicart_bridge_global_consent driving discovery consent flags
+* UX - Disabling the consent toggle shows a warning alert
 
 = 1.0.75 =
 * API - variants is always an array, never null - list/search return [] for variable products
