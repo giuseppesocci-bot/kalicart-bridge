@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-13 - version 1.0.79
+
+* UX - Admin header brand mark replaced with inline KaliCart SVG logo; wp-admin menu icon updated to the KaliCart glyph
+* Fix - Endpoint explorer links the .well-known discovery files via their .json mirrors so the test links resolve on every host (including hosts that serve /.well-known/ as a static location)
+* UX - Admin accent color aligned to KaliCart blue (#0070f3)
+
+
 2026-06-13 - version 1.0.78
 
 * Fix - /.well-known/ discovery also published as physical .json mirrors (kalicart-bridge.json, agent-catalog.json, ucp.json, agent.json), served as application/json on every host - including hosts that serve /.well-known/ as a static location (e.g. nginx ACME setups) where the WP rewrite never runs and extension-less paths return 404

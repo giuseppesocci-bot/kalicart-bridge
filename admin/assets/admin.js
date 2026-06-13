@@ -325,8 +325,8 @@
     if ( $( 'headLinkTag' ) ) $( 'headLinkTag' ).textContent = headLink;
 
     const endpoints = [
-      { path: '/.well-known/ucp',       desc: 'UCP profile — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)',  auth: false, example: '', wellknown: true },
-      { path: '/.well-known/kalicart-bridge', desc: 'KaliCart Bridge discovery entry point for agents probing well-known paths', auth: false, example: '', wellknown: true },
+      { path: '/.well-known/ucp.json',       desc: 'UCP profile — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)',  auth: false, example: '', wellknown: true },
+      { path: '/.well-known/kalicart-bridge.json', desc: 'KaliCart Bridge discovery entry point for agents probing well-known paths', auth: false, example: '', wellknown: true },
       { path: '/discovery',            desc: 'Discovery document — entry point for every agent, full capability map',           auth: false, example: '' },
       { path: '/catalog/meta',         desc: 'Accepted filter values, category slugs, price range',                             auth: false, example: '' },
       { path: '/catalog/search',       desc: 'Full-text + filtered search — supports q, category, on_sale, in_stock, price',   auth: false, example: '?q=scarpe&gender=male&per_page=10' },

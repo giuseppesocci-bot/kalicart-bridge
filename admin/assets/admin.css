@@ -1,9 +1,9 @@
 /* KaliCart Bridge — Admin UI */
 
 :root {
-  --kb-acc:       #3858e9;
-  --kb-acc-s:     #2a45cc;
-  --kb-acc-bg:    rgba(56,88,233,.06);
+  --kb-acc:       #0070f3;
+  --kb-acc-s:     #005fcf;
+  --kb-acc-bg:    rgba(0,112,243,.06);
   --kb-bg:        #f7f7f8;
   --kb-surface:   #ffffff;
   --kb-surface2:  #f3f3f5;
@@ -494,7 +494,7 @@
   border-radius: 4px;
   background: var(--kb-acc-bg);
   color: var(--kb-acc);
-  border: 1px solid rgba(56,88,233,.15);
+  border: 1px solid rgba(0,112,243,.15);
   letter-spacing: .04em;
 }
 .kali-endpoint__path {

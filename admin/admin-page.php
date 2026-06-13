@@ -6,7 +6,7 @@
     <div class="kali-header__brand">
       <div class="logo">
         <a href="<?php echo esc_url( admin_url( 'admin.php?page=kalicart-bridge' ) ); ?>" data-initial-mark="">
-          <b class="logo-mark"><i class="logo-mark__letter">K</i></b>alicart
+          <svg class="kali-logo-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1196" width="60" height="60" role="img" aria-label="KaliCart" focusable="false" style="display:block;margin-right:8px;flex:0 0 auto"><rect width="1200" height="1196" rx="150" ry="150" fill="#0070F3"/><rect x="280" y="184" width="212" height="824" fill="#FFFFFF"/><path d="M677 184H900V411L720 504Z" fill="#FFFFFF"/><path d="M575 691L780 568L1018 1008H790Z" fill="#FFFFFF"/><path d="M900 411L780 568L575 691L720 504Z" fill="#BFDBFC"/></svg>Kalicart
         </a>
       </div>
       <span class="kali-header__product">Bridge</span>
@@ -241,7 +241,7 @@
 
       <label class="kali-toggle-row">
         <div class="kali-toggle-info">
-          <strong>Checkout sessions <span style="font-size:11px;font-weight:500;background:var(--kb-acc-bg);color:var(--kb-acc);border:1px solid rgba(56,88,233,.2);border-radius:99px;padding:1px 8px;vertical-align:middle">optional</span></strong>
+          <strong>Checkout sessions <span style="font-size:11px;font-weight:500;background:var(--kb-acc-bg);color:var(--kb-acc);border:1px solid rgba(0,112,243,.2);border-radius:99px;padding:1px 8px;vertical-align:middle">optional</span></strong>
           <span>Enables <code>POST /checkout/session</code> — agent creates a session, merchant gets a checkout URL, human completes payment on WooCommerce. No OAuth, no PII, no payment on the agent side.</span>
         </div>
         <div class="kali-toggle"><input type="checkbox" id="toggleCheckout"><span class="kali-toggle__slider"></span></div>

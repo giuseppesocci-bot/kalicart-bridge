@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.78
+Stable tag: 1.0.79
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -112,6 +112,11 @@ sections.changelog nel JSON di aggiornamento viene auto-sincronizzato dal readme
 Non aggiornare mai sections.changelog manualmente.
 
 == Changelog ==
+
+= 1.0.79 =
+* UX - Admin header brand mark replaced with inline KaliCart SVG logo; wp-admin menu icon updated to the KaliCart glyph
+* Fix - Endpoint explorer links the .well-known discovery files via their .json mirrors so test links resolve on every host
+* UX - Admin accent color aligned to KaliCart blue (#0070f3)
 
 = 1.0.78 =
 * Fix - /.well-known/ discovery also published as physical .json mirrors (kalicart-bridge.json, agent-catalog.json, ucp.json, agent.json), served as application/json on every host including those that serve /.well-known/ as a static location (nginx ACME setups) where the WP rewrite never runs
