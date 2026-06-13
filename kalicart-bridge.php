@@ -3,7 +3,7 @@
  * Plugin Name:       KaliCart Bridge
  * Plugin URI:        https://kalicart.com
  * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.76
+ * Version:           1.0.78
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.76' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.78' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
@@ -49,11 +49,20 @@ add_action( 'plugins_loaded', function () {
 
     KaliCart_Bridge_API::init();
     KaliCart_Bridge_Signals::init();
-    // write_well_known_files needs $wp_rewrite — run on init, not plugins_loaded
+    // Version-gated migration — runs once per plugin version, on init (needs $wp_rewrite).
+    // Removes legacy extension-less static files (served as text/plain by the webserver)
+    // and flushes rewrite rules so serve_well_known() answers on every install.
     add_action( 'init', function () {
+        if ( get_option( 'kalicart_bridge_wk_version' ) === KALICART_BRIDGE_VERSION ) {
+            return;
+        }
         if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
             KaliCart_Bridge_Signals::write_well_known_files();
+        } else {
+            KaliCart_Bridge_Signals::cleanup_well_known_static_files();
         }
+        flush_rewrite_rules();
+        update_option( 'kalicart_bridge_wk_version', KALICART_BRIDGE_VERSION );
     }, 20 );
     KaliCart_Bridge_Quarantine::init_hooks();
     KaliCart_Bridge_Shortcodes::init();

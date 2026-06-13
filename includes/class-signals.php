@@ -156,8 +156,10 @@ class KaliCart_Bridge_Signals {
         $output .= "# Machine-readable product catalog. Entry point for AI shopping agents.\n";
         $output .= "Allow: " . $api_base . "/\n";
         $output .= "Allow: /sitemap-agentic-bridge.xml\n";
-        $output .= "Allow: /.well-known/kalicart-bridge\n";
-        $output .= "Allow: /.well-known/agent-catalog\n";
+        $output .= "Allow: /.well-known/agent.json\n";
+        $output .= "Allow: /.well-known/kalicart-bridge.json\n";
+        $output .= "Allow: /.well-known/agent-catalog.json\n";
+        $output .= "Allow: /.well-known/ucp.json\n";
         $output .= "Sitemap: " . $sitemap_url . "\n";
 
         return $output;
@@ -266,7 +268,7 @@ class KaliCart_Bridge_Signals {
 
 
     public static function register_well_known_rewrite(): void {
-        add_rewrite_rule( '^\.well-known/(kalicart-bridge|agent-catalog|agent\.json|ucp)$', 'index.php?kalicart_well_known=$matches[1]', 'top' );
+        add_rewrite_rule( '^\.well-known/(kalicart-bridge|agent-catalog|agent\.json|ucp)(?:\.json)?$', 'index.php?kalicart_well_known=$matches[1]', 'top' );
     }
 
     public static function add_well_known_query_var( array $vars ): array {
@@ -274,7 +276,7 @@ class KaliCart_Bridge_Signals {
         return $vars;
     }
 
-    private static function ucp_profile_json(): string {
+    public static function ucp_profile_json(): string {
         $base     = rest_url( KALICART_BRIDGE_API_NS );
         $checkout = (bool) get_option( 'kalicart_bridge_checkout_enabled', false );
 
@@ -313,28 +315,42 @@ class KaliCart_Bridge_Signals {
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
     }
 
-    public static function serve_well_known(): void {
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $file = isset( $_GET['kalicart_well_known'] ) ? sanitize_key( $_GET['kalicart_well_known'] ) : '';
-        if ( ! $file ) return;
-
+    /**
+     * Shared entry-point discovery document, served at /.well-known/kalicart-bridge,
+     * /agent-catalog, /agent.json and their .json mirrors. Single source of truth so
+     * the rewrite handler and the physical mirror files never drift.
+     */
+    private static function bridge_discovery_payload(): string {
         $base = rest_url( KALICART_BRIDGE_API_NS );
-        $home = home_url();
+        return wp_json_encode( [
+            'type'          => 'kalicart-merchant-bridge-v1',
+            'version'       => KALICART_BRIDGE_VERSION,
+            'name'          => get_bloginfo( 'name' ),
+            'discovery'     => $base . '/discovery',
+            'catalog_api'   => $base . '/catalog',
+            'ucp_profile'   => home_url( '/.well-known/ucp.json' ),
+            'agent_note'    => 'GET discovery URL first. Contains capabilities, filter rules, shipping policy and agent instructions.',
+            'documentation' => 'https://bridge.kalicart.com/docs/',
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+    }
+
+    public static function serve_well_known( $wp = null ): void {
+        $raw = '';
+        if ( $wp instanceof WP && isset( $wp->query_vars['kalicart_well_known'] ) ) {
+            $raw = (string) $wp->query_vars['kalicart_well_known'];
+        } elseif ( isset( $_GET['kalicart_well_known'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $raw = (string) wp_unslash( $_GET['kalicart_well_known'] );
+        }
+        // Accept both the extension-less convention path and the .json mirror form.
+        $file = sanitize_key( preg_replace( '/\.json$/', '', $raw ) );
+        if ( ! $file ) return;
 
         if ( $file === 'ucp' ) {
             // UCP profile — declares catalog capabilities, checkout via continue_url.
             $payload = self::ucp_profile_json();
         } else {
-            // kalicart-bridge / agent-catalog / agent.json
-            $payload = wp_json_encode( [
-                'type'          => 'kalicart-merchant-bridge-v1',
-                'name'          => get_bloginfo( 'name' ),
-                'discovery'     => $base . '/discovery',
-                'catalog_api'   => $base . '/catalog',
-                'ucp_profile'   => $home . '/.well-known/ucp',
-                'agent_note'    => 'GET discovery URL first. Contains capabilities, filter rules, shipping policy and agent instructions.',
-                'documentation' => 'https://bridge.kalicart.com/docs/',
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+            // kalicart-bridge / agent-catalog / agent.json — shared entry-point doc.
+            $payload = self::bridge_discovery_payload();
         }
 
         header( 'Content-Type: application/json; charset=utf-8' );
@@ -343,38 +359,69 @@ class KaliCart_Bridge_Signals {
         exit;
     }
 
+    /**
+     * Removes legacy extension-less discovery files from /.well-known/.
+     *
+     * If a physical file exists at those paths, the webserver serves it
+     * statically BEFORE WordPress runs, assigning text/plain (nginx ignores
+     * .htaccess entirely, so ForceType only ever patched Apache). The paths
+     * are served by the rewrite -> serve_well_known() handler instead, which
+     * sets Content-Type: application/json on every stack.
+     * Only files written by this plugin are removed.
+     */
+    public static function cleanup_well_known_static_files(): void {
+        $dir = rtrim( ABSPATH, '/' ) . '/.well-known/';
+        if ( ! is_dir( $dir ) ) return;
+
+        foreach ( [ 'kalicart-bridge', 'agent-catalog', 'ucp' ] as $stale ) {
+            $path = $dir . $stale;
+            if ( ! file_exists( $path ) ) continue;
+            $body = (string) @file_get_contents( $path );
+            if ( strpos( $body, 'kalicart' ) !== false ) {
+                @unlink( $path );
+            }
+        }
+
+        // Legacy Apache-only .htaccess: remove only if byte-identical to ours.
+        $htaccess = $dir . '.htaccess';
+        $legacy   = "<Files 'kalicart-bridge'>\n  ForceType application/json\n</Files>\n<Files 'agent-catalog'>\n  ForceType application/json\n</Files>\n<Files 'ucp'>\n  ForceType application/json\n</Files>\n";
+        if ( file_exists( $htaccess ) && @file_get_contents( $htaccess ) === $legacy ) {
+            @unlink( $htaccess );
+        }
+    }
+
     public static function write_well_known_files(): void {
         $dir = rtrim( ABSPATH, '/' ) . '/.well-known/';
         if ( ! is_dir( $dir ) ) {
             wp_mkdir_p( $dir );
         }
 
-        $payload = wp_json_encode( [
-            'type'          => 'kalicart-merchant-bridge-v1',
-            'version'       => KALICART_BRIDGE_VERSION,
-            'name'          => get_bloginfo( 'name' ),
-            'discovery'     => rest_url( KALICART_BRIDGE_API_NS . '/discovery' ),
-            'catalog_api'   => rest_url( KALICART_BRIDGE_API_NS . '/catalog' ),
-            'ucp_profile'   => home_url( '/.well-known/ucp' ),
-            'agent_note'    => 'GET discovery URL first. Contains capabilities, filter rules, shipping policy and agent instructions.',
-            'documentation' => 'https://bridge.kalicart.com/docs/',
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        // Extension-less convention paths (kalicart-bridge, agent-catalog, ucp)
+        // are served by the rewrite -> serve_well_known() handler, which sets
+        // Content-Type: application/json on every stack. A physical extension-less
+        // file would be served as text/plain, so remove any of ours.
+        self::cleanup_well_known_static_files();
 
-        // Always write — these names are ours.
-        @file_put_contents( $dir . 'kalicart-bridge',  $payload );
-        @file_put_contents( $dir . 'agent-catalog',    $payload );
-        @file_put_contents( $dir . 'ucp',              self::ucp_profile_json() );
-
-        // Force application/json Content-Type for extension-less files.
-        $htaccess = $dir . '.htaccess';
-        $htaccess_content = "<Files 'kalicart-bridge'>\n  ForceType application/json\n</Files>\n<Files 'agent-catalog'>\n  ForceType application/json\n</Files>\n<Files 'ucp'>\n  ForceType application/json\n</Files>\n";
-        @file_put_contents( $htaccess, $htaccess_content );
-
-        // Write agent.json only if it doesn't exist or was written by us
-        $agent_file = $dir . 'agent.json';
-        $existing   = file_exists( $agent_file ) ? @file_get_contents( $agent_file ) : '';
-        if ( ! $existing || strpos( $existing, 'kalicart-merchant-bridge' ) !== false ) {
-            @file_put_contents( $agent_file, $payload );
+        // Physical .json mirrors: the .json extension maps to application/json in
+        // every default mime table, so these stay reachable WITH the correct
+        // Content-Type even on hosts that serve /.well-known/ as a static location
+        // (where the rewrite never runs, e.g. nginx ACME setups), and as a no-PHP
+        // fallback for agents probing the filesystem path.
+        $bridge  = self::bridge_discovery_payload();
+        $mirrors = [
+            'agent.json'           => $bridge,
+            'kalicart-bridge.json' => $bridge,
+            'agent-catalog.json'   => $bridge,
+            'ucp.json'             => self::ucp_profile_json(),
+        ];
+        foreach ( $mirrors as $fname => $body ) {
+            $path     = $dir . $fname;
+            $existing = file_exists( $path ) ? (string) @file_get_contents( $path ) : '';
+            // Only (over)write files that are ours or absent — never clobber a
+            // file the host/merchant placed there (ACME, autoconfig, etc.).
+            if ( $existing === '' || strpos( $existing, 'kalicart' ) !== false ) {
+                @file_put_contents( $path, $body );
+            }
         }
     }
 
@@ -467,7 +514,7 @@ class KaliCart_Bridge_Signals {
         }
 
         // .well-known discovery files
-        foreach ( [ '/.well-known/kalicart-bridge', '/.well-known/agent-catalog' ] as $wk_path ) {
+        foreach ( [ '/.well-known/kalicart-bridge.json', '/.well-known/agent-catalog.json', '/.well-known/ucp.json' ] as $wk_path ) {
             $out .= "  <url>\n";
             $out .= '    <loc>' . esc_url( home_url( $wk_path ) ) . "</loc>\n";
             $out .= '    <lastmod>' . $now . "</lastmod>\n";

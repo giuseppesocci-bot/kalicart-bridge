@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.76
+Stable tag: 1.0.78
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -112,6 +112,16 @@ sections.changelog nel JSON di aggiornamento viene auto-sincronizzato dal readme
 Non aggiornare mai sections.changelog manualmente.
 
 == Changelog ==
+
+= 1.0.78 =
+* Fix - /.well-known/ discovery also published as physical .json mirrors (kalicart-bridge.json, agent-catalog.json, ucp.json, agent.json), served as application/json on every host including those that serve /.well-known/ as a static location (nginx ACME setups) where the WP rewrite never runs
+* Feature - REST endpoint /wp-json/kalicart/v1/ucp exposes the UCP profile, always reachable when /.well-known/ucp is intercepted by the webserver
+* Update - discovery, robots.txt and agentic sitemap advertise the reachable .json mirrors and include the UCP profile; rewrite handler accepts the .json form
+
+= 1.0.77 =
+* Fix - /.well-known/ucp, /.well-known/kalicart-bridge, /.well-known/agent-catalog now served exclusively by WP rewrite handler (Content-Type: application/json on all stacks including nginx); removed legacy physical extension-less files and Apache-only .htaccess ForceType
+* Fix - serve_well_known() reads $wp->query_vars (parse_request API) with $_GET fallback; migration version-gated (kalicart_bridge_wk_version) runs once per version, flushes rewrite rules on update
+
 
 = 1.0.76 =
 * Feature - KaliCart Global indexing consent toggle in Settings, opt-out model (active by default), single option kalicart_bridge_global_consent driving discovery consent flags

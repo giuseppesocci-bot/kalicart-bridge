@@ -1,7 +1,16 @@
 *** KaliCart Bridge Changelog ***
 
-UNRELEASED (su project2209, in attesa di bump)
+2026-06-13 - version 1.0.78
 
+* Fix - /.well-known/ discovery also published as physical .json mirrors (kalicart-bridge.json, agent-catalog.json, ucp.json, agent.json), served as application/json on every host - including hosts that serve /.well-known/ as a static location (e.g. nginx ACME setups) where the WP rewrite never runs and extension-less paths return 404
+* Feature - REST endpoint /wp-json/kalicart/v1/ucp exposes the UCP profile, always reachable when /.well-known/ucp is intercepted by the webserver
+* Update - discovery document, robots.txt and agentic sitemap advertise the reachable .json mirrors and include the UCP profile; rewrite handler accepts the .json form; single source of truth (bridge_discovery_payload) shared by rewrite handler and physical mirror files
+
+
+2026-06-13 - version 1.0.77
+
+* Fix - /.well-known/ucp, /.well-known/kalicart-bridge, /.well-known/agent-catalog served by the WP rewrite handler with Content-Type: application/json on all stacks (nginx included); removed legacy physical extension-less files and Apache-only .htaccess ForceType
+* Fix - serve_well_known() reads $wp->query_vars (parse_request API) with $_GET fallback; migration version-gated (kalicart_bridge_wk_version) runs once per version, flushes rewrite rules on update
 * Docs - SPEC.md added: ARC/1.0 (Agent-Readable Catalog) specification summary with canonical URL https://bridge.kalicart.com/spec/ - KaliCart Bridge is the reference implementation
 
 

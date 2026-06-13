@@ -22,6 +22,15 @@ class KaliCart_Bridge_API {
             'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
         ] );
 
+        // UCP profile over REST — always reachable even when /.well-known/ucp is
+        // intercepted by the webserver static .well-known location. Mirror of
+        // /.well-known/ucp.json.
+        register_rest_route( $ns, '/ucp', [
+            'methods'             => 'GET',
+            'callback'            => [ __CLASS__, 'ucp_profile' ],
+            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
+        ] );
+
         register_rest_route( $ns, '/catalog/search', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'catalog_search' ],
@@ -242,7 +251,7 @@ class KaliCart_Bridge_API {
                 ],
             ],
 
-            'ucp_profile_url'  => home_url( '/.well-known/ucp' ),
+            'ucp_profile_url'  => home_url( '/.well-known/ucp.json' ),
             'agent_index_url'  => ( get_option( 'kalicart_bridge_agent_index_url', '' ) ?: null ),
             'agent_index_note' => 'If set, this URL points to a merchant-published page using the [kalicart_agent_index] shortcode — a navigable directory of all endpoints and category tree. null means the merchant has not published an agent index page.',
 
@@ -353,10 +362,11 @@ class KaliCart_Bridge_API {
                     : null,
             ],
             'well_known' => [
-                'kalicart_bridge' => home_url( '/.well-known/kalicart-bridge' ),
-                'agent_catalog'   => home_url( '/.well-known/agent-catalog' ),
+                'kalicart_bridge' => home_url( '/.well-known/kalicart-bridge.json' ),
+                'agent_catalog'   => home_url( '/.well-known/agent-catalog.json' ),
+                'ucp_profile'     => home_url( '/.well-known/ucp.json' ),
                 'agent_json'      => home_url( '/.well-known/agent.json' ),
-                'note'            => 'Standard discovery paths. Agents that probe /.well-known/ before navigating the storefront will find the catalog entry point here.',
+                'note'            => 'Standard /.well-known/ discovery mirrors, served with application/json on every host. The REST discovery endpoint above is the always-reachable canonical entry point.',
             ],
 
             'generated_at' => gmdate( 'c' ),
@@ -368,6 +378,13 @@ class KaliCart_Bridge_API {
     }
 
     // ── SEARCH ────────────────────────────────────────────────────────────────
+
+    public static function ucp_profile( WP_REST_Request $req ): WP_REST_Response {
+        $data     = json_decode( KaliCart_Bridge_Signals::ucp_profile_json(), true );
+        $response = new WP_REST_Response( is_array( $data ) ? $data : [], 200 );
+        $response->header( 'Cache-Control', 'public, max-age=3600' );
+        return $response;
+    }
 
     public static function catalog_search( WP_REST_Request $req ): WP_REST_Response {
         $args = self::extract_query_args( $req );
