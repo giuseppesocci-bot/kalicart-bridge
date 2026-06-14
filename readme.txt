@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.80
+Stable tag: 1.0.81
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -88,30 +88,11 @@ Yes — all three signals (badge, robots.txt, sitemap) can be toggled individual
 5 minutes. You can force a refresh via the "Refresh analysis" button or the `?force=true` query parameter on the `/health` endpoint.
 
 
-== Release process ==
-
-Il bump di versione si esegue con un solo comando dal server:
-
-  python3 /home/kalicart-bridge/bump.py <new_version>
-
-Prima del bump, aggiornare manualmente:
-1. changelog.txt — aggiungere voce con le note della sessione
-2. readme.txt sezione == Changelog == — stesse note in formato WP (= X.Y.Z =, righe con *)
-
-Lo script aggiorna in sequenza:
-- kalicart-bridge.php        (Version header + KALICART_BRIDGE_VERSION)
-- readme.txt                 (Stable tag — NON tocca == Changelog ==)
-- bridge.kalicart.com/index.html
-- bridge.kalicart.com/docs/index.html
-- bridge.kalicart.com/docs/docs/index.html
-- updates/kalicart-bridge.json  (version, download_url, download_link, sections.changelog sincronizzato da readme.txt)
-- latest.json
-- Genera ZIP versionato escludendo *.bak.* e *.backup.*
-
-sections.changelog nel JSON di aggiornamento viene auto-sincronizzato dal readme.txt ad ogni bump.
-Non aggiornare mai sections.changelog manualmente.
 
 == Changelog ==
+
+= 1.0.81 =
+* Housekeeping - Remove internal release-process section from readme.txt (not relevant to end users)
 
 = 1.0.80 =
 * Compliance - Remove plugins_api override: the plugin no longer intercepts the WordPress "View details" modal or provides an external download_link; WordPress.org manages updates for directory installs
