@@ -1,5 +1,57 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-14 - version 1.0.88
+
+* Fix - Removed the broken "View details" link from the plugins-list row meta. Its modal was populated by the plugins_api handler removed in 1.0.80, so on a self-hosted install (plugin not yet listed on WordPress.org) it returned "plugin not found". WordPress shows a native "View details" link automatically once the plugin is published on WordPress.org
+
+
+2026-06-14 - version 1.0.87
+
+* Build - Plugin Check (wp plugin check) now runs automatically on the built ZIP before every release; the bump aborts and publishes nothing if any error is found
+
+
+2026-06-14 - version 1.0.86
+
+* Housekeeping - Removed dev-only files from the plugin directory: .distignore, README.md, SPEC.md
+
+
+2026-06-14 - version 1.0.85
+
+* Fix - wp_delete_file() replaces unlink() in the .well-known cleanup (Plugin Check compliance)
+* Fix - phpcs:ignore NonceVerification on the public discovery GET endpoint (no nonce applicable)
+* Fix - phpcs:disable/enable around local template variables in the admin page (false-positive PrefixAllGlobals)
+
+
+2026-06-14 - version 1.0.84
+
+* Fix - Escape all inline style output in the admin page with esc_attr() and esc_html() (Plugin Check compliance)
+* Fix - Renamed admin template variables to the kalicart_bridge prefix (WordPress naming conventions)
+* Fix - sanitize_key() applied to the GET input in the well-known discovery handler
+
+
+2026-06-14 - version 1.0.83
+
+* Fix - Plugin URI updated to bridge.kalicart.com (plugin-specific page, distinct from the Author URI kalicart.com) per WordPress.org header requirements
+
+
+2026-06-14 - version 1.0.82
+
+* Build - Release ZIP now excludes .git, .gitignore, .distignore, README.md and SPEC.md
+
+
+2026-06-14 - version 1.0.81
+
+* Housekeeping - Removed the internal release-process section from readme.txt (not relevant to end users)
+
+
+2026-06-14 - version 1.0.80
+
+* Compliance - Removed the plugins_api override: the plugin no longer intercepts the WordPress "View details" modal or provides an external download_link; WordPress.org manages updates for directory installs
+* Privacy - Agent hints (DOM signals: hidden menu trace and search/category/product JS hints) are now opt-in with default OFF; the merchant enables them from WP Admin → KaliCart → Settings
+* Housekeeping - uninstall.php now removes all 14 plugin options and 4 transients on deletion
+* Build - Added .distignore for wp dist-archive packaging
+
+
 2026-06-13 - version 1.0.79
 
 * UX - Admin header brand mark replaced with inline KaliCart SVG logo; wp-admin menu icon updated to the KaliCart glyph

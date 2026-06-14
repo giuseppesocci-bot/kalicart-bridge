@@ -76,19 +76,6 @@ class KaliCart_Bridge_Admin {
             return $links;
         }
 
-        $details_url = add_query_arg( [
-            'tab'       => 'plugin-information',
-            'plugin'    => 'kalicart-bridge',
-            'TB_iframe' => 'true',
-            'width'     => '772',
-            'height'    => '600',
-        ], admin_url( 'plugin-install.php' ) );
-
-        $links[] = sprintf(
-            '<a href="%s" class="thickbox open-plugin-details-modal">%s</a>',
-            esc_url( $details_url ),
-            esc_html__( 'View details', 'kalicart-bridge' )
-        );
         $links[] = sprintf(
             '<a href="%s" target="_blank" rel="noopener">%s</a>',
             esc_url( 'https://bridge.kalicart.com/docs/' ),
