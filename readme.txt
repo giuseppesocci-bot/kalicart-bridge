@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.85
+Stable tag: 1.0.86
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -90,6 +90,9 @@ Yes — all three signals (badge, robots.txt, sitemap) can be toggled individual
 
 
 == Changelog ==
+
+= 1.0.86 =
+* Housekeeping - Remove dev-only files from plugin directory: .distignore, README.md, SPEC.md
 
 = 1.0.85 =
 * Fix - wp_delete_file() replacing unlink() in .well-known cleanup (Plugin Check compliance)
