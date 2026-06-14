@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.79
+Stable tag: 1.0.80
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -112,6 +112,12 @@ sections.changelog nel JSON di aggiornamento viene auto-sincronizzato dal readme
 Non aggiornare mai sections.changelog manualmente.
 
 == Changelog ==
+
+= 1.0.80 =
+* Compliance - Remove plugins_api override: the plugin no longer intercepts the WordPress "View details" modal or provides an external download_link; WordPress.org manages updates for directory installs
+* Privacy - Agent hints (DOM signals: menu trace, search/category/product JS hints) are now opt-in with default OFF; merchant activates from WP Admin → KaliCart → Settings
+* Housekeeping - uninstall.php now removes all 14 plugin options and 4 transients on deletion
+* Build - .distignore added for wp dist-archive packaging
 
 = 1.0.79 =
 * UX - Admin header brand mark replaced with inline KaliCart SVG logo; wp-admin menu icon updated to the KaliCart glyph
