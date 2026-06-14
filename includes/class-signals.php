@@ -341,7 +341,7 @@ class KaliCart_Bridge_Signals {
         if ( $wp instanceof WP && isset( $wp->query_vars['kalicart_well_known'] ) ) {
             $raw = (string) $wp->query_vars['kalicart_well_known'];
         } elseif ( isset( $_GET['kalicart_well_known'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-            $raw = (string) wp_unslash( $_GET['kalicart_well_known'] );
+            $raw = sanitize_key( wp_unslash( $_GET['kalicart_well_known'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_key applied
         }
         // Accept both the extension-less convention path and the .json mirror form.
         $file = sanitize_key( preg_replace( '/\.json$/', '', $raw ) );
@@ -422,7 +422,7 @@ class KaliCart_Bridge_Signals {
             // Only (over)write files that are ours or absent — never clobber a
             // file the host/merchant placed there (ACME, autoconfig, etc.).
             if ( $existing === '' || strpos( $existing, 'kalicart' ) !== false ) {
-                @file_put_contents( $path, $body );
+                @file_put_contents( $path, $body ); // phpcs:ignore PluginCheck.CodeAnalysis.WriteFile.ABSPATHDetected -- /.well-known/ files must reside in web root, not uploads/
             }
         }
     }

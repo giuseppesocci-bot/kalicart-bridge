@@ -162,17 +162,17 @@
   <div id="kali-tab-settings" class="kali-panel" style="display:none">
 
     <?php
-    $rp_full    = get_option( 'kalicart_bridge_return_policy_url', '' );
-    $rp_base    = trailingslashit( get_site_url() );
-    $rp_slug    = $rp_full ? ltrim( str_replace( $rp_base, '', $rp_full ), '/' ) : '';
-    $rp_set     = ! empty( $rp_slug );
-    $rp_color   = $rp_set ? '#00a32a' : '#f0a000';
-    $rp_bg      = $rp_set ? '#f0fff4' : '#fff8f0';
-    $rp_badge   = $rp_set ? 'CONFIGURED' : 'REQUIRED';
+    $kbridge_rp_full    = get_option( 'kalicart_bridge_return_policy_url', '' );
+    $kbridge_rp_base    = trailingslashit( get_site_url() );
+    $kbridge_rp_slug    = $kbridge_rp_full ? ltrim( str_replace( $kbridge_rp_base, '', $kbridge_rp_full ), '/' ) : '';
+    $kbridge_rp_set     = ! empty( $kbridge_rp_slug );
+    $kbridge_rp_color   = $kbridge_rp_set ? '#00a32a' : '#f0a000';
+    $kbridge_rp_bg      = $kbridge_rp_set ? '#f0fff4' : '#fff8f0';
+    $kbridge_rp_badge   = $kbridge_rp_set ? 'CONFIGURED' : 'REQUIRED';
     ?>
-    <div id="returnPolicyBlock" style="margin-bottom:24px;padding:16px 20px;background:<?php echo $rp_bg; ?>;border:1px solid <?php echo $rp_color; ?>;border-radius:8px;">
+    <div id="returnPolicyBlock" style="margin-bottom:24px;padding:16px 20px;background:<?php echo esc_attr( $kbridge_rp_bg ); ?>;border:1px solid <?php echo esc_attr( $kbridge_rp_color ); ?>;border-radius:8px;">
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">
-        <span id="returnPolicyBadge" style="display:inline-block;background:<?php echo $rp_color; ?>;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;margin-top:2px;"><?php echo $rp_badge; ?></span>
+        <span id="returnPolicyBadge" style="display:inline-block;background:<?php echo esc_attr( $kbridge_rp_color ); ?>;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;margin-top:2px;"><?php echo esc_html( $kbridge_rp_badge ); ?></span>
         <div>
           <strong style="font-size:13px;color:#1d2327;">Refund and Returns Policy URL</strong>
           <p style="font-size:12px;color:#666;margin:4px 0 0;">
@@ -181,15 +181,15 @@
           </p>
         </div>
       </div>
-      <div id="returnPolicyWrap" style="display:flex;align-items:center;gap:0;border:1px solid <?php echo $rp_color; ?>;border-radius:4px;overflow:hidden;">
-        <span id="returnPolicyPrefix" style="padding:6px 10px;background:#f9f9f9;border-right:1px solid <?php echo $rp_color; ?>;font-size:13px;color:#555;white-space:nowrap;"><?php echo esc_html( $rp_base ); ?></span>
+      <div id="returnPolicyWrap" style="display:flex;align-items:center;gap:0;border:1px solid <?php echo esc_attr( $kbridge_rp_color ); ?>;border-radius:4px;overflow:hidden;">
+        <span id="returnPolicyPrefix" style="padding:6px 10px;background:#f9f9f9;border-right:1px solid <?php echo esc_attr( $kbridge_rp_color ); ?>;font-size:13px;color:#555;white-space:nowrap;"><?php echo esc_html( $kbridge_rp_base ); ?></span>
         <input type="text" id="returnPolicySlug" placeholder="refund-policy"
-          value="<?php echo esc_attr( $rp_slug ); ?>"
+          value="<?php echo esc_attr( $kbridge_rp_slug ); ?>"
           style="flex:1;padding:6px 10px;border:none;font-size:13px;outline:none;" />
       </div>
-      <div id="returnPolicyTestLink" style="margin-top:8px;font-size:12px;<?php echo $rp_set ? '' : 'display:none;'; ?>">
-        <?php if ( $rp_set ) : ?>
-        <a href="<?php echo esc_url( $rp_full ); ?>" target="_blank" rel="noopener" style="color:#00a32a;">&#x1F517; Test link: <?php echo esc_html( $rp_full ); ?></a>
+      <div id="returnPolicyTestLink" style="margin-top:8px;font-size:12px;<?php echo $kbridge_rp_set ? '' : 'display:none;'; ?>">
+        <?php if ( $kbridge_rp_set ) : ?>
+        <a href="<?php echo esc_url( $kbridge_rp_full ); ?>" target="_blank" rel="noopener" style="color:#00a32a;">&#x1F517; Test link: <?php echo esc_html( $kbridge_rp_full ); ?></a>
         <?php endif; ?>
       </div>
     </div>
