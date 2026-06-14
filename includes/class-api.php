@@ -172,6 +172,7 @@ class KaliCart_Bridge_API {
                 'read_only'    => true,
                 'llm'          => false,
                 'external_service' => false,
+                'mcp'          => true,
             ],
 
             'merchant_shipping_policy' => $shipping_policy,
@@ -349,8 +350,18 @@ class KaliCart_Bridge_API {
                 'timezone' => wp_timezone_string(),
             ],
 
+            'mcp' => [
+                'enabled'          => true,
+                'transport'        => 'http-post-jsonrpc-2.0',
+                'protocol_version' => '2025-06-18',
+                'endpoint'         => rest_url( KALICART_BRIDGE_API_NS . '/mcp' ),
+                'tools'            => [ 'search_products', 'get_product', 'list_products', 'list_categories', 'get_meta' ],
+                'note'             => 'Model Context Protocol server over the same read-only catalog. POST a JSON-RPC 2.0 message (initialize, tools/list, tools/call) to endpoint. Same data as public_catalog.* REST — choose whichever your agent runtime prefers.',
+            ],
+
             'endpoints' => [
                 'discovery'   => $discovery,
+                'mcp'         => rest_url( KALICART_BRIDGE_API_NS . '/mcp' ),
                 'search'      => $base . '/search',
                 'products'    => $base . '/products',
                 'product'     => $base . '/product/{id}',

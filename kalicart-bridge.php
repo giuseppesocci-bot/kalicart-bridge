@@ -3,7 +3,7 @@
  * Plugin Name:       KaliCart Bridge
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.89
+ * Version:           1.0.90
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.89' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.90' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
@@ -28,6 +28,7 @@ define( 'KALICART_BRIDGE_API_NS',  'kalicart/v1' );
 require_once KALICART_BRIDGE_DIR . 'includes/class-catalog-engine.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-quarantine.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-api.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-mcp.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-signals.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-admin.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-checkout.php';
@@ -48,6 +49,7 @@ add_action( 'plugins_loaded', function () {
     }
 
     KaliCart_Bridge_API::init();
+    KaliCart_Bridge_MCP::init();
     KaliCart_Bridge_Signals::init();
     // Version-gated migration — runs once per plugin version, on init (needs $wp_rewrite).
     // Removes legacy extension-less static files (served as text/plain by the webserver)

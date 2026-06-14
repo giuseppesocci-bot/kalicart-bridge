@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.89
+Stable tag: 1.0.90
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -21,6 +21,7 @@ KaliCart Bridge exposes your WooCommerce product catalog as a structured, normal
 
 * Exposes a `/discovery` endpoint — the single entry point any agent needs to understand your catalog
 * Provides `/catalog/search`, `/catalog/products`, `/catalog/product/{id}`, `/catalog/categories` endpoints
+* Exposes a Model Context Protocol (MCP) server at `/wp-json/kalicart/v1/mcp` (JSON-RPC 2.0) so MCP-capable agents can call the catalog as tools — same data as the REST endpoints, no API key
 * Computationally normalizes product data: prices (min/max for variables, sale %, discount), stock, gender inference, color family mapping, size type detection
 * Exposes WooCommerce shipping-zone policy for agent reasoning; checkout remains the final authority for exact destination/cart shipping cost
 * Exposes active product/category-compatible coupons as conditional checkout savings; coupons never replace the catalog price
@@ -56,12 +57,17 @@ Products are scored 0–100 based on: title quality, description length, categor
 
 When enabled in WP Admin → KaliCart → Settings, agents can create checkout sessions containing one or more products. Each session returns cart_url (lands on WooCommerce cart for review) and checkout_url (goes directly to checkout). Sessions expire after 30 minutes. No OAuth, no PII, no payment on the agent side.
 
+**Model Context Protocol (MCP) endpoint:**
+
+The same read-only catalog is also exposed as an MCP server at `/wp-json/kalicart/v1/mcp` (JSON-RPC 2.0 over HTTP POST). MCP-capable agents and assistants connect to it and call the catalog as tools: `search_products`, `list_products`, `get_product`, `list_categories`, `get_meta`. It is read-only and needs no authentication, exactly like the public REST endpoints — it adds a second transport, not new data. No LLM, no external calls. Checkout and payment are never exposed over MCP.
+
 == Installation ==
 
 1. Upload the plugin files to `/wp-content/plugins/kalicart-bridge/`
 2. Activate the plugin through the Plugins screen in WordPress
 3. Navigate to **KaliCart** in the admin menu
 4. The catalog is immediately accessible at `yourdomain.com/wp-json/kalicart/v1/discovery`
+5. MCP-capable agents can connect to the MCP server at `yourdomain.com/wp-json/kalicart/v1/mcp`
 
 Full operational documentation is always available at `https://bridge.kalicart.com/docs/`.
 
@@ -87,9 +93,18 @@ Yes — all three signals (badge, robots.txt, sitemap) can be toggled individual
 
 5 minutes. You can force a refresh via the "Refresh analysis" button or the `?force=true` query parameter on the `/health` endpoint.
 
+= How do I connect this to an AI assistant or MCP client? =
+
+The catalog can be consumed two ways. Any agent can call the plain REST endpoints under `/wp-json/kalicart/v1/catalog/` directly. MCP-capable clients can instead connect to the MCP server at `/wp-json/kalicart/v1/mcp` (JSON-RPC 2.0): the assistant connects to that URL — no API key — and gains the catalog tools (search_products, get_product, list_categories, get_meta, list_products). In clients that support remote MCP connectors, add it as a custom connector pointing to that URL.
+
 
 
 == Changelog ==
+
+= 1.0.90 =
+* Feature - Added a Model Context Protocol (MCP) server at /wp-json/kalicart/v1/mcp (JSON-RPC 2.0 over HTTP POST) that exposes the read-only catalog as agent tools (search_products, list_products, get_product, list_categories, get_meta); self-contained, no authentication, no external calls, the same data as the REST endpoints over a second transport
+* Discovery - The discovery document now advertises the MCP endpoint via capabilities.mcp and endpoints.mcp
+* Docs - Documented the MCP endpoint in the readme and the wp-admin Endpoints tab
 
 = 1.0.89 =
 * Compatibility - Refuse activation when WooCommerce is not active, on every supported WordPress version. WP 6.5+ already blocks it via the "Requires Plugins" header; this adds an activation-time guard (auto-deactivate + notice) that also covers WP 6.0-6.4 where that header is ignored

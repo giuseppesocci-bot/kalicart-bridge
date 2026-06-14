@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-14 - version 1.0.90
+
+* Feature - Added a Model Context Protocol (MCP) server at /wp-json/kalicart/v1/mcp (JSON-RPC 2.0 over HTTP POST) that exposes the read-only catalog as agent tools (search_products, list_products, get_product, list_categories, get_meta); self-contained, no authentication, no external calls, the same data as the REST endpoints over a second transport
+* Discovery - The discovery document now advertises the MCP endpoint via capabilities.mcp and endpoints.mcp
+* Docs - Documented the MCP endpoint in the readme and the wp-admin Endpoints tab
+
+
 2026-06-14 - version 1.0.89
 
 * Compatibility - Refuse activation when WooCommerce is not active, on every supported WordPress version. WP 6.5+ already blocks it via the "Requires Plugins" header; this adds an activation-time guard (auto-deactivate + notice) that also covers WP 6.0-6.4 where that header is ignored

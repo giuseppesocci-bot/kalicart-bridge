@@ -328,6 +328,7 @@
       { path: '/.well-known/ucp.json',       desc: 'UCP profile — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)',  auth: false, example: '', wellknown: true },
       { path: '/.well-known/kalicart-bridge.json', desc: 'KaliCart Bridge discovery entry point for agents probing well-known paths', auth: false, example: '', wellknown: true },
       { path: '/discovery',            desc: 'Discovery document — entry point for every agent, full capability map',           auth: false, example: '' },
+      { path: '/mcp',              desc: 'Model Context Protocol (MCP) server — JSON-RPC 2.0 over POST; the catalog as agent tools (search_products, get_product, list_products, list_categories, get_meta)', auth: false, example: '', method: 'POST' },
       { path: '/catalog/meta',         desc: 'Accepted filter values, category slugs, price range',                             auth: false, example: '' },
       { path: '/catalog/search',       desc: 'Full-text + filtered search — supports q, category, on_sale, in_stock, price',   auth: false, example: '?q=scarpe&gender=male&per_page=10' },
       { path: '/catalog/products',     desc: 'Browse products by filters (no text query needed)',                               auth: false, example: '?category=elettronica&in_stock=true' },
