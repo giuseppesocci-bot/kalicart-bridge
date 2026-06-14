@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.90
+Stable tag: 1.0.91
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -100,6 +100,10 @@ The catalog can be consumed two ways. Any agent can call the plain REST endpoint
 
 
 == Changelog ==
+
+= 1.0.91 =
+* Discovery - Added an RFC 9727 API Catalog at /.well-known/api-catalog (an RFC 9264 linkset, served as application/linkset+json) that advertises the catalog API, the MCP endpoint, the discovery document and the UCP profile in the standard vocabulary generic agents and API-readiness probes understand; also linked via <link rel="api-catalog"> in the document head
+* Discovery - Added a Content-Signal header (search, ai-input, ai-train) on every Bridge REST response and in the robots.txt block, mirroring the existing crawler_policy so AI usage preferences are declared in the emerging standard format
 
 = 1.0.90 =
 * Feature - Added a Model Context Protocol (MCP) server at /wp-json/kalicart/v1/mcp (JSON-RPC 2.0 over HTTP POST) that exposes the read-only catalog as agent tools (search_products, list_products, get_product, list_categories, get_meta); self-contained, no authentication, no external calls, the same data as the REST endpoints over a second transport

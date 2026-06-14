@@ -46,17 +46,50 @@ class KaliCart_Bridge_Signals {
         add_action( 'init',              [ __CLASS__, 'register_well_known_rewrite' ] );
         add_filter( 'query_vars',        [ __CLASS__, 'add_well_known_query_var' ] );
         add_action( 'parse_request',     [ __CLASS__, 'serve_well_known' ] );
+
+        // Content-Signal header on all Bridge REST responses — AI usage preferences,
+        // mirrors the crawler_policy declared in the discovery document.
+        add_filter( 'rest_post_dispatch', [ __CLASS__, 'add_content_signal_header' ], 10, 3 );
     }
 
     // ── 1. HEAD LINK ──────────────────────────────────────────────────────────
 
     public static function inject_head_link(): void {
-        $url = rest_url( KALICART_BRIDGE_API_NS . '/discovery' );
+        $url     = rest_url( KALICART_BRIDGE_API_NS . '/discovery' );
+        $catalog = home_url( '/.well-known/api-catalog' );
         printf(
             "\n" . '<link rel="kalicart-agent" type="application/json" href="%s"' .
-            ' title="Structured catalog API for AI agents — KaliCart Bridge" />' . "\n",
-            esc_url( $url )
+            ' title="Structured catalog API for AI agents — KaliCart Bridge" />' . "\n" .
+            '<link rel="api-catalog" type="application/linkset+json" href="%s" />' . "\n",
+            esc_url( $url ),
+            esc_url( $catalog )
         );
+    }
+
+    /**
+     * Content-Signal value (draft-romm-aipref-contentsignals): AI usage preferences.
+     * Mirrors the crawler_policy in the discovery document so the two never drift:
+     *   search   = allow_global_indexing  (kalicart_bridge_global_consent)
+     *   ai-input = allow_live_agent_reads (always yes — live agent reads are the point)
+     *   ai-train = allow_llm_training     (always no)
+     */
+    public static function content_signal_value(): string {
+        $search = get_option( 'kalicart_bridge_global_consent', true ) ? 'yes' : 'no';
+        return 'search=' . $search . ', ai-input=yes, ai-train=no';
+    }
+
+    /**
+     * Attaches the Content-Signal header to every KaliCart Bridge REST response.
+     */
+    public static function add_content_signal_header( $response, $server, $request ) {
+        if (
+            $response instanceof WP_REST_Response
+            && $request instanceof WP_REST_Request
+            && strpos( (string) $request->get_route(), '/' . KALICART_BRIDGE_API_NS ) === 0
+        ) {
+            $response->header( 'Content-Signal', self::content_signal_value() );
+        }
+        return $response;
     }
 
     // ── MENU TRACE ───────────────────────────────────────────────────────────────
@@ -162,6 +195,8 @@ class KaliCart_Bridge_Signals {
         $output .= "Allow: /.well-known/kalicart-bridge.json\n";
         $output .= "Allow: /.well-known/agent-catalog.json\n";
         $output .= "Allow: /.well-known/ucp.json\n";
+        $output .= "Allow: /.well-known/api-catalog\n";
+        $output .= "Content-Signal: " . self::content_signal_value() . "\n";
         $output .= "Sitemap: " . $sitemap_url . "\n";
 
         return $output;
@@ -270,7 +305,7 @@ class KaliCart_Bridge_Signals {
 
 
     public static function register_well_known_rewrite(): void {
-        add_rewrite_rule( '^\.well-known/(kalicart-bridge|agent-catalog|agent\.json|ucp)(?:\.json)?$', 'index.php?kalicart_well_known=$matches[1]', 'top' );
+        add_rewrite_rule( '^\.well-known/(kalicart-bridge|agent-catalog|api-catalog|agent\.json|ucp)(?:\.json)?$', 'index.php?kalicart_well_known=$matches[1]', 'top' );
     }
 
     public static function add_well_known_query_var( array $vars ): array {
@@ -336,6 +371,37 @@ class KaliCart_Bridge_Signals {
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
     }
 
+    /**
+     * RFC 9727 API Catalog as an RFC 9264 linkset. Advertises this site's
+     * machine-callable agent APIs in the standard vocabulary that generic
+     * agents and API-readiness probes understand (describedby, service-doc,
+     * service-meta, item). The OpenAPI service-desc link is added in a later
+     * release once the OpenAPI 3.1 document ships.
+     */
+    private static function api_catalog_linkset(): string {
+        $base = rest_url( KALICART_BRIDGE_API_NS );
+        return wp_json_encode( [
+            'linkset' => [
+                [
+                    'anchor'       => $base,
+                    'describedby'  => [
+                        [ 'href' => $base . '/discovery', 'type' => 'application/json', 'title' => 'KaliCart Bridge discovery document' ],
+                    ],
+                    'service-doc'  => [
+                        [ 'href' => 'https://bridge.kalicart.com/docs/', 'type' => 'text/html', 'title' => 'KaliCart Bridge documentation' ],
+                    ],
+                    'service-meta' => [
+                        [ 'href' => home_url( '/.well-known/ucp.json' ), 'type' => 'application/json', 'title' => 'UCP profile' ],
+                    ],
+                    'item'         => [
+                        [ 'href' => $base . '/catalog', 'type' => 'application/json', 'title' => 'Read-only WooCommerce catalog API' ],
+                        [ 'href' => $base . '/mcp', 'type' => 'application/json', 'title' => 'Model Context Protocol endpoint (JSON-RPC 2.0)' ],
+                    ],
+                ],
+            ],
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+    }
+
     public static function serve_well_known( $wp = null ): void {
         $raw = '';
         if ( $wp instanceof WP && isset( $wp->query_vars['kalicart_well_known'] ) ) {
@@ -347,15 +413,20 @@ class KaliCart_Bridge_Signals {
         $file = sanitize_key( preg_replace( '/\.json$/', '', $raw ) );
         if ( ! $file ) return;
 
+        $content_type = 'application/json; charset=utf-8';
         if ( $file === 'ucp' ) {
             // UCP profile — declares catalog capabilities, checkout via continue_url.
             $payload = self::ucp_profile_json();
+        } elseif ( $file === 'api-catalog' ) {
+            // RFC 9727 API Catalog — linkset (RFC 9264) of this site's agent APIs.
+            $payload      = self::api_catalog_linkset();
+            $content_type = 'application/linkset+json; charset=utf-8';
         } else {
             // kalicart-bridge / agent-catalog / agent.json — shared entry-point doc.
             $payload = self::bridge_discovery_payload();
         }
 
-        header( 'Content-Type: application/json; charset=utf-8' );
+        header( 'Content-Type: ' . $content_type );
         header( 'Cache-Control: public, max-age=3600' );
         echo $payload; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON payload
         exit;
@@ -375,7 +446,7 @@ class KaliCart_Bridge_Signals {
         $dir = rtrim( ABSPATH, '/' ) . '/.well-known/';
         if ( ! is_dir( $dir ) ) return;
 
-        foreach ( [ 'kalicart-bridge', 'agent-catalog', 'ucp' ] as $stale ) {
+        foreach ( [ 'kalicart-bridge', 'agent-catalog', 'api-catalog', 'ucp' ] as $stale ) {
             $path = $dir . $stale;
             if ( ! file_exists( $path ) ) continue;
             $body = (string) @file_get_contents( $path );
@@ -415,6 +486,7 @@ class KaliCart_Bridge_Signals {
             'kalicart-bridge.json' => $bridge,
             'agent-catalog.json'   => $bridge,
             'ucp.json'             => self::ucp_profile_json(),
+            'api-catalog.json'     => self::api_catalog_linkset(),
         ];
         foreach ( $mirrors as $fname => $body ) {
             $path     = $dir . $fname;
