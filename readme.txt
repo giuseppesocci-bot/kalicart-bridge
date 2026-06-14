@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.91
+Stable tag: 1.0.92
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -100,6 +100,10 @@ The catalog can be consumed two ways. Any agent can call the plain REST endpoint
 
 
 == Changelog ==
+
+= 1.0.92 =
+* Discovery - Added an OpenAPI 3.1 description of the read-only catalog API at /wp-json/kalicart/v1/openapi (paths, query filters and response shapes for search, products, product/{id}, categories and meta), advertised via <link rel="service-desc"> and as a service-desc link in the API Catalog so generic agents and API tooling can consume the catalog without the KaliCart convention
+* Discovery - The discovery document now lists the OpenAPI endpoint under endpoints.openapi
 
 = 1.0.91 =
 * Discovery - Added an RFC 9727 API Catalog at /.well-known/api-catalog (an RFC 9264 linkset, served as application/linkset+json) that advertises the catalog API, the MCP endpoint, the discovery document and the UCP profile in the standard vocabulary generic agents and API-readiness probes understand; also linked via <link rel="api-catalog"> in the document head

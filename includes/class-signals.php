@@ -56,12 +56,15 @@ class KaliCart_Bridge_Signals {
 
     public static function inject_head_link(): void {
         $url     = rest_url( KALICART_BRIDGE_API_NS . '/discovery' );
+        $openapi = rest_url( KALICART_BRIDGE_API_NS . '/openapi' );
         $catalog = home_url( '/.well-known/api-catalog' );
         printf(
             "\n" . '<link rel="kalicart-agent" type="application/json" href="%s"' .
             ' title="Structured catalog API for AI agents — KaliCart Bridge" />' . "\n" .
+            '<link rel="service-desc" type="application/vnd.oai.openapi+json" href="%s" />' . "\n" .
             '<link rel="api-catalog" type="application/linkset+json" href="%s" />' . "\n",
             esc_url( $url ),
+            esc_url( $openapi ),
             esc_url( $catalog )
         );
     }
@@ -384,6 +387,9 @@ class KaliCart_Bridge_Signals {
             'linkset' => [
                 [
                     'anchor'       => $base,
+                    'service-desc' => [
+                        [ 'href' => $base . '/openapi', 'type' => 'application/vnd.oai.openapi+json', 'title' => 'OpenAPI 3.1 description' ],
+                    ],
                     'describedby'  => [
                         [ 'href' => $base . '/discovery', 'type' => 'application/json', 'title' => 'KaliCart Bridge discovery document' ],
                     ],

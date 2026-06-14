@@ -83,6 +83,12 @@ class KaliCart_Bridge_API {
             'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
         ] );
 
+        register_rest_route( $ns, '/openapi', [
+            'methods'             => 'GET',
+            'callback'            => [ __CLASS__, 'openapi' ],
+            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public API description — no authentication required by design
+        ] );
+
         register_rest_route( $ns, '/catalog/health', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'catalog_health' ],
@@ -340,7 +346,7 @@ class KaliCart_Bridge_API {
 
             'placement_guidance' => 'The <link rel="kalicart-agent"> in <head> and the body anchor badge both carry this discovery URL. Head covers head-reading agents; body anchor covers DOM/content-parsing agents. Both are in raw HTML — not injected via JavaScript.',
 
-            'recommended_head_link_html' => '<link rel="kalicart-agent" type="application/json" href="' . esc_url( $discovery ) . '" />',
+            'recommended_head_link_html' => '<link rel="kalicart-agent" type="application/json" href="' . esc_url( $discovery ) . '" />' . "\n" . '<link rel="service-desc" type="application/vnd.oai.openapi+json" href="' . esc_url( rest_url( KALICART_BRIDGE_API_NS . '/openapi' ) ) . '" />' . "\n" . '<link rel="api-catalog" type="application/linkset+json" href="' . esc_url( home_url( '/.well-known/api-catalog' ) ) . '" />',
 
             'merchant' => [
                 'name'     => $site_name,
@@ -367,6 +373,7 @@ class KaliCart_Bridge_API {
                 'product'     => $base . '/product/{id}',
                 'categories'  => $base . '/categories',
                 'meta'        => $base . '/meta',
+                'openapi'     => rest_url( KALICART_BRIDGE_API_NS . '/openapi' ),
                 'health'           => rest_url( KALICART_BRIDGE_API_NS . '/catalog/health' ),
                 'checkout_session'  => get_option( 'kalicart_bridge_checkout_enabled', false )
                     ? rest_url( KALICART_BRIDGE_API_NS . '/checkout/session' )
@@ -389,6 +396,110 @@ class KaliCart_Bridge_API {
     }
 
     // ── SEARCH ────────────────────────────────────────────────────────────────
+
+    /**
+     * OpenAPI 3.1 description of the public read-only catalog API. Advertised via
+     * <link rel="service-desc"> and the api-catalog linkset so generic agents and
+     * API tooling can consume the catalog without knowing the KaliCart convention.
+     * Served as JSON; the service-desc link declares the application/vnd.oai.openapi+json type.
+     */
+    public static function openapi( WP_REST_Request $req ): WP_REST_Response {
+        $ns_base = rest_url( KALICART_BRIDGE_API_NS );
+
+        $filter_params = [
+            [ 'name' => 'category',  'in' => 'query', 'description' => 'Merchant-native WooCommerce category slug (see /catalog/categories).', 'schema' => [ 'type' => 'string' ] ],
+            [ 'name' => 'gender',    'in' => 'query', 'description' => 'Gender facet: male, female or unisex (plus locale synonyms).', 'schema' => [ 'type' => 'string' ] ],
+            [ 'name' => 'color',     'in' => 'query', 'description' => 'Color family filter.', 'schema' => [ 'type' => 'string' ] ],
+            [ 'name' => 'min_price', 'in' => 'query', 'description' => 'Minimum catalog price.', 'schema' => [ 'type' => 'number' ] ],
+            [ 'name' => 'max_price', 'in' => 'query', 'description' => 'Maximum catalog price.', 'schema' => [ 'type' => 'number' ] ],
+            [ 'name' => 'in_stock',  'in' => 'query', 'description' => 'Only in-stock products when true.', 'schema' => [ 'type' => 'boolean' ] ],
+            [ 'name' => 'on_sale',   'in' => 'query', 'description' => 'Only on-sale products when true.', 'schema' => [ 'type' => 'boolean' ] ],
+            [ 'name' => 'orderby',   'in' => 'query', 'description' => 'Sort field.', 'schema' => [ 'type' => 'string', 'enum' => [ 'date', 'price', 'title', 'popularity' ], 'default' => 'date' ] ],
+            [ 'name' => 'order',     'in' => 'query', 'description' => 'Sort direction.', 'schema' => [ 'type' => 'string', 'enum' => [ 'ASC', 'DESC' ], 'default' => 'DESC' ] ],
+            [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100).', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
+            [ 'name' => 'page',      'in' => 'query', 'description' => 'Page number.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'default' => 1 ] ],
+        ];
+
+        $q_param = [ 'name' => 'q', 'in' => 'query', 'description' => 'Full-text search query.', 'schema' => [ 'type' => 'string' ] ];
+
+        $list_response = [
+            'description' => 'Matching products with pagination.',
+            'content'     => [ 'application/json' => [ 'schema' => [
+                'type'       => 'object',
+                'properties' => [
+                    'success'  => [ 'type' => 'boolean' ],
+                    'products' => [ 'type' => 'array', 'items' => [ '$ref' => '#/components/schemas/Product' ] ],
+                    'total'    => [ 'type' => 'integer' ],
+                    'page'     => [ 'type' => 'integer' ],
+                    'per_page' => [ 'type' => 'integer' ],
+                ],
+            ] ] ],
+        ];
+
+        $spec = [
+            'openapi' => '3.1.0',
+            'info'    => [
+                'title'       => get_bloginfo( 'name' ) . ' — KaliCart Bridge Catalog API',
+                'version'     => KALICART_BRIDGE_VERSION,
+                'description' => 'Read-only, machine-readable WooCommerce catalog for AI agents. No authentication, no external calls. Prices and stock are live. Checkout and payment are not exposed — the merchant storefront remains the purchase authority. The same catalog is also available over the Model Context Protocol at /mcp.',
+            ],
+            'servers' => [ [ 'url' => $ns_base ] ],
+            'paths'   => [
+                '/discovery' => [ 'get' => [
+                    'operationId' => 'getDiscovery',
+                    'summary'     => 'Capability and policy discovery document. Start here.',
+                    'responses'   => [ '200' => [ 'description' => 'Discovery document.' ] ],
+                ] ],
+                '/catalog/search' => [ 'get' => [
+                    'operationId' => 'searchCatalog',
+                    'summary'     => 'Full-text + filter product search. Requires at least one of: q, category, gender, color, on_sale, in_stock.',
+                    'parameters'  => array_merge( [ $q_param ], $filter_params ),
+                    'responses'   => [ '200' => $list_response, '400' => [ 'description' => 'No search criterion supplied.' ] ],
+                ] ],
+                '/catalog/products' => [ 'get' => [
+                    'operationId' => 'listProducts',
+                    'summary'     => 'Paginated product listing with optional filters.',
+                    'parameters'  => $filter_params,
+                    'responses'   => [ '200' => $list_response ],
+                ] ],
+                '/catalog/product/{id}' => [ 'get' => [
+                    'operationId' => 'getProduct',
+                    'summary'     => 'Full detail for a single published product (with variations).',
+                    'parameters'  => [ [ 'name' => 'id', 'in' => 'path', 'required' => true, 'description' => 'WooCommerce product ID.', 'schema' => [ 'type' => 'integer' ] ] ],
+                    'responses'   => [ '200' => [ 'description' => 'Product detail.', 'content' => [ 'application/json' => [ 'schema' => [ '$ref' => '#/components/schemas/Product' ] ] ] ], '404' => [ 'description' => 'Product not found.' ] ],
+                ] ],
+                '/catalog/categories' => [ 'get' => [
+                    'operationId' => 'listCategories',
+                    'summary'     => 'Merchant-native WooCommerce category tree.',
+                    'responses'   => [ '200' => [ 'description' => 'Category tree.' ] ],
+                ] ],
+                '/catalog/meta' => [ 'get' => [
+                    'operationId' => 'getMeta',
+                    'summary'     => 'Filter vocabulary: categories, genders, colors and price range available in this catalog.',
+                    'responses'   => [ '200' => [ 'description' => 'Catalog filter vocabulary.' ] ],
+                ] ],
+            ],
+            'components' => [ 'schemas' => [
+                'Product' => [
+                    'type'                 => 'object',
+                    'description'          => 'Normalized catalog product. Read price.current for the catalog price and stock.in_stock for availability.',
+                    'additionalProperties' => true,
+                    'properties'           => [
+                        'id'         => [ 'type' => 'integer' ],
+                        'name'       => [ 'type' => 'string' ],
+                        'url'        => [ 'type' => 'string', 'format' => 'uri' ],
+                        'price'      => [ 'type' => 'object', 'additionalProperties' => true ],
+                        'stock'      => [ 'type' => 'object', 'additionalProperties' => true ],
+                        'categories' => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
+                    ],
+                ],
+            ] ],
+        ];
+
+        $response = new WP_REST_Response( $spec, 200 );
+        $response->header( 'Cache-Control', 'public, max-age=3600' );
+        return $response;
+    }
 
     public static function ucp_profile( WP_REST_Request $req ): WP_REST_Response {
         $data     = json_decode( KaliCart_Bridge_Signals::ucp_profile_json(), true );
