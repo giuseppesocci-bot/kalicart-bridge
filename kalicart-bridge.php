@@ -3,12 +3,13 @@
  * Plugin Name:       KaliCart Bridge
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.92
+ * Version:           1.0.93
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       kalicart-bridge
+ * Domain Path:       /languages
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Tested up to:      7.0
@@ -19,11 +20,22 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.92' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.93' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
 define( 'KALICART_BRIDGE_API_NS',  'kalicart/v1' );
+
+/**
+ * Plugin UI language follows the WordPress site locale. Bundled languages:
+ * English, French, Italian, German, Spanish. Any other locale falls back to
+ * English (the source strings). This affects ONLY the plugin's own
+ * human-facing strings — never catalog/agent data.
+ */
+
+add_action( 'init', function () {
+    load_plugin_textdomain( 'kalicart-bridge', false, dirname( plugin_basename( KALICART_BRIDGE_FILE ) ) . '/languages' );
+} );
 
 require_once KALICART_BRIDGE_DIR . 'includes/class-catalog-engine.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-quarantine.php';

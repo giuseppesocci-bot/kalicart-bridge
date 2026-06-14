@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.92
+Stable tag: 1.0.93
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -100,6 +100,10 @@ The catalog can be consumed two ways. Any agent can call the plain REST endpoint
 
 
 == Changelog ==
+
+= 1.0.93 =
+* i18n - The wp-admin screen and the storefront badge are now fully translatable. Every admin string (catalog health, quarantine list, suggestions, endpoint descriptions and toggle warnings) and the badge text is wrapped for translation; JavaScript strings are localized server-side via wp_localize_script so they ship in the translation catalog
+* i18n - Ships French, Italian, German and Spanish translations and follows the WordPress site language, with English as the fallback for other locales
 
 = 1.0.92 =
 * Discovery - Added an OpenAPI 3.1 description of the read-only catalog API at /wp-json/kalicart/v1/openapi (paths, query filters and response shapes for search, products, product/{id}, categories and meta), advertised via <link rel="service-desc"> and as a service-desc link in the API Catalog so generic agents and API tooling can consume the catalog without the KaliCart convention

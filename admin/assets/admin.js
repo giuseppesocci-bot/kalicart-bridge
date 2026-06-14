@@ -8,6 +8,7 @@
 
   const $ = id => document.getElementById( id );
   const $$ = sel => document.querySelectorAll( sel );
+  const STR = KaliBridge.i18n || {};
 
   document.addEventListener( 'DOMContentLoaded', () => {
     badgePosition = KaliBridge.badge_position || 'bottom-right';
@@ -100,7 +101,7 @@
           renderOverview( report );
           renderQuarantine( report );
         } else {
-          showError( res.data?.message || 'Unknown error' );
+          showError( res.data?.message || STR.unknown_error );
         }
       } )
       .catch( e => showError( e.message ) )
@@ -118,7 +119,7 @@
 
   function showError( msg ) {
     const loading = $( 'kali-loading' );
-    if ( loading ) loading.innerHTML = `<p style="color:#ef4444">Error: ${ esc( msg ) }</p>`;
+    if ( loading ) loading.innerHTML = `<p style="color:#ef4444">${ STR.error } ${ esc( msg ) }</p>`;
   }
 
   // ── Overview ──────────────────────────────────────────────────────────────
@@ -169,7 +170,7 @@
     const container = $( 'suggestionsList' );
     if ( container ) {
       container.innerHTML = sug.length === 0
-        ? '<div class="kali-empty">&#x1F389; No issues. Catalog looks great!</div>'
+        ? `<div class="kali-empty">&#x1F389; ${ STR.no_issues }</div>`
         : sug.map( s => `
           <div class="kali-suggestion" data-issue-code="${ esc( s.code ) }">
             <div class="kali-suggestion__dot kali-suggestion__dot--${ s.priority }"></div>
@@ -178,8 +179,8 @@
               <div class="kali-suggestion__detail">${ esc( s.detail ) }</div>
             </div>
             ${ s.affected != null
-              ? `<button class="kali-suggestion__affected" type="button" data-view-issue="${ esc( s.code ) }">${ s.affected } products</button>`
-              : ( s.admin_url ? `<button class="kali-suggestion__affected" type="button" data-switch-tab="settings">Configure →</button>` : '' )
+              ? `<button class="kali-suggestion__affected" type="button" data-view-issue="${ esc( s.code ) }">${ s.affected } ${ STR.products }</button>`
+              : ( s.admin_url ? `<button class="kali-suggestion__affected" type="button" data-switch-tab="settings">${ STR.configure } →</button>` : '' )
             }
           </div>` ).join( '' );
       container.querySelectorAll( '[data-view-issue]' ).forEach( btn => {
@@ -191,7 +192,7 @@
     }
 
     const lu = $( 'lastUpdated' );
-    if ( lu && data.generated_at ) lu.textContent = 'Updated: ' + new Date( data.generated_at ).toLocaleTimeString();
+    if ( lu && data.generated_at ) lu.textContent = STR.updated + ' ' + new Date( data.generated_at ).toLocaleTimeString();
   }
 
   function setIssue( id, count ) {
@@ -221,13 +222,13 @@
     const issueIntro = activeIssueFilter ? renderIssueIntro( activeIssueFilter ) : '';
     if ( items.length === 0 ) {
       container.innerHTML = issueIntro + ( activeIssueFilter
-        ? `<div class="kali-empty">&#x2713; No products for ${ esc( activeIssueFilter ) }.</div>`
-        : '<div class="kali-empty">&#x2713; No products in quarantine.</div>' );
+        ? `<div class="kali-empty">&#x2713; ${ STR.no_products_for } ${ esc( activeIssueFilter ) }.</div>`
+        : `<div class="kali-empty">&#x2713; ${ STR.no_products_quarantine }</div>` );
       return;
     }
 
     const filterBar = activeIssueFilter
-      ? `<div class="kali-q-filter">Showing ${ esc( activeIssueFilter ) } <button type="button" id="clearIssueFilter">Clear filter</button></div>`
+      ? `<div class="kali-q-filter">${ STR.showing } ${ esc( activeIssueFilter ) } <button type="button" id="clearIssueFilter">${ STR.clear_filter }</button></div>`
       : '';
 
     container.innerHTML = issueIntro + filterBar + items.map( item => {
@@ -245,7 +246,7 @@
             }
             <div class="kali-q-item__flags">${ flags }</div>
           </div>
-          ${ item.url ? `<a class="kali-q-item__edit" href="${ esc( item.url ) }" target="_blank">Open product &rarr;</a>` : '' }
+          ${ item.url ? `<a class="kali-q-item__edit" href="${ esc( item.url ) }" target="_blank">${ STR.open_product } &rarr;</a>` : '' }
         </div>`;
     } ).join( '' );
     $( 'clearIssueFilter' )?.addEventListener( 'click', () => {
@@ -268,32 +269,32 @@
   function issueMeta( code ) {
     const map = {
       TITLE_TOO_SHORT: {
-        title: 'Why product titles matter',
-        detail: 'Agents use the title as the first matching signal. Titles should contain at least three useful words, usually product type, brand and model or variant.'
+        title: STR.why_title,
+        detail: STR.why_title_d
       },
       NO_DESCRIPTION: {
-        title: 'Why descriptions matter',
-        detail: 'Descriptions give agents the extra attributes that are often missing from filters, such as fit, material, use case, style and compatibility.'
+        title: STR.why_desc,
+        detail: STR.why_desc_d
       },
       NO_CATEGORY: {
-        title: 'Why categories matter',
-        detail: 'Categories let agents browse and narrow the catalog even when the user does not know the exact product name used by the merchant.'
+        title: STR.why_cat,
+        detail: STR.why_cat_d
       },
       ZERO_PRICE: {
-        title: 'Why price matters',
-        detail: 'Price is required for budget checks, comparisons and purchase decisions. Products without a valid price cannot be trusted in commerce-intent results.'
+        title: STR.why_price,
+        detail: STR.why_price_d
       },
       NO_IMAGE: {
-        title: 'Why images matter',
-        detail: 'Images do not block agent queries, but they improve visual verification and reduce ambiguity when products have similar names or variants.'
+        title: STR.why_image,
+        detail: STR.why_image_d
       },
       NO_SKU: {
-        title: 'Why SKUs matter',
-        detail: 'SKUs do not block agent queries, but they help identify, deduplicate and reconcile exact products across syncs, variants and downstream systems.'
+        title: STR.why_sku,
+        detail: STR.why_sku_d
       },
       OUT_OF_STOCK: {
-        title: 'Why stock matters',
-        detail: 'Availability tells agents whether a product can be proposed now or should be excluded from purchase-ready results.'
+        title: STR.why_stock,
+        detail: STR.why_stock_d
       }
     };
     return map[ code ] || null;
@@ -325,17 +326,17 @@
     if ( $( 'headLinkTag' ) ) $( 'headLinkTag' ).textContent = headLink;
 
     const endpoints = [
-      { path: '/.well-known/ucp.json',       desc: 'UCP profile — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)',  auth: false, example: '', wellknown: true },
-      { path: '/.well-known/kalicart-bridge.json', desc: 'KaliCart Bridge discovery entry point for agents probing well-known paths', auth: false, example: '', wellknown: true },
-      { path: '/discovery',            desc: 'Discovery document — entry point for every agent, full capability map',           auth: false, example: '' },
-      { path: '/mcp',              desc: 'Model Context Protocol (MCP) server — JSON-RPC 2.0 over POST; the catalog as agent tools (search_products, get_product, list_products, list_categories, get_meta)', auth: false, example: '', method: 'POST' },
-      { path: '/catalog/meta',         desc: 'Accepted filter values, category slugs, price range',                             auth: false, example: '' },
-      { path: '/catalog/search',       desc: 'Full-text + filtered search — supports q, category, on_sale, in_stock, price',   auth: false, example: '?q=scarpe&gender=male&per_page=10' },
-      { path: '/catalog/products',     desc: 'Browse products by filters (no text query needed)',                               auth: false, example: '?category=elettronica&in_stock=true' },
-      { path: '/catalog/product/{id}', desc: 'Single product — price, stock, variants[], barcodes, purchase_readiness',        auth: false, example: '' },
-      { path: '/catalog/categories',   desc: 'Full merchant category tree with has_products flag',                              auth: false, example: '' },
-      { path: '/catalog/health',       desc: 'Catalog quality report — quarantine list, suggestions, scores',                  auth: true,  example: '?force=true' },
-      { path: '/checkout/session',     desc: 'POST — agent creates cart session, returns cart_url and checkout_url for buyer', auth: false, example: '', method: 'POST' },
+      { path: '/.well-known/ucp.json',       desc: STR.ep_ucp,  auth: false, example: '', wellknown: true },
+      { path: '/.well-known/kalicart-bridge.json', desc: STR.ep_wellknown, auth: false, example: '', wellknown: true },
+      { path: '/discovery',            desc: STR.ep_discovery,           auth: false, example: '' },
+      { path: '/mcp',              desc: STR.ep_mcp, auth: false, example: '', method: 'POST' },
+      { path: '/catalog/meta',         desc: STR.ep_meta,                             auth: false, example: '' },
+      { path: '/catalog/search',       desc: STR.ep_search,   auth: false, example: '?q=scarpe&gender=male&per_page=10' },
+      { path: '/catalog/products',     desc: STR.ep_products,                               auth: false, example: '?category=elettronica&in_stock=true' },
+      { path: '/catalog/product/{id}', desc: STR.ep_product,        auth: false, example: '' },
+      { path: '/catalog/categories',   desc: STR.ep_categories,                              auth: false, example: '' },
+      { path: '/catalog/health',       desc: STR.ep_health,                  auth: true,  example: '?force=true' },
+      { path: '/checkout/session',     desc: STR.ep_checkout, auth: false, example: '', method: 'POST' },
     ];
 
     const container = $( 'endpointList' );
@@ -351,7 +352,7 @@
             <span class="kali-method">${ method }</span>
             <span class="kali-endpoint__path">${ esc( ep.path ) }</span>
             <span class="kali-endpoint__desc">${ esc( ep.desc ) }</span>
-            ${ ep.auth ? '<span class="kali-endpoint__auth">admin only</span>' : '' }
+            ${ ep.auth ? `<span class="kali-endpoint__auth">${ STR.admin_only }</span>` : '' }
           </div>
           <div class="kali-endpoint__body" id="ep-body-${ i }">
             <div class="kali-endpoint__url">
@@ -360,7 +361,7 @@
                   : esc( url )
               }
             </div>
-            ${ canPreview ? `<button class="kali-preview-btn" onclick="window.kaliPreview(${ i }, '${ encodeURIComponent( url + ep.example ) }')">&#x25B6; Preview</button>` : '' }
+            ${ canPreview ? `<button class="kali-preview-btn" onclick="window.kaliPreview(${ i }, '${ encodeURIComponent( url + ep.example ) }')">&#x25B6; ${ STR.preview }</button>` : '' }
             <div class="kali-endpoint__preview" id="ep-preview-${ i }" style="display:none"></div>
           </div>
         </div>`;
@@ -373,7 +374,7 @@
     const preview = $( 'ep-preview-' + i );
     if ( ! preview ) return;
     preview.style.display = 'block';
-    preview.textContent = 'Loading…';
+    preview.textContent = STR.loading;
     fetch( decodeURIComponent( encodedUrl ) )
       .then( r => r.json() )
       .then( data => {
@@ -381,7 +382,7 @@
         if ( data.quarantined_products?.length > 3 ) { data.quarantined_products = data.quarantined_products.slice( 0, 3 ); data._truncated = true; }
         preview.textContent = JSON.stringify( data, null, 2 );
       } )
-      .catch( e => ( preview.textContent = 'Error: ' + e.message ) );
+      .catch( e => ( preview.textContent = STR.error + ' ' + e.message ) );
   };
 
   // ── Settings ──────────────────────────────────────────────────────────────
@@ -412,11 +413,11 @@
 
     // Alert gialli su toggle critici
     const WARNINGS = {
-      toggleBadge:      'Disabling the AI catalog badge removes a key discovery signal for agents browsing the storefront DOM. Agents that rely on body anchors will not find your catalog.',
-      toggleRobots:     'Disabling the robots.txt directive removes the crawl permission for AI agents. Some agents check robots.txt before querying any endpoint.',
-      toggleGlobalConsent: 'Disabling Global indexing consent removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Direct agent access to this store stays active.',
-      toggleSitemap:    'Disabling the agentic sitemap removes the structured endpoint map that agents use to enumerate your catalog surfaces.',
-      toggleWellKnown:  'Disabling .well-known discovery files removes the first-probe signal used by agents that check standard discovery paths before loading your storefront.',
+      toggleBadge:      STR.warn_badge,
+      toggleRobots:     STR.warn_robots,
+      toggleGlobalConsent: STR.warn_global,
+      toggleSitemap:    STR.warn_sitemap,
+      toggleWellKnown:  STR.warn_wellknown,
     };
 
     Object.entries( WARNINGS ).forEach( ( [ id, msg ] ) => {
@@ -429,7 +430,7 @@
             const div = document.createElement( 'div' );
             div.id = 'kali-warning-' + id;
             div.className = 'kali-warn-alert';
-            div.innerHTML = '<strong>⚠ Heads up</strong> ' + esc( msg );
+            div.innerHTML = '<strong>⚠ ' + STR.heads_up + '</strong> ' + esc( msg );
             el.closest( '.kali-toggle-row, .kali-toggle-group' ).after( div );
           }
         } else {
@@ -459,14 +460,14 @@
 
     block.style.background  = bg;
     block.style.borderColor = color;
-    if ( badgeEl )  { badgeEl.style.background = color; badgeEl.textContent = configured ? 'CONFIGURED' : 'REQUIRED'; }
+    if ( badgeEl )  { badgeEl.style.background = color; badgeEl.textContent = configured ? STR.configured : STR.required; }
     if ( wrapEl )   { wrapEl.style.borderColor = color; }
     if ( prefixEl ) { prefixEl.style.borderRightColor = color; }
     if ( linkEl ) {
       if ( configured ) {
         const fullUrl = KaliBridge.site_url.replace( /\/$/, '' ) + '/' + slug.replace( /^\//, '' );
         linkEl.style.display = 'block';
-        linkEl.innerHTML = `<a href="${ fullUrl }" target="_blank" rel="noopener" style="color:#00a32a;">&#x1F517; Test link: ${ fullUrl }</a>`;
+        linkEl.innerHTML = `<a href="${ fullUrl }" target="_blank" rel="noopener" style="color:#00a32a;">&#x1F517; ${ STR.test_link } ${ fullUrl }</a>`;
       } else {
         linkEl.style.display = 'none';
         linkEl.innerHTML = '';

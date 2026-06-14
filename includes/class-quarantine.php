@@ -268,12 +268,12 @@ class KaliCart_Bridge_Quarantine {
         foreach ( $rows as $row ) {
             $flags = [];
             if ( self::title_word_count( $row->post_title ) < self::MIN_TITLE_WORDS )
-                                                                   $flags[] = [ 'code' => 'TITLE_TOO_SHORT', 'severity' => 'high',   'label' => 'Title has fewer than 3 words' ];
+                                                                   $flags[] = [ 'code' => 'TITLE_TOO_SHORT', 'severity' => 'high',   'label' => __( 'Title has fewer than 3 words', 'kalicart-bridge' ) ];
             if ( strlen( trim( $row->post_content . ' ' . $row->post_excerpt ) ) < self::MIN_DESCRIPTION_LENGTH )
-                                                                   $flags[] = [ 'code' => 'NO_DESCRIPTION', 'severity' => 'high',   'label' => 'Description too short' ];
+                                                                   $flags[] = [ 'code' => 'NO_DESCRIPTION', 'severity' => 'high',   'label' => __( 'Description too short', 'kalicart-bridge' ) ];
             if ( ! self::product_has_real_category( (int) $row->ID, $uncategorized_id ) )
-                                                                   $flags[] = [ 'code' => 'NO_CATEGORY',    'severity' => 'high',   'label' => 'No category' ];
-            if ( empty( $row->price ) || (float) $row->price <= 0 ) $flags[] = [ 'code' => 'ZERO_PRICE',    'severity' => 'medium', 'label' => 'Price is zero or missing' ];
+                                                                   $flags[] = [ 'code' => 'NO_CATEGORY',    'severity' => 'high',   'label' => __( 'No category', 'kalicart-bridge' ) ];
+            if ( empty( $row->price ) || (float) $row->price <= 0 ) $flags[] = [ 'code' => 'ZERO_PRICE',    'severity' => 'medium', 'label' => __( 'Price is zero or missing', 'kalicart-bridge' ) ];
 
             $deductions = 0;
             foreach ( $flags as $f ) {
@@ -355,7 +355,7 @@ class KaliCart_Bridge_Quarantine {
                 'url'   => self::product_edit_url( (int) $row->ID ),
                 'score' => 100,
                 'flags' => [
-                    [ 'code' => 'OUT_OF_STOCK', 'severity' => 'medium', 'label' => 'Out of stock' ],
+                    [ 'code' => 'OUT_OF_STOCK', 'severity' => 'medium', 'label' => __( 'Out of stock', 'kalicart-bridge' ) ],
                 ],
             ];
         }
@@ -379,12 +379,12 @@ class KaliCart_Bridge_Quarantine {
 
         $admin_url = admin_url( 'edit.php?post_type=product' );
 
-        if ( $bad_title > 0 ) $s[] = [ 'priority' => 'high',   'code' => 'TITLE_TOO_SHORT', 'label' => 'Improve product titles',    'detail' => 'Short or non-speaking titles reduce catalog computability.',          'affected' => $bad_title, 'admin_url' => $admin_url ];
-        if ( $no_image > 0 )  $s[] = [ 'priority' => 'low',    'code' => 'NO_IMAGE',       'label' => 'Add product images',       'detail' => 'Missing images reduce discoverability but do not block agent queries.', 'affected' => $no_image, 'admin_url' => $admin_url ];
-        if ( $no_desc > 0 )   $s[] = [ 'priority' => 'high',   'code' => 'NO_DESCRIPTION', 'label' => 'Add product descriptions', 'detail' => 'Missing or very short descriptions are weak signals for AI agents.',   'affected' => $no_desc,  'admin_url' => $admin_url ];
-        if ( $no_cat > 0 )    $s[] = [ 'priority' => 'high',   'code' => 'NO_CATEGORY',    'label' => 'Assign categories',        'detail' => 'Uncategorized products are invisible to category-based agent queries.','affected' => $no_cat,   'admin_url' => $admin_url ];
-        if ( $no_price > 0 )  $s[] = [ 'priority' => 'medium', 'code' => 'ZERO_PRICE',     'label' => 'Fix zero-price products',  'detail' => 'Products with no price are excluded from commerce-intent pipelines.',  'affected' => $no_price, 'admin_url' => $admin_url ];
-        if ( $no_sku > 0 )    $s[] = [ 'priority' => 'low',    'code' => 'NO_SKU',         'label' => 'Add SKU codes',            'detail' => 'SKUs enable precise product identification and deduplication by agents.','affected' => $no_sku,   'admin_url' => $admin_url ];
+        if ( $bad_title > 0 ) $s[] = [ 'priority' => 'high',   'code' => 'TITLE_TOO_SHORT', 'label' => __( 'Improve product titles', 'kalicart-bridge' ),    'detail' => __( 'Short or non-speaking titles reduce catalog computability.', 'kalicart-bridge' ),          'affected' => $bad_title, 'admin_url' => $admin_url ];
+        if ( $no_image > 0 )  $s[] = [ 'priority' => 'low',    'code' => 'NO_IMAGE',       'label' => __( 'Add product images', 'kalicart-bridge' ),       'detail' => __( 'Missing images reduce discoverability but do not block agent queries.', 'kalicart-bridge' ), 'affected' => $no_image, 'admin_url' => $admin_url ];
+        if ( $no_desc > 0 )   $s[] = [ 'priority' => 'high',   'code' => 'NO_DESCRIPTION', 'label' => __( 'Add product descriptions', 'kalicart-bridge' ), 'detail' => __( 'Missing or very short descriptions are weak signals for AI agents.', 'kalicart-bridge' ),   'affected' => $no_desc,  'admin_url' => $admin_url ];
+        if ( $no_cat > 0 )    $s[] = [ 'priority' => 'high',   'code' => 'NO_CATEGORY',    'label' => __( 'Assign categories', 'kalicart-bridge' ),        'detail' => __( 'Uncategorized products are invisible to category-based agent queries.', 'kalicart-bridge' ),'affected' => $no_cat,   'admin_url' => $admin_url ];
+        if ( $no_price > 0 )  $s[] = [ 'priority' => 'medium', 'code' => 'ZERO_PRICE',     'label' => __( 'Fix zero-price products', 'kalicart-bridge' ),  'detail' => __( 'Products with no price are excluded from commerce-intent pipelines.', 'kalicart-bridge' ),  'affected' => $no_price, 'admin_url' => $admin_url ];
+        if ( $no_sku > 0 )    $s[] = [ 'priority' => 'low',    'code' => 'NO_SKU',         'label' => __( 'Add SKU codes', 'kalicart-bridge' ),            'detail' => __( 'SKUs enable precise product identification and deduplication by agents.', 'kalicart-bridge' ),'affected' => $no_sku,   'admin_url' => $admin_url ];
 
         // Return policy suggestion
         $return_policy_url = get_option( 'kalicart_bridge_return_policy_url', '' );
@@ -393,8 +393,8 @@ class KaliCart_Bridge_Quarantine {
             $s[] = [
                 'priority'  => 'high',
                 'code'      => 'NO_RETURN_POLICY',
-                'label'     => 'Configure return policy URL',
-                'detail'    => 'Agents cannot inform buyers about your return conditions. Add your return policy page URL in Settings.',
+                'label'     => __( 'Configure return policy URL', 'kalicart-bridge' ),
+                'detail'    => __( 'Agents cannot inform buyers about your return conditions. Add your return policy page URL in Settings.', 'kalicart-bridge' ),
                 'admin_url' => $settings_url,
             ];
         }

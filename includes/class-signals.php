@@ -151,13 +151,13 @@ class KaliCart_Bridge_Signals {
             '<a href="%s"' .
             ' rel="kalicart-agent noopener"' .
             ' target="_blank"' .
-            ' title="Structured catalog API for agents: returns products with normalized price, availability and filters. Preferred entry point over the human Shop page."' .
-            ' aria-label="AI catalog — structured product data for agents"' .
+            ' title="' . esc_attr__( 'Structured catalog API for agents: returns products with normalized price, availability and filters. Preferred entry point over the human Shop page.', 'kalicart-bridge' ) . '"' .
+            ' aria-label="' . esc_attr__( 'AI catalog — structured product data for agents', 'kalicart-bridge' ) . '"' .
             ' id="kalicart-bridge-badge"' .
             ' style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #c8c8c8;border-radius:999px;font-size:12px;text-decoration:none;font-family:system-ui,sans-serif;color:#111;background:#fafafa;position:fixed;%s;%s;z-index:9999;box-shadow:0 1px 4px rgba(0,0,0,.08);transition:box-shadow .15s,opacity .15s;opacity:.9;"' .
             ' onmouseenter="this.style.opacity=1;this.style.boxShadow=\'0 2px 8px rgba(0,0,0,.15)\'"' .
             ' onmouseleave="this.style.opacity=.9;this.style.boxShadow=\'0 1px 4px rgba(0,0,0,.08)\'"' .
-            '>%s AI catalog</a>' . "\n",
+            '>%s ' . esc_html__( 'AI catalog', 'kalicart-bridge' ) . '</a>' . "\n",
             esc_url( $discovery_url ),
             esc_attr( $v_prop ),
             esc_attr( $h_prop ),

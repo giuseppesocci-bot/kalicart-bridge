@@ -121,6 +121,14 @@
 .kali-tab:hover { background: var(--kb-surface2); color: var(--kb-text); }
 .kali-tab--active { background: var(--kb-acc); color: #fff; }
 
+.kali-tabsrow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 /* ── Panels ───────────────────────────────────────────────────────────────── */
 .kali-panel {
   background: var(--kb-surface);

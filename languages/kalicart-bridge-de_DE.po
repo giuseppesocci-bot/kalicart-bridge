@@ -1,0 +1,595 @@
+# Copyright (C) 2026 KaliCart
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: KaliCart Bridge 1.0.92\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kalicart-bridge\n"
+"POT-Creation-Date: 2026-06-14T19:45:55+02:00\n"
+"PO-Revision-Date: 2026-06-14 17:03+0000\n"
+"Last-Translator: KaliCart <giuso@kalicart.com>\n"
+"Language-Team: German\n"
+"Language: de_DE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: kalicart-bridge\n"
+
+#. Plugin Name of the plugin
+#: kalicart-bridge.php
+msgid "KaliCart Bridge"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: kalicart-bridge.php
+msgid "https://bridge.kalicart.com"
+msgstr ""
+
+#. Description of the plugin
+#: kalicart-bridge.php
+msgid "Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency."
+msgstr "Macht deinen WooCommerce-Katalog maschinenlesbar und für Agenten zugänglich. Stellt normalisierte Produktdaten über eine REST-API bereit — kein LLM, kein externer Dienst, keine Cloud-Abhängigkeit."
+
+#. Author of the plugin
+#: kalicart-bridge.php
+msgid "KaliCart"
+msgstr ""
+
+#. Author URI of the plugin
+#: kalicart-bridge.php
+msgid "https://kalicart.com"
+msgstr ""
+
+#: admin/admin-page.php:15
+msgid "Agent-readable catalog"
+msgstr "Agentenlesbarer Katalog"
+
+#: admin/admin-page.php:21
+msgid "Overview"
+msgstr "Übersicht"
+
+#: admin/admin-page.php:22 admin/admin-page.php:80
+msgid "Quarantine"
+msgstr "Quarantäne"
+
+#: admin/admin-page.php:23
+msgid "Endpoints"
+msgstr "Endpunkte"
+
+#: admin/admin-page.php:24
+msgid "Settings"
+msgstr "Einstellungen"
+
+#: admin/admin-page.php:31
+msgid "Analysing catalog…"
+msgstr "Katalog wird analysiert…"
+
+#: admin/admin-page.php:41
+msgid "quality score"
+msgstr "Qualitätsbewertung"
+
+#: admin/admin-page.php:44
+msgid "Catalog coverage"
+msgstr "Katalogabdeckung"
+
+#: admin/admin-page.php:46 admin/admin-page.php:84
+msgid "In stock"
+msgstr "Auf Lager"
+
+#: admin/admin-page.php:51
+msgid "Images"
+msgstr "Bilder"
+
+#: admin/admin-page.php:56
+msgid "Description"
+msgstr "Beschreibung"
+
+#: admin/admin-page.php:72
+msgid "Total products"
+msgstr "Produkte insgesamt"
+
+#: admin/admin-page.php:76
+msgid "Healthy"
+msgstr "Einwandfrei"
+
+#: admin/admin-page.php:88 includes/class-quarantine.php:358
+msgid "Out of stock"
+msgstr "Nicht auf Lager"
+
+#: admin/admin-page.php:92
+msgid "No SKU"
+msgstr "Ohne SKU"
+
+#: admin/admin-page.php:97
+msgid "Catalog issues"
+msgstr "Katalogprobleme"
+
+#: admin/admin-page.php:101
+msgid "Bad title"
+msgstr "Ungültiger Titel"
+
+#: admin/admin-page.php:105
+msgid "No image"
+msgstr "Ohne Bild"
+
+#: admin/admin-page.php:109
+msgid "No description"
+msgstr "Ohne Beschreibung"
+
+#: admin/admin-page.php:113 includes/class-quarantine.php:275
+msgid "No category"
+msgstr "Ohne Kategorie"
+
+#: admin/admin-page.php:117
+msgid "Zero price"
+msgstr "Preis null"
+
+#: admin/admin-page.php:122
+msgid "Suggestions"
+msgstr "Vorschläge"
+
+#: admin/admin-page.php:128
+msgid "Refresh"
+msgstr "Aktualisieren"
+
+#: admin/admin-page.php:137
+msgid "Quarantined products"
+msgstr "Produkte in Quarantäne"
+
+#: admin/admin-page.php:140
+msgid "Products with blocking computability issues: missing descriptions, categories, or invalid prices."
+msgstr "Produkte mit blockierenden Computability-Problemen: fehlende Beschreibungen, Kategorien oder ungültige Preise."
+
+#: admin/admin-page.php:146
+msgid "API Endpoints"
+msgstr "API-Endpunkte"
+
+#. translators: %s: the /health endpoint path, shown as code
+#: admin/admin-page.php:147
+#, php-format
+msgid "Read-only REST surfaces. No authentication required except %s."
+msgstr "Schreibgeschützte REST-Schnittstellen. Keine Authentifizierung erforderlich außer %s."
+
+#: admin/admin-page.php:181
+msgid "Refund and Returns Policy URL"
+msgstr "URL der Rückerstattungs- und Rückgaberichtlinie"
+
+#: admin/admin-page.php:183
+msgid "Add your refund and returns policy page so AI agents can inform buyers about your return conditions. Without this, the catalog health score is reduced by 10 points."
+msgstr "Füge deine Seite mit der Rückerstattungs- und Rückgaberichtlinie hinzu, damit KI-Agenten Käufer über deine Rückgabebedingungen informieren können. Andernfalls wird die Katalog-Gesundheitsbewertung um 10 Punkte reduziert."
+
+#: admin/admin-page.php:195 includes/class-admin.php:88
+msgid "Test link:"
+msgstr "Testlink:"
+
+#: admin/admin-page.php:200
+msgid "Signal settings"
+msgstr "Signal-Einstellungen"
+
+#: admin/admin-page.php:206
+msgid "AI catalog badge"
+msgstr "KI-Katalog-Badge"
+
+#: admin/admin-page.php:207
+msgid "Speaking HTML badge visible on the storefront — machine-readable anchor for AI agents."
+msgstr "Sprechendes HTML-Badge, sichtbar im Shop — maschinenlesbarer Anker für KI-Agenten."
+
+#: admin/admin-page.php:215
+msgid "Position"
+msgstr "Position"
+
+#: admin/admin-page.php:218
+msgid "Top left"
+msgstr "Oben links"
+
+#: admin/admin-page.php:218
+msgid "Top right"
+msgstr "Oben rechts"
+
+#: admin/admin-page.php:218
+msgid "Bottom left"
+msgstr "Unten links"
+
+#: admin/admin-page.php:218
+msgid "Bottom right"
+msgstr "Unten rechts"
+
+#: admin/admin-page.php:231
+msgid "robots.txt directive"
+msgstr "robots.txt-Direktive"
+
+#. translators: %s: a robots.txt Allow directive, shown as code
+#: admin/admin-page.php:232
+#, php-format
+msgid "Adds %s to robots.txt."
+msgstr "Fügt %s zu robots.txt hinzu."
+
+#: admin/admin-page.php:239
+msgid "KaliCart Global indexing consent"
+msgstr "Einwilligung zur Indexierung durch KaliCart Global"
+
+#. translators: %1$s and %2$s: discovery-document field names, shown as code
+#: admin/admin-page.php:240
+#, php-format
+msgid "Allows KaliCart Global to index this catalog and include it in federated agent search. Published in the discovery document as %1$s and %2$s. Read-only: Global never writes to your store."
+msgstr "Erlaubt KaliCart Global, diesen Katalog zu indexieren und in die föderierte Agentensuche aufzunehmen. Im Discovery-Dokument als %1$s und %2$s veröffentlicht. Schreibgeschützt: Global schreibt niemals in deinen Shop."
+
+#: admin/admin-page.php:247
+msgid "Checkout sessions"
+msgstr "Checkout-Sitzungen"
+
+#: admin/admin-page.php:247
+msgid "optional"
+msgstr "optional"
+
+#. translators: %s: the POST /checkout/session endpoint, shown as code
+#: admin/admin-page.php:248
+#, php-format
+msgid "Enables %s — agent creates a session, merchant gets a checkout URL, human completes payment on WooCommerce. No OAuth, no PII, no payment on the agent side."
+msgstr "Aktiviert %s — der Agent erstellt eine Sitzung, der Händler erhält eine Checkout-URL, der Mensch schließt die Zahlung in WooCommerce ab. Kein OAuth, keine PII, keine Zahlung auf Agentenseite."
+
+#: admin/admin-page.php:255
+msgid "Agentic sitemap"
+msgstr "Agentische Sitemap"
+
+#. translators: %s: a link to the agentic sitemap file
+#: admin/admin-page.php:256
+#, php-format
+msgid "Serves %s with annotated catalog endpoints."
+msgstr "Stellt %s mit annotierten Katalog-Endpunkten bereit."
+
+#: admin/admin-page.php:263
+msgid "Agent discovery files"
+msgstr "Agent-Discovery-Dateien"
+
+#. translators: %1$s and %2$s: .well-known discovery file paths, shown as code
+#: admin/admin-page.php:264
+#, php-format
+msgid "Writes %1$s and %2$s — standard discovery points for AI agents that probe the site before navigating it."
+msgstr "Schreibt %1$s und %2$s — standardmäßige Discovery-Punkte für KI-Agenten, die die Website vor der Navigation prüfen."
+
+#: admin/admin-page.php:269
+msgid "Agent discovery hints"
+msgstr "Agent-Discovery-Hinweise"
+
+#: admin/admin-page.php:273
+msgid "Search form link"
+msgstr "Link im Suchformular"
+
+#: admin/admin-page.php:274
+msgid "Appends a visible \"Structured catalog for AI agents\" link after every search form."
+msgstr "Fügt nach jedem Suchformular einen sichtbaren Link „Strukturierter Katalog für KI-Agenten“ hinzu."
+
+#: admin/admin-page.php:281
+msgid "Search results link"
+msgstr "Link in den Suchergebnissen"
+
+#: admin/admin-page.php:282
+msgid "Shows a minimal \"Machine-readable catalog\" link at the bottom of search pages — both on zero-results and when results are ambiguous or partial."
+msgstr "Zeigt am unteren Rand der Suchseiten einen minimalen Link „Maschinenlesbarer Katalog“ — sowohl bei null Ergebnissen als auch wenn die Ergebnisse mehrdeutig oder unvollständig sind."
+
+#: admin/admin-page.php:289
+msgid "Category & product page links"
+msgstr "Links auf Kategorie- und Produktseiten"
+
+#: admin/admin-page.php:290
+msgid "Shows a \"Machine-readable category data\" link on category pages and a \"Machine-readable product data\" link above the product meta on single product pages — both pointing to the structured API endpoint."
+msgstr "Zeigt auf Kategorieseiten einen Link „Maschinenlesbare Kategoriedaten“ und auf Einzelproduktseiten über den Produkt-Metadaten einen Link „Maschinenlesbare Produktdaten“ — beide verweisen auf den strukturierten API-Endpunkt."
+
+#: admin/admin-page.php:298
+msgid "Agent entry-point page"
+msgstr "Agent-Einstiegsseite"
+
+#: admin/admin-page.php:298
+msgid "(optional)"
+msgstr "(optional)"
+
+#: admin/admin-page.php:300
+msgid "If you want to expose a dedicated machine-readable index for AI agents — a structured directory of your catalog endpoints and category tree — you can create a WordPress page and add this shortcode. The page will render a navigable tree of your catalog API, readable by both agents and curious humans. It is not required: all discovery signals work automatically without it."
+msgstr "Wenn du einen dedizierten maschinenlesbaren Index für KI-Agenten bereitstellen möchtest — ein strukturiertes Verzeichnis deiner Katalog-Endpunkte und des Kategoriebaums — kannst du eine WordPress-Seite erstellen und diesen Shortcode hinzufügen. Die Seite zeigt einen navigierbaren Baum deiner Katalog-API, lesbar sowohl für Agenten als auch für neugierige Menschen. Es ist nicht erforderlich: Alle Discovery-Signale funktionieren auch ohne sie automatisch."
+
+#: admin/admin-page.php:304
+msgid "Copy and paste into any WordPress page"
+msgstr "In jede beliebige WordPress-Seite kopieren und einfügen"
+
+#: admin/admin-page.php:307
+msgid "Agent index page URL"
+msgstr "URL der Agent-Indexseite"
+
+#: admin/admin-page.php:311
+msgid "Paste the URL of the page where you added the shortcode"
+msgstr "Füge die URL der Seite ein, auf der du den Shortcode hinzugefügt hast"
+
+#: admin/admin-page.php:316
+msgid "Save settings"
+msgstr "Einstellungen speichern"
+
+#: admin/admin-page.php:317
+msgid "Saved"
+msgstr "Gespeichert"
+
+#: includes/class-admin.php:73
+msgid "Unknown error"
+msgstr "Unbekannter Fehler"
+
+#: includes/class-admin.php:74
+msgid "Error:"
+msgstr "Fehler:"
+
+#: includes/class-admin.php:75
+msgid "Loading…"
+msgstr "Wird geladen…"
+
+#: includes/class-admin.php:76
+msgid "No issues. Catalog looks great!"
+msgstr "Keine Probleme. Der Katalog sieht super aus!"
+
+#: includes/class-admin.php:77
+msgid "products"
+msgstr "Produkte"
+
+#: includes/class-admin.php:78
+msgid "Configure"
+msgstr "Konfigurieren"
+
+#: includes/class-admin.php:79
+msgid "Updated:"
+msgstr "Aktualisiert:"
+
+#: includes/class-admin.php:80
+msgid "No products for"
+msgstr "Keine Produkte für"
+
+#: includes/class-admin.php:81
+msgid "No products in quarantine."
+msgstr "Keine Produkte in Quarantäne."
+
+#: includes/class-admin.php:82
+msgid "Showing"
+msgstr "Anzeige von"
+
+#: includes/class-admin.php:83
+msgid "Clear filter"
+msgstr "Filter entfernen"
+
+#: includes/class-admin.php:84
+msgid "Open product"
+msgstr "Produkt öffnen"
+
+#: includes/class-admin.php:85
+msgid "admin only"
+msgstr "nur Admin"
+
+#: includes/class-admin.php:86
+msgid "Preview"
+msgstr "Vorschau"
+
+#: includes/class-admin.php:87
+msgid "Heads up"
+msgstr "Achtung"
+
+#: includes/class-admin.php:89
+msgid "CONFIGURED"
+msgstr "KONFIGURIERT"
+
+#: includes/class-admin.php:90
+msgid "REQUIRED"
+msgstr "ERFORDERLICH"
+
+#: includes/class-admin.php:91
+msgid "Why product titles matter"
+msgstr "Warum Produkttitel wichtig sind"
+
+#: includes/class-admin.php:92
+msgid "Agents use the title as the first matching signal. Titles should contain at least three useful words, usually product type, brand and model or variant."
+msgstr "Agenten verwenden den Titel als erstes Übereinstimmungssignal. Titel sollten mindestens drei nützliche Wörter enthalten, meist Produkttyp, Marke und Modell oder Variante."
+
+#: includes/class-admin.php:93
+msgid "Why descriptions matter"
+msgstr "Warum Beschreibungen wichtig sind"
+
+#: includes/class-admin.php:94
+msgid "Descriptions give agents the extra attributes that are often missing from filters, such as fit, material, use case, style and compatibility."
+msgstr "Beschreibungen liefern Agenten die zusätzlichen Attribute, die in Filtern oft fehlen, etwa Passform, Material, Anwendungsfall, Stil und Kompatibilität."
+
+#: includes/class-admin.php:95
+msgid "Why categories matter"
+msgstr "Warum Kategorien wichtig sind"
+
+#: includes/class-admin.php:96
+msgid "Categories let agents browse and narrow the catalog even when the user does not know the exact product name used by the merchant."
+msgstr "Kategorien ermöglichen Agenten, den Katalog zu durchsuchen und einzugrenzen, auch wenn der Nutzer den genauen vom Händler verwendeten Produktnamen nicht kennt."
+
+#: includes/class-admin.php:97
+msgid "Why price matters"
+msgstr "Warum der Preis wichtig ist"
+
+#: includes/class-admin.php:98
+msgid "Price is required for budget checks, comparisons and purchase decisions. Products without a valid price cannot be trusted in commerce-intent results."
+msgstr "Der Preis ist für Budgetprüfungen, Vergleiche und Kaufentscheidungen erforderlich. Produkten ohne gültigen Preis kann in Commerce-Intent-Ergebnissen nicht vertraut werden."
+
+#: includes/class-admin.php:99
+msgid "Why images matter"
+msgstr "Warum Bilder wichtig sind"
+
+#: includes/class-admin.php:100
+msgid "Images do not block agent queries, but they improve visual verification and reduce ambiguity when products have similar names or variants."
+msgstr "Bilder blockieren keine Agentenabfragen, verbessern aber die visuelle Überprüfung und verringern Mehrdeutigkeiten, wenn Produkte ähnliche Namen oder Varianten haben."
+
+#: includes/class-admin.php:101
+msgid "Why SKUs matter"
+msgstr "Warum SKUs wichtig sind"
+
+#: includes/class-admin.php:102
+msgid "SKUs do not block agent queries, but they help identify, deduplicate and reconcile exact products across syncs, variants and downstream systems."
+msgstr "SKUs blockieren keine Agentenabfragen, helfen aber, exakte Produkte über Synchronisierungen, Varianten und nachgelagerte Systeme hinweg zu identifizieren, zu deduplizieren und abzugleichen."
+
+#: includes/class-admin.php:103
+msgid "Why stock matters"
+msgstr "Warum der Lagerbestand wichtig ist"
+
+#: includes/class-admin.php:104
+msgid "Availability tells agents whether a product can be proposed now or should be excluded from purchase-ready results."
+msgstr "Die Verfügbarkeit sagt Agenten, ob ein Produkt jetzt vorgeschlagen werden kann oder von kaufbereiten Ergebnissen ausgeschlossen werden sollte."
+
+#: includes/class-admin.php:105
+msgid "UCP profile — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)"
+msgstr "UCP-Profil — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)"
+
+#: includes/class-admin.php:106
+msgid "KaliCart Bridge discovery entry point for agents probing well-known paths"
+msgstr "KaliCart-Bridge-Discovery-Einstiegspunkt für Agenten, die Well-known-Pfade prüfen"
+
+#: includes/class-admin.php:107
+msgid "Discovery document — entry point for every agent, full capability map"
+msgstr "Discovery-Dokument — Einstiegspunkt für jeden Agenten, vollständige Capability-Map"
+
+#: includes/class-admin.php:108
+msgid "Model Context Protocol (MCP) server — JSON-RPC 2.0 over POST; the catalog as agent tools (search_products, get_product, list_products, list_categories, get_meta)"
+msgstr "Model-Context-Protocol-(MCP)-Server — JSON-RPC 2.0 über POST; der Katalog als Agenten-Tools (search_products, get_product, list_products, list_categories, get_meta)"
+
+#: includes/class-admin.php:109
+msgid "Accepted filter values, category slugs, price range"
+msgstr "Akzeptierte Filterwerte, Kategorie-Slugs, Preisspanne"
+
+#: includes/class-admin.php:110
+msgid "Full-text + filtered search — supports q, category, on_sale, in_stock, price"
+msgstr "Volltext- + gefilterte Suche — unterstützt q, category, on_sale, in_stock, price"
+
+#: includes/class-admin.php:111
+msgid "Browse products by filters (no text query needed)"
+msgstr "Produkte nach Filtern durchsuchen (keine Textabfrage nötig)"
+
+#: includes/class-admin.php:112
+msgid "Single product — price, stock, variants[], barcodes, purchase_readiness"
+msgstr "Einzelnes Produkt — Preis, Lagerbestand, variants[], barcodes, purchase_readiness"
+
+#: includes/class-admin.php:113
+msgid "Full merchant category tree with has_products flag"
+msgstr "Vollständiger Händler-Kategoriebaum mit has_products-Flag"
+
+#: includes/class-admin.php:114
+msgid "Catalog quality report — quarantine list, suggestions, scores"
+msgstr "Katalogqualitätsbericht — Quarantäneliste, Vorschläge, Bewertungen"
+
+#: includes/class-admin.php:115
+msgid "POST — agent creates cart session, returns cart_url and checkout_url for buyer"
+msgstr "POST — Agent erstellt eine Warenkorb-Sitzung, gibt cart_url und checkout_url für den Käufer zurück"
+
+#: includes/class-admin.php:116
+msgid "Disabling the AI catalog badge removes a key discovery signal for agents browsing the storefront DOM. Agents that rely on body anchors will not find your catalog."
+msgstr "Das Deaktivieren des KI-Katalog-Badges entfernt ein zentrales Discovery-Signal für Agenten, die das Storefront-DOM durchsuchen. Agenten, die sich auf Body-Anker verlassen, finden deinen Katalog nicht."
+
+#: includes/class-admin.php:117
+msgid "Disabling the robots.txt directive removes the crawl permission for AI agents. Some agents check robots.txt before querying any endpoint."
+msgstr "Das Deaktivieren der robots.txt-Direktive entfernt die Crawl-Erlaubnis für KI-Agenten. Einige Agenten prüfen robots.txt, bevor sie einen Endpunkt abfragen."
+
+#: includes/class-admin.php:118
+msgid "Disabling Global indexing consent removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Direct agent access to this store stays active."
+msgstr "Das Deaktivieren der Global-Indexierungseinwilligung entfernt deinen Katalog aus der föderierten Suche von KaliCart Global. Agenten, die den föderierten Index nutzen, entdecken deine Produkte dort nicht mehr. Der direkte Agentenzugriff auf diesen Shop bleibt aktiv."
+
+#: includes/class-admin.php:119
+msgid "Disabling the agentic sitemap removes the structured endpoint map that agents use to enumerate your catalog surfaces."
+msgstr "Das Deaktivieren der agentischen Sitemap entfernt die strukturierte Endpunkt-Map, die Agenten verwenden, um deine Katalogflächen aufzuzählen."
+
+#: includes/class-admin.php:120
+msgid "Disabling .well-known discovery files removes the first-probe signal used by agents that check standard discovery paths before loading your storefront."
+msgstr "Das Deaktivieren der .well-known-Discovery-Dateien entfernt das First-Probe-Signal, das Agenten verwenden, die Standard-Discovery-Pfade prüfen, bevor sie deinen Shop laden."
+
+#: includes/class-admin.php:136
+msgid "Documentation"
+msgstr "Dokumentation"
+
+#: includes/class-quarantine.php:271
+msgid "Title has fewer than 3 words"
+msgstr "Titel mit weniger als 3 Wörtern"
+
+#: includes/class-quarantine.php:273
+msgid "Description too short"
+msgstr "Beschreibung zu kurz"
+
+#: includes/class-quarantine.php:276
+msgid "Price is zero or missing"
+msgstr "Preis null oder fehlt"
+
+#: includes/class-quarantine.php:382
+msgid "Improve product titles"
+msgstr "Produkttitel verbessern"
+
+#: includes/class-quarantine.php:382
+msgid "Short or non-speaking titles reduce catalog computability."
+msgstr "Kurze oder nichtssagende Titel verringern die Berechenbarkeit des Katalogs."
+
+#: includes/class-quarantine.php:383
+msgid "Add product images"
+msgstr "Produktbilder hinzufügen"
+
+#: includes/class-quarantine.php:383
+msgid "Missing images reduce discoverability but do not block agent queries."
+msgstr "Fehlende Bilder verringern die Auffindbarkeit, blockieren aber keine Agentenabfragen."
+
+#: includes/class-quarantine.php:384
+msgid "Add product descriptions"
+msgstr "Produktbeschreibungen hinzufügen"
+
+#: includes/class-quarantine.php:384
+msgid "Missing or very short descriptions are weak signals for AI agents."
+msgstr "Fehlende oder sehr kurze Beschreibungen sind schwache Signale für KI-Agenten."
+
+#: includes/class-quarantine.php:385
+msgid "Assign categories"
+msgstr "Kategorien zuweisen"
+
+#: includes/class-quarantine.php:385
+msgid "Uncategorized products are invisible to category-based agent queries."
+msgstr "Produkte ohne Kategorie sind für kategoriebasierte Agentenabfragen unsichtbar."
+
+#: includes/class-quarantine.php:386
+msgid "Fix zero-price products"
+msgstr "Produkte mit Preis null korrigieren"
+
+#: includes/class-quarantine.php:386
+msgid "Products with no price are excluded from commerce-intent pipelines."
+msgstr "Produkte ohne Preis werden aus Commerce-Intent-Pipelines ausgeschlossen."
+
+#: includes/class-quarantine.php:387
+msgid "Add SKU codes"
+msgstr "SKU-Codes hinzufügen"
+
+#: includes/class-quarantine.php:387
+msgid "SKUs enable precise product identification and deduplication by agents."
+msgstr "SKUs ermöglichen Agenten eine präzise Produktidentifikation und Deduplizierung."
+
+#: includes/class-quarantine.php:396
+msgid "Configure return policy URL"
+msgstr "URL der Rückgaberichtlinie konfigurieren"
+
+#: includes/class-quarantine.php:397
+msgid "Agents cannot inform buyers about your return conditions. Add your return policy page URL in Settings."
+msgstr "Agenten können Käufer nicht über deine Rückgabebedingungen informieren. Füge die URL deiner Rückgaberichtlinie-Seite in den Einstellungen hinzu."
+
+#: includes/class-signals.php:154
+msgid "Structured catalog API for agents: returns products with normalized price, availability and filters. Preferred entry point over the human Shop page."
+msgstr "Strukturierte Katalog-API für Agenten: liefert Produkte mit normalisiertem Preis, Verfügbarkeit und Filtern. Bevorzugter Einstiegspunkt gegenüber der menschlichen Shop-Seite."
+
+#: includes/class-signals.php:155
+msgid "AI catalog — structured product data for agents"
+msgstr "KI-Katalog — strukturierte Produktdaten für Agenten"
+
+#: includes/class-signals.php:160
+msgid "AI catalog"
+msgstr "KI-Katalog"
+
+#: kalicart-bridge.php:99
+msgid "KaliCart Bridge requires WooCommerce to be installed and active. Please activate WooCommerce first, then activate KaliCart Bridge."
+msgstr "KaliCart Bridge erfordert, dass WooCommerce installiert und aktiv ist. Aktiviere zuerst WooCommerce und dann KaliCart Bridge."
+
+#: kalicart-bridge.php:100
+msgid "WooCommerce required"
+msgstr "WooCommerce erforderlich"
+
+#~ msgid "Auto (site language)"
+#~ msgstr "Automatisch (Sprache der Website)"
+
+#~ msgid "Plugin language"
+#~ msgstr "Sprache des Plugins"
