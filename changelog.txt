@@ -1,5 +1,10 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-14 - version 1.0.89
+
+* Compatibility - Refuse activation when WooCommerce is not active, on every supported WordPress version. WP 6.5+ already blocks it via the "Requires Plugins" header; this adds an activation-time guard (auto-deactivate + notice) that also covers WP 6.0-6.4 where that header is ignored
+
+
 2026-06-14 - version 1.0.88
 
 * Fix - Removed the broken "View details" link from the plugins-list row meta. Its modal was populated by the plugins_api handler removed in 1.0.80, so on a self-hosted install (plugin not yet listed on WordPress.org) it returned "plugin not found". WordPress shows a native "View details" link automatically once the plugin is published on WordPress.org

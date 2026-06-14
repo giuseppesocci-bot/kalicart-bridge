@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.88
+Stable tag: 1.0.89
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -90,6 +90,9 @@ Yes — all three signals (badge, robots.txt, sitemap) can be toggled individual
 
 
 == Changelog ==
+
+= 1.0.89 =
+* Compatibility - Refuse activation when WooCommerce is not active, on every supported WordPress version. WP 6.5+ already blocks it via the "Requires Plugins" header; this adds an activation-time guard (auto-deactivate + notice) that also covers WP 6.0-6.4 where that header is ignored
 
 = 1.0.88 =
 * Fix - Removed the broken "View details" link from the plugins list. WordPress provides a native View details link once the plugin is published on WordPress.org

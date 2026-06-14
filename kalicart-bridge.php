@@ -3,7 +3,7 @@
  * Plugin Name:       KaliCart Bridge
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.88
+ * Version:           1.0.89
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.88' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.89' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
@@ -76,6 +76,18 @@ add_action( 'plugins_loaded', function () {
 } );
 
 register_activation_hook( __FILE__, function () {
+    // Hard dependency guard: refuse activation when WooCommerce is not active.
+    // Covers WordPress < 6.5, where the "Requires Plugins" header is ignored.
+    // On WP 6.5+ this is redundant (core disables the Activate button) but harmless.
+    if ( ! class_exists( 'WooCommerce' ) ) {
+        deactivate_plugins( plugin_basename( __FILE__ ) );
+        wp_die(
+            esc_html__( 'KaliCart Bridge requires WooCommerce to be installed and active. Please activate WooCommerce first, then activate KaliCart Bridge.', 'kalicart-bridge' ),
+            esc_html__( 'WooCommerce required', 'kalicart-bridge' ),
+            [ 'back_link' => true ]
+        );
+    }
+
     update_option( 'kalicart_bridge_badge_enabled',   true );
     update_option( 'kalicart_bridge_badge_position',  'bottom-right' );
     update_option( 'kalicart_bridge_robots_enabled',  true );
