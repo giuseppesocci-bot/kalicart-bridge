@@ -162,6 +162,7 @@
   <div id="kali-tab-settings" class="kali-panel" style="display:none">
 
     <?php
+    // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- local vars in included template, not actual globals
     $kbridge_rp_full    = get_option( 'kalicart_bridge_return_policy_url', '' );
     $kbridge_rp_base    = trailingslashit( get_site_url() );
     $kbridge_rp_slug    = $kbridge_rp_full ? ltrim( str_replace( $kbridge_rp_base, '', $kbridge_rp_full ), '/' ) : '';
@@ -169,6 +170,7 @@
     $kbridge_rp_color   = $kbridge_rp_set ? '#00a32a' : '#f0a000';
     $kbridge_rp_bg      = $kbridge_rp_set ? '#f0fff4' : '#fff8f0';
     $kbridge_rp_badge   = $kbridge_rp_set ? 'CONFIGURED' : 'REQUIRED';
+    // phpcs:enable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
     ?>
     <div id="returnPolicyBlock" style="margin-bottom:24px;padding:16px 20px;background:<?php echo esc_attr( $kbridge_rp_bg ); ?>;border:1px solid <?php echo esc_attr( $kbridge_rp_color ); ?>;border-radius:8px;">
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">

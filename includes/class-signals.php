@@ -341,7 +341,7 @@ class KaliCart_Bridge_Signals {
         if ( $wp instanceof WP && isset( $wp->query_vars['kalicart_well_known'] ) ) {
             $raw = (string) $wp->query_vars['kalicart_well_known'];
         } elseif ( isset( $_GET['kalicart_well_known'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-            $raw = sanitize_key( wp_unslash( $_GET['kalicart_well_known'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_key applied
+            $raw = sanitize_key( wp_unslash( $_GET['kalicart_well_known'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- public discovery endpoint, no nonce applicable
         }
         // Accept both the extension-less convention path and the .json mirror form.
         $file = sanitize_key( preg_replace( '/\.json$/', '', $raw ) );
@@ -380,7 +380,7 @@ class KaliCart_Bridge_Signals {
             if ( ! file_exists( $path ) ) continue;
             $body = (string) @file_get_contents( $path );
             if ( strpos( $body, 'kalicart' ) !== false ) {
-                @unlink( $path );
+                wp_delete_file( $path );
             }
         }
 
@@ -388,7 +388,7 @@ class KaliCart_Bridge_Signals {
         $htaccess = $dir . '.htaccess';
         $legacy   = "<Files 'kalicart-bridge'>\n  ForceType application/json\n</Files>\n<Files 'agent-catalog'>\n  ForceType application/json\n</Files>\n<Files 'ucp'>\n  ForceType application/json\n</Files>\n";
         if ( file_exists( $htaccess ) && @file_get_contents( $htaccess ) === $legacy ) {
-            @unlink( $htaccess );
+            wp_delete_file( $htaccess );
         }
     }
 
