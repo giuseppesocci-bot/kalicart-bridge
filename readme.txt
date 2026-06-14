@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.83
+Stable tag: 1.0.84
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -90,6 +90,12 @@ Yes — all three signals (badge, robots.txt, sitemap) can be toggled individual
 
 
 == Changelog ==
+
+= 1.0.84 =
+* Fix - Escape all inline style output in admin page with esc_attr() and esc_html() (Plugin Check compliance)
+* Fix - Rename admin variables to kalicart_bridge prefix (WordPress naming conventions)
+* Fix - Replace unlink() with wp_delete_file() in .well-known cleanup
+* Fix - sanitize_key() applied to GET input in well-known discovery handler
 
 = 1.0.83 =
 * Fix - Plugin URI updated to bridge.kalicart.com (plugin-specific page, distinct from Author URI kalicart.com)
