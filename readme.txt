@@ -3,7 +3,7 @@ Contributors: kalicart
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.82
+Stable tag: 1.0.83
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -90,6 +90,9 @@ Yes — all three signals (badge, robots.txt, sitemap) can be toggled individual
 
 
 == Changelog ==
+
+= 1.0.83 =
+* Fix - Plugin URI updated to bridge.kalicart.com (plugin-specific page, distinct from Author URI kalicart.com)
 
 = 1.0.82 =
 * Build - ZIP now excludes .git, .gitignore, .distignore, README.md, SPEC.md
