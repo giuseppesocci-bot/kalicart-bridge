@@ -21,11 +21,13 @@ class KaliCart_Bridge_Signals {
             add_action( 'wp_footer', [ __CLASS__, 'inject_badge' ] );
         }
 
-        // Inject agent trace into primary nav menu
-        add_filter( 'wp_nav_menu_items', [ __CLASS__, 'inject_menu_trace' ], 10, 2 );
+        // Inject agent trace into primary nav menu (opt-in, default OFF)
+        if ( get_option( 'kalicart_bridge_agent_hints_enabled', false ) ) {
+            add_filter( 'wp_nav_menu_items', [ __CLASS__, 'inject_menu_trace' ], 10, 2 );
+        }
 
-        // JS-based honey: search, zero-results, category, product page
-        if ( get_option('kalicart_bridge_hint_search', true) || get_option('kalicart_bridge_hint_zero', true) || get_option('kalicart_bridge_hint_category', true) ) {
+        // JS-based agent hints: search, zero-results, category, product page (opt-in, default OFF)
+        if ( get_option('kalicart_bridge_hint_search', false) || get_option('kalicart_bridge_hint_zero', false) || get_option('kalicart_bridge_hint_category', false) ) {
             add_action( 'wp_footer', [ __CLASS__, 'inject_honey_js' ] );
         }
 
@@ -181,9 +183,9 @@ class KaliCart_Bridge_Signals {
         $search_ep  = rest_url( KALICART_BRIDGE_API_NS . '/catalog/search' );
         $cat_ep     = rest_url( KALICART_BRIDGE_API_NS . '/catalog/products' );
         $product_ep = rest_url( KALICART_BRIDGE_API_NS . '/catalog/product' );
-        $hint_search   = get_option( 'kalicart_bridge_hint_search',   true ) ? 'true' : 'false';
-        $hint_zero     = get_option( 'kalicart_bridge_hint_zero',     true ) ? 'true' : 'false';
-        $hint_category = get_option( 'kalicart_bridge_hint_category', true ) ? 'true' : 'false';
+        $hint_search   = get_option( 'kalicart_bridge_hint_search',   false ) ? 'true' : 'false';
+        $hint_zero     = get_option( 'kalicart_bridge_hint_zero',     false ) ? 'true' : 'false';
+        $hint_category = get_option( 'kalicart_bridge_hint_category', false ) ? 'true' : 'false';
         ?>
         <script id="kalicart-honey">
         (function(){

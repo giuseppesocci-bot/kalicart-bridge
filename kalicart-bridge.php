@@ -82,9 +82,11 @@ register_activation_hook( __FILE__, function () {
     update_option( 'kalicart_bridge_sitemap_enabled', true );
     update_option( 'kalicart_bridge_checkout_enabled', false );
     update_option( 'kalicart_bridge_well_known_enabled', true );
-    update_option( 'kalicart_bridge_hint_search',      true );
-    update_option( 'kalicart_bridge_hint_zero',        true );
-    update_option( 'kalicart_bridge_hint_category',    true );
+    // Agent hints (DOM signals): opt-in, default OFF — merchant activates when desired
+    update_option( 'kalicart_bridge_agent_hints_enabled', false );
+    update_option( 'kalicart_bridge_hint_search',      false );
+    update_option( 'kalicart_bridge_hint_zero',        false );
+    update_option( 'kalicart_bridge_hint_category',    false );
     // Flush rewrite rules per registrare sitemap-agentic-bridge.xml
     flush_rewrite_rules();
     KaliCart_Bridge_Signals::write_well_known_files();

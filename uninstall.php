@@ -14,6 +14,16 @@ $kalicart_bridge_options = [
     'kalicart_bridge_badge_position',
     'kalicart_bridge_robots_enabled',
     'kalicart_bridge_sitemap_enabled',
+    'kalicart_bridge_checkout_enabled',
+    'kalicart_bridge_well_known_enabled',
+    'kalicart_bridge_agent_hints_enabled',
+    'kalicart_bridge_hint_search',
+    'kalicart_bridge_hint_zero',
+    'kalicart_bridge_hint_category',
+    'kalicart_bridge_global_consent',
+    'kalicart_bridge_agent_index_url',
+    'kalicart_bridge_return_policy_url',
+    'kalicart_bridge_wk_version',
 ];
 foreach ( $kalicart_bridge_options as $kalicart_bridge_option ) {
     delete_option( $kalicart_bridge_option );
