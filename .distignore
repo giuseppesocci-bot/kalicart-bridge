@@ -1,7 +1,0 @@
-.git
-.gitignore
-.distignore
-README.md
-SPEC.md
-*.bak.*
-*.backup.*
