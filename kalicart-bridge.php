@@ -3,7 +3,7 @@
  * Plugin Name:       KaliCart Bridge
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.93
+ * Version:           1.0.94
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.93' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.94' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );

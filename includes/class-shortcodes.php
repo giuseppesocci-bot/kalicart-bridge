@@ -72,10 +72,6 @@ class KaliCart_Bridge_Shortcodes {
           </div>
           <?php endif; ?>
 
-          <p style="margin:28px 0 0;font-size:11px;color:#ccc;">
-            Powered by <a href="https://bridge.kalicart.com" rel="noopener" style="color:inherit;">KaliCart Bridge</a>
-          </p>
-
         </div>
         <?php
         return ob_get_clean();

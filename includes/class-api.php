@@ -185,7 +185,6 @@ class KaliCart_Bridge_API {
             'return_policy'           => ( function() {
                 $url = get_option( 'kalicart_bridge_return_policy_url', '' );
                 if ( empty( $url ) ) return [ 'configured' => false ];
-                $page = get_posts( [ 'post_type' => 'page', 'post_status' => 'publish', 'meta_query' => [], 'numberposts' => 1, 'fields' => 'ids' ] );
                 return [
                     'configured' => true,
                     'url'        => esc_url( $url ),

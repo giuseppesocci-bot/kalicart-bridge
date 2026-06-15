@@ -1,9 +1,9 @@
 === KaliCart Bridge ===
-Contributors: kalicart
+Contributors: carthub
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.93
+Stable tag: 1.0.94
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -100,6 +100,10 @@ The catalog can be consumed two ways. Any agent can call the plain REST endpoint
 
 
 == Changelog ==
+
+= 1.0.94 =
+* Compliance - Removed the "Powered by" attribution link from the public [kalicart_agent_index] shortcode output, per WordPress.org guideline 10 (no credit links on user-facing pages without explicit opt-in)
+* Performance - Removed an unused get_posts() query that ran on every public discovery request without using its result
 
 = 1.0.93 =
 * i18n - The wp-admin screen and the storefront badge are now fully translatable. Every admin string (catalog health, quarantine list, suggestions, endpoint descriptions and toggle warnings) and the badge text is wrapped for translation; JavaScript strings are localized server-side via wp_localize_script so they ship in the translation catalog
