@@ -20,7 +20,7 @@ class KaliCart_Bridge_Admin {
     public static function register_menu(): void {
         add_menu_page(
             'KaliCart Bridge',
-            'KaliCart',
+            'KaliCart Bridge',
             'manage_woocommerce',
             'kalicart-bridge',
             [ __CLASS__, 'render_page' ],

@@ -1,5 +1,10 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-15 - version 1.0.95
+
+* Admin - The wp-admin sidebar menu label now reads "KaliCart Bridge" (was "KaliCart") to clearly distinguish it from other KaliCart tools
+
+
 2026-06-15 - version 1.0.94
 
 * Compliance - Removed the "Powered by" attribution link from the public [kalicart_agent_index] shortcode output, per WordPress.org guideline 10 (no credit links on user-facing pages without explicit opt-in)

@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.94
+Stable tag: 1.0.95
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -100,6 +100,9 @@ The catalog can be consumed two ways. Any agent can call the plain REST endpoint
 
 
 == Changelog ==
+
+= 1.0.95 =
+* Admin - The wp-admin sidebar menu label now reads "KaliCart Bridge" (was "KaliCart") to clearly distinguish it from other KaliCart tools
 
 = 1.0.94 =
 * Compliance - Removed the "Powered by" attribution link from the public [kalicart_agent_index] shortcode output, per WordPress.org guideline 10 (no credit links on user-facing pages without explicit opt-in)
