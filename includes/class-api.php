@@ -661,7 +661,25 @@ class KaliCart_Bridge_API {
             'max_price' => $req->get_param( 'max_price' ) !== null ? (float) $req->get_param( 'max_price' ) : null,
             'gender'    => sanitize_text_field( $req->get_param( 'gender' ) ?? '' ),
             'color'     => sanitize_text_field( $req->get_param( 'color' ) ?? '' ),
+            'modified_after' => self::sanitize_iso8601( $req->get_param( 'modified_after' ) ),
         ];
+    }
+
+    /**
+     * Validate an incremental-sync cursor as an ISO-8601 datetime.
+     * Returns the normalized 'Y-m-d H:i:s' (GMT) string, or '' if absent/invalid.
+     * Invalid input is dropped (treated as full sync) rather than erroring.
+     */
+    private static function sanitize_iso8601( $raw ): string {
+        $raw = is_string( $raw ) ? trim( $raw ) : '';
+        if ( $raw === '' ) {
+            return '';
+        }
+        $ts = strtotime( $raw );
+        if ( $ts === false ) {
+            return '';
+        }
+        return gmdate( 'Y-m-d H:i:s', $ts );
     }
 
     private static function common_filter_args( bool $with_q ): array {
@@ -676,6 +694,9 @@ class KaliCart_Bridge_API {
             'max_price' => [ 'default' => null ],
             'gender'    => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
             'color'     => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
+            // Incremental sync: federated indexers pass an ISO-8601 timestamp to fetch
+            // only products modified since their last sync (post_modified_gmt). Read-only.
+            'modified_after' => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
         ];
         if ( $with_q ) {
             $args['q'] = [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ];

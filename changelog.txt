@@ -1,5 +1,10 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-15 - version 1.0.96
+
+* Discovery - The read-only product listing endpoint (/wp-json/kalicart/v1/catalog/products) now accepts an optional modified_after parameter (ISO-8601 datetime). When provided, only products changed at or after that time are returned, filtered on the WordPress post modification date. This lets federated indexers and agents pull incremental updates instead of re-reading the whole catalog. Invalid or absent values are ignored and the full catalog is returned, so existing callers are unaffected
+
+
 2026-06-15 - version 1.0.95
 
 * Admin - The wp-admin sidebar menu label now reads "KaliCart Bridge" (was "KaliCart") to clearly distinguish it from other KaliCart tools

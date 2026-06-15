@@ -69,6 +69,7 @@ class KaliCart_Bridge_Catalog_Engine {
             'max_price' => null,
             'gender'    => '',
             'color'     => '',
+            'modified_after' => '',
         ];
         $args = wp_parse_args( $args, $defaults );
 
@@ -133,6 +134,18 @@ class KaliCart_Bridge_Catalog_Engine {
 
         if ( isset( $query_args['meta_query'] ) && count( $query_args['meta_query'] ) > 1 ) {
             $query_args['meta_query']['relation'] = 'AND';
+        }
+
+        // Incremental sync cursor: restrict to products modified at/after the given
+        // GMT timestamp. Enables federated indexers to pull only the delta.
+        if ( ! empty( $args['modified_after'] ) ) {
+            $query_args['date_query'] = [
+                [
+                    'column'    => 'post_modified_gmt',
+                    'after'     => $args['modified_after'],
+                    'inclusive' => true,
+                ],
+            ];
         }
 
         $query    = new WP_Query( $query_args );

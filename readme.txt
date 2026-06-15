@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.95
+Stable tag: 1.0.96
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -100,6 +100,9 @@ The catalog can be consumed two ways. Any agent can call the plain REST endpoint
 
 
 == Changelog ==
+
+= 1.0.96 =
+* Discovery - The read-only product listing endpoint (/wp-json/kalicart/v1/catalog/products) now accepts an optional modified_after parameter (ISO-8601 datetime). When provided, only products changed at or after that time are returned, filtered on the WordPress post modification date. This lets federated indexers and agents pull incremental updates instead of re-reading the whole catalog. Invalid or absent values are ignored and the full catalog is returned, so existing callers are unaffected
 
 = 1.0.95 =
 * Admin - The wp-admin sidebar menu label now reads "KaliCart Bridge" (was "KaliCart") to clearly distinguish it from other KaliCart tools
