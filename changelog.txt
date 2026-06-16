@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-16 - version 1.0.97
+
+* Federated Catalog (opt-in) - New optional feature: from WP Admin you can join the KaliCart Global federated agent network. Clicking "Activate Federated Catalog" is an explicit consent action that sends only your store's public URL to KaliCart Global, which then includes your already-public catalog in federated agent search. A two-step "Revoke consent" control withdraws and parks your catalog at any time. No customer, order, or private data is ever sent
+* Privacy - Consent for Global indexing now defaults to OFF (opt-in). Added an "External services" section to this readme and a public privacy notice (https://bridge.kalicart.com/privacy/) disclosing exactly what is sent and how it is used, per WordPress.org guidelines 6 and 7
+* Admin - The Federated Catalog panel is shown under the plugin header and uses the plugin's native button and alert styles for consistency
+
+
 2026-06-15 - version 1.0.96
 
 * Discovery - The read-only product listing endpoint (/wp-json/kalicart/v1/catalog/products) now accepts an optional modified_after parameter (ISO-8601 datetime). When provided, only products changed at or after that time are returned, filtered on the WordPress post modification date. This lets federated indexers and agents pull incremental updates instead of re-reading the whole catalog. Invalid or absent values are ignored and the full catalog is returned, so existing callers are unaffected

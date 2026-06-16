@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.96
+Stable tag: 1.0.97
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -37,8 +37,8 @@ KaliCart Bridge exposes your WooCommerce product catalog as a structured, normal
 **What it does NOT do:**
 
 * No LLM calls
-* No external service or cloud dependency
-* No data sent anywhere outside your server
+* No cloud dependency for core functionality
+* No data sent anywhere outside your server by default — the only optional exception is the Federated Catalog feature (see "External services" below), which you turn on explicitly
 * No API key required for public endpoints
 
 **Normalization engine:**
@@ -75,7 +75,7 @@ Full operational documentation is always available at `https://bridge.kalicart.c
 
 = Does this share my data with KaliCart or any third party? =
 
-No. The plugin runs entirely on your server. No data is sent externally.
+Not unless you choose to. By default the plugin runs entirely on your server and sends nothing externally. The only exception is the optional Federated Catalog feature: if you explicitly activate it, the plugin sends your store's public URL (and nothing else) to KaliCart Global so your public catalog can be included in federated agent search. No customer, order, or private data is ever sent. See "External services" below, and the privacy notice at https://bridge.kalicart.com/privacy/.
 
 = Do I need a KaliCart account? =
 
@@ -99,7 +99,27 @@ The catalog can be consumed two ways. Any agent can call the plain REST endpoint
 
 
 
+== External services ==
+
+This plugin works fully standalone. It connects to one external service **only if you explicitly opt in** by activating the optional Federated Catalog feature in WP Admin → KaliCart Bridge.
+
+**Service:** KaliCart Global (https://dashboard.kalicart.com)
+
+**When data is sent:** Only when an administrator clicks "Activate Federated Catalog" (and, symmetrically, "Revoke consent"). Nothing is sent automatically, on activation, or in the background. With the feature off, the plugin makes no external requests.
+
+**What is sent:** A single value — your site's public URL (e.g. https://yourstore.com). On revoke, the same URL is sent to withdraw. No customer data, orders, personal data, credentials, or API keys are ever transmitted.
+
+**What the service does:** The URL tells KaliCart Global your store wishes to be discovered. KaliCart Global then periodically reads your already-public catalog (the same data exposed by the Bridge's public REST endpoints) and includes it in federated agent search. It only reads; it never writes to your store. Revoking stops this and parks your catalog.
+
+**Privacy notice:** https://bridge.kalicart.com/privacy/
+**Terms / documentation:** https://bridge.kalicart.com/docs/
+
 == Changelog ==
+
+= 1.0.97 =
+* Federated Catalog (opt-in) - New optional feature: from WP Admin you can join the KaliCart Global federated agent network. Clicking "Activate Federated Catalog" is an explicit consent action that sends only your store's public URL to KaliCart Global, which then includes your already-public catalog in federated agent search. A two-step "Revoke consent" control withdraws and parks your catalog at any time. No customer, order, or private data is ever sent
+* Privacy - Consent for Global indexing now defaults to OFF (opt-in). Added an "External services" section to this readme and a public privacy notice (https://bridge.kalicart.com/privacy/) disclosing exactly what is sent and how it is used, per WordPress.org guidelines 6 and 7
+* Admin - The Federated Catalog panel is shown under the plugin header and uses the plugin's native button and alert styles for consistency
 
 = 1.0.96 =
 * Discovery - The read-only product listing endpoint (/wp-json/kalicart/v1/catalog/products) now accepts an optional modified_after parameter (ISO-8601 datetime). When provided, only products changed at or after that time are returned, filtered on the WordPress post modification date. This lets federated indexers and agents pull incremental updates instead of re-reading the whole catalog. Invalid or absent values are ignored and the full catalog is returned, so existing callers are unaffected

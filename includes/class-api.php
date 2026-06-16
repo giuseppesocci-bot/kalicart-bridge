@@ -153,15 +153,15 @@ class KaliCart_Bridge_API {
 
             'intent_flags' => [
                 'single_merchant_only'    => true,
-                'global_indexable'        => (bool) get_option( 'kalicart_bridge_global_consent', true ),
-                'federated_search_source' => (bool) get_option( 'kalicart_bridge_global_consent', true ),
+                'global_indexable'        => (bool) get_option( 'kalicart_bridge_global_consent', false ),
+                'federated_search_source' => (bool) get_option( 'kalicart_bridge_global_consent', false ),
                 'agent_read_surface'      => true,
             ],
 
             'crawler_policy' => [
                 'allow_llm_training'   => false,
                 'allow_live_agent_reads' => true,
-                'allow_global_indexing' => (bool) get_option( 'kalicart_bridge_global_consent', true ),
+                'allow_global_indexing' => (bool) get_option( 'kalicart_bridge_global_consent', false ),
             ],
 
             'capabilities' => [

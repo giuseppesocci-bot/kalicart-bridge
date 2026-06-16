@@ -396,6 +396,7 @@
     if ( $( 'toggleRobots' ) )  $( 'toggleRobots' ).checked  = KaliBridge.robots_enabled;
     if ( $( 'toggleGlobalConsent' ) ) $( 'toggleGlobalConsent' ).checked = KaliBridge.global_consent;
     if ( $( 'toggleSitemap' ) ) $( 'toggleSitemap' ).checked = KaliBridge.sitemap_enabled;
+    initFederation();
 
     syncPositionWrap();
     $( 'toggleBadge' )?.addEventListener( 'change', syncPositionWrap );
@@ -473,6 +474,110 @@
         linkEl.innerHTML = '';
       }
     }
+  }
+
+  // ── Federation (announce / revoke) ──────────────────────────────────────────
+  function renderFederation() {
+    const consent  = $( 'toggleGlobalConsent' )?.checked;
+    const regAt    = KaliBridge.federation_registered_at;
+    const actBtn   = $( 'federationActivateBtn' );
+    const revBtn   = $( 'federationRevokeBtn' );
+    const statusEl = $( 'federationStatus' );
+    const hintEl   = $( 'federationHint' );
+    if ( ! actBtn ) return;
+    const confirmBox = $( 'federationRevokeConfirm' );
+    if ( confirmBox ) confirmBox.style.display = 'none'; // ogni render parte pulito
+
+    if ( regAt ) {
+      // gia registrato: mostra stato + revoca, nascondi attiva
+      actBtn.style.display = 'none';
+      revBtn.style.display = '';
+      hintEl.style.display = 'none';
+      statusEl.style.display = '';
+      const d = new Date( regAt );
+      const when = isNaN( d ) ? regAt : d.toLocaleDateString();
+      statusEl.textContent = ( KaliBridge.i18n?.federation_registered || 'Registered on' ) + ' ' + when;
+    } else {
+      // non registrato: il click su Attiva E' l'atto di consenso (un gesto). Sempre abilitato.
+      actBtn.style.display = '';
+      revBtn.style.display = 'none';
+      statusEl.style.display = 'none';
+      actBtn.disabled = false;
+      hintEl.style.display = 'none';
+    }
+  }
+
+  function initFederation() {
+    const actBtn = $( 'federationActivateBtn' );
+    const revBtn = $( 'federationRevokeBtn' );
+    if ( ! actBtn ) return;
+
+    renderFederation();
+    // il consenso governa l'abilitazione del bottone in tempo reale
+    $( 'toggleGlobalConsent' )?.addEventListener( 'change', renderFederation );
+
+    actBtn.addEventListener( 'click', () => {
+      // Il click E' il consenso: niente guardia, il server accende il consenso e annuncia.
+      actBtn.disabled = true;
+      const fd = new FormData();
+      fd.append( 'action', 'kalicart_federation_activate' );
+      fd.append( 'nonce',  KaliBridge.nonce );
+      fetch( KaliBridge.ajax_url, { method: 'POST', body: fd, credentials: 'same-origin' } )
+        .then( r => r.json() )
+        .then( res => {
+          if ( res.success ) {
+            KaliBridge.federation_registered_at = res.data.registered_at;
+            // sincronizza la casella consenso nei Settings (stessa verita' lato server)
+            KaliBridge.global_consent = true;
+            if ( $( 'toggleGlobalConsent' ) ) $( 'toggleGlobalConsent' ).checked = true;
+            renderFederation();
+          } else {
+            actBtn.disabled = false;
+            alert( KaliBridge.i18n?.federation_activate_failed || 'Activation failed. Please try again.' );
+          }
+        } )
+        .catch( () => { actBtn.disabled = false; } );
+    } );
+
+    // Filtro a due step: il click su "Revoke" NON revoca, mostra la conferma.
+    revBtn.addEventListener( 'click', () => {
+      const confirmBox = $( 'federationRevokeConfirm' );
+      if ( confirmBox ) confirmBox.style.display = '';
+      revBtn.style.display = 'none';
+    } );
+
+    // "Keep my catalog federated": annulla, torna allo stato registrato.
+    $( 'federationRevokeCancelBtn' )?.addEventListener( 'click', () => {
+      const confirmBox = $( 'federationRevokeConfirm' );
+      if ( confirmBox ) confirmBox.style.display = 'none';
+      renderFederation();
+    } );
+
+    // "Yes, revoke consent": solo QUI avviene la revoca reale.
+    $( 'federationRevokeConfirmBtn' )?.addEventListener( 'click', () => {
+      const confirmBtn = $( 'federationRevokeConfirmBtn' );
+      confirmBtn.disabled = true;
+      const fd = new FormData();
+      fd.append( 'action', 'kalicart_federation_revoke' );
+      fd.append( 'nonce',  KaliBridge.nonce );
+      fetch( KaliBridge.ajax_url, { method: 'POST', body: fd, credentials: 'same-origin' } )
+        .then( r => r.json() )
+        .then( res => {
+          confirmBtn.disabled = false;
+          const confirmBox = $( 'federationRevokeConfirm' );
+          if ( confirmBox ) confirmBox.style.display = 'none';
+          if ( res.success ) {
+            // la revoca spegne il consenso lato server: rifletti in UI
+            if ( $( 'toggleGlobalConsent' ) ) $( 'toggleGlobalConsent' ).checked = false;
+            KaliBridge.global_consent = false;
+            KaliBridge.federation_registered_at = '';
+          }
+          renderFederation();
+        } )
+        .catch( () => {
+          $( 'federationRevokeConfirmBtn' ).disabled = false;
+        } );
+    } );
   }
 
   function saveSettings() {

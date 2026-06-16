@@ -15,6 +15,33 @@
     <span class="kali-header__tagline"><?php esc_html_e( 'Agent-readable catalog', 'kalicart-bridge' ); ?></span>
   </div>
 
+  <!-- FEDERATION (sempre visibile, sotto l'header): announce + revoca consensuale -->
+  <div class="kali-federation-block" style="margin:0 0 4px;padding:14px 16px;border:1px solid var(--kb-border,#e2e4e7);border-radius:10px;background:var(--kb-acc-bg,#f6f9ff)">
+    <strong style="display:block;margin-bottom:6px"><?php esc_html_e( 'Federated catalog', 'kalicart-bridge' ); ?></strong>
+    <p style="margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--kb-muted,#555)">
+      <?php echo wp_kses_post( sprintf(
+        /* translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag */
+        __( 'Clicking Activate sends your store\'s public URL once to KaliCart Global, which then periodically reads your public catalog and includes it in federated agent search. No customer, order, or private data is ever sent. You can revoke anytime. %1$sWhat is sent and how it is used%2$s.', 'kalicart-bridge' ),
+        '<a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">',
+        '</a>'
+      ) ); ?>
+    </p>
+    <button type="button" class="kali-btn kali-btn--primary" id="federationActivateBtn"><?php esc_html_e( 'Activate Federated Catalog', 'kalicart-bridge' ); ?></button>
+    <button type="button" class="kali-btn kali-btn--secondary" id="federationRevokeBtn" style="display:none"><?php esc_html_e( 'Revoke consent', 'kalicart-bridge' ); ?></button>
+    <span id="federationStatus" style="display:none;margin-left:10px;font-size:13px;color:var(--kb-ok,#00a32a)"></span>
+    <span id="federationHint" style="display:none;margin-left:10px;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Tick the Global indexing consent box in Settings first.', 'kalicart-bridge' ); ?></span>
+
+    <!-- Filtro revoca a due step (stile plugin: kali-warn-alert). Nascosto finche' non si clicca Revoke. -->
+    <div id="federationRevokeConfirm" class="kali-warn-alert" style="display:none;margin-top:12px">
+      <strong>&#9888; <?php esc_html_e( 'Heads up', 'kalicart-bridge' ); ?></strong>
+      <span><?php esc_html_e( 'Revoking removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Your data is parked, not deleted, and restored if you re-activate.', 'kalicart-bridge' ); ?></span>
+      <div style="margin-top:10px">
+        <button type="button" class="kali-btn kali-btn--secondary" id="federationRevokeConfirmBtn"><?php esc_html_e( 'Yes, revoke consent', 'kalicart-bridge' ); ?></button>
+        <button type="button" class="kali-btn kali-btn--primary" id="federationRevokeCancelBtn"><?php esc_html_e( 'Keep my catalog federated', 'kalicart-bridge' ); ?></button>
+      </div>
+    </div>
+  </div>
+
   <!-- TABS -->
   <div class="kali-tabsrow">
     <div class="kali-tabs">
@@ -241,6 +268,7 @@
         </div>
         <div class="kali-toggle"><input type="checkbox" id="toggleGlobalConsent"><span class="kali-toggle__slider"></span></div>
       </label>
+
 
       <label class="kali-toggle-row">
         <div class="kali-toggle-info">

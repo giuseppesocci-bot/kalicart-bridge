@@ -14,6 +14,8 @@ class KaliCart_Bridge_Admin {
         add_action( 'admin_enqueue_scripts',  [ __CLASS__, 'enqueue_assets' ] );
         add_action( 'wp_ajax_kalicart_health', [ __CLASS__, 'ajax_health' ] );
         add_action( 'wp_ajax_kalicart_save_settings', [ __CLASS__, 'ajax_save_settings' ] );
+        add_action( 'wp_ajax_kalicart_federation_activate', [ __CLASS__, 'ajax_federation_activate' ] );
+        add_action( 'wp_ajax_kalicart_federation_revoke',   [ __CLASS__, 'ajax_federation_revoke' ] );
         add_filter( 'plugin_row_meta', [ __CLASS__, 'plugin_row_meta' ], 10, 2 );
     }
 
@@ -60,7 +62,8 @@ class KaliCart_Bridge_Admin {
             'rest_base'     => rest_url( KALICART_BRIDGE_API_NS ),
             'badge_enabled' => (bool) get_option( 'kalicart_bridge_badge_enabled', true ),
             'robots_enabled' => (bool) get_option( 'kalicart_bridge_robots_enabled', true ),
-            'global_consent' => (bool) get_option( 'kalicart_bridge_global_consent', true ),
+            'global_consent' => (bool) get_option( 'kalicart_bridge_global_consent', false ),
+            'federation_registered_at' => get_option( 'kalicart_bridge_federation_registered_at', '' ),
             'sitemap_enabled' => (bool) get_option( 'kalicart_bridge_sitemap_enabled', true ),
             'return_policy_url'  => get_option( 'kalicart_bridge_return_policy_url', '' ),
             'site_url'           => trailingslashit( get_site_url() ),
@@ -71,6 +74,9 @@ class KaliCart_Bridge_Admin {
     private static function js_i18n(): array {
         return [
             'unknown_error'  => __( 'Unknown error', 'kalicart-bridge' ),
+            'federation_registered'        => __( 'Registered on', 'kalicart-bridge' ),
+            'federation_consent_required'  => __( 'Tick the consent box above first.', 'kalicart-bridge' ),
+            'federation_activate_failed'   => __( 'Activation failed. Please try again.', 'kalicart-bridge' ),
             'error'          => __( 'Error:', 'kalicart-bridge' ),
             'loading'        => __( 'Loading…', 'kalicart-bridge' ),
             'no_issues'      => __( 'No issues. Catalog looks great!', 'kalicart-bridge' ),
@@ -189,6 +195,69 @@ class KaliCart_Bridge_Admin {
         flush_rewrite_rules();
 
         wp_send_json_success( [ 'saved' => true ] );
+    }
+
+    /**
+     * Federation activation: explicit opt-in. On click, with consent ON, the plugin
+     * announces the public site URL to KaliCart Global (POST /v1/bridge/announce).
+     * Server-side wp_remote_post, HTTPS. The ONLY datum sent is the public site URL.
+     * Disclosed in readme "External services" + privacy policy.
+     */
+    public static function ajax_federation_activate(): void {
+        check_ajax_referer( 'kalicart_bridge', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'Forbidden', 403 );
+
+        // Il click su Attiva E' l'atto di consenso esplicito e informato (disclosure + privacy
+        // link sono nel blocco sopra il bottone). Accende il consenso PRIMA dell'announce, cosi'
+        // il discovery JSON pubblica ON quando il probe arriva a leggerlo.
+        update_option( 'kalicart_bridge_global_consent', true );
+
+        $site_url = trailingslashit( get_site_url() );
+        $resp = wp_remote_post( KALICART_BRIDGE_GLOBAL . '/v1/bridge/announce', [
+            'timeout'   => 8,
+            'sslverify' => true,
+            'headers'   => [ 'Content-Type' => 'application/json' ],
+            'body'      => wp_json_encode( [ 'domain' => $site_url ] ),
+        ] );
+        if ( is_wp_error( $resp ) ) {
+            wp_send_json_error( [ 'reason' => 'announce_failed', 'detail' => $resp->get_error_message() ], 502 );
+        }
+        $code = wp_remote_retrieve_response_code( $resp );
+        if ( $code < 200 || $code >= 300 ) {
+            wp_send_json_error( [ 'reason' => 'announce_http_' . $code ], 502 );
+        }
+        update_option( 'kalicart_bridge_federation_registered_at', gmdate( 'c' ) );
+        wp_send_json_success( [ 'registered_at' => get_option( 'kalicart_bridge_federation_registered_at' ), 'consent' => true ] );
+    }
+
+    /**
+     * Federation revoke: explicit opt-out. ORDER IS LOAD-BEARING:
+     *   1) turn the local consent flag OFF -> the public discovery document now
+     *      publishes allow_global_indexing=false (the source of truth for the probe);
+     *   2) THEN notify Global (POST /v1/bridge/deregister) to park immediately.
+     * If step 2 fails, consent is already OFF and the next probe confirms the revoke,
+     * so the merchant is never left silently re-included. Fail-safe by construction.
+     */
+    public static function ajax_federation_revoke(): void {
+        check_ajax_referer( 'kalicart_bridge', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'Forbidden', 403 );
+
+        // (1) spegni il consenso PRIMA: il discovery JSON pubblica OFF da subito.
+        update_option( 'kalicart_bridge_global_consent', false );
+
+        // (2) push di deregister per il parcheggio immediato (best-effort).
+        $site_url = trailingslashit( get_site_url() );
+        $resp = wp_remote_post( KALICART_BRIDGE_GLOBAL . '/v1/bridge/deregister', [
+            'timeout'   => 8,
+            'sslverify' => true,
+            'headers'   => [ 'Content-Type' => 'application/json' ],
+            'body'      => wp_json_encode( [ 'domain' => $site_url ] ),
+        ] );
+        delete_option( 'kalicart_bridge_federation_registered_at' );
+
+        // Il consenso e' gia' OFF: anche se il push fallisce, la revoca e' garantita al probe.
+        $pushed = ! is_wp_error( $resp ) && wp_remote_retrieve_response_code( $resp ) < 300;
+        wp_send_json_success( [ 'consent' => false, 'pushed' => $pushed ] );
     }
 
 

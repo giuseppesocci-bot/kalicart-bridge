@@ -77,7 +77,7 @@ class KaliCart_Bridge_Signals {
      *   ai-train = allow_llm_training     (always no)
      */
     public static function content_signal_value(): string {
-        $search = get_option( 'kalicart_bridge_global_consent', true ) ? 'yes' : 'no';
+        $search = get_option( 'kalicart_bridge_global_consent', false ) ? 'yes' : 'no';
         return 'search=' . $search . ', ai-input=yes, ai-train=no';
     }
 
