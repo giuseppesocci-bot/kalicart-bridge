@@ -43,23 +43,15 @@ class KaliCart_Bridge_MCP {
 				array(
 					'methods'             => 'POST',
 					'callback'            => array( __CLASS__, 'handle' ),
-					'permission_callback' => array( __CLASS__, 'public_permission' ),
+					'permission_callback' => '__return_true',
 				),
 				array(
 					'methods'             => 'GET',
 					'callback'            => array( __CLASS__, 'no_sse' ),
-					'permission_callback' => array( __CLASS__, 'public_permission' ),
+					'permission_callback' => '__return_true',
 				),
 			)
 		);
-	}
-
-	/**
-	 * Read-only public catalog — no authentication, same posture as the REST
-	 * catalog endpoints (KaliCart_Bridge_API::public_catalog_permission()).
-	 */
-	public static function public_permission(): bool {
-		return true;
 	}
 
 	// ── HTTP entry ──────────────────────────────────────────────────────────────

@@ -28,22 +28,41 @@ class KaliCart_Bridge_Checkout {
     public static function register_routes(): void {
         $ns = KALICART_BRIDGE_API_NS;
 
+        // POST create session — intentionally public: an AI agent (no WP credentials)
+        // creates the session; the human completes payment on-site. No PII is stored
+        // (only product IDs, prices, and public URLs). Declared public per WP REST guidelines.
         register_rest_route( $ns, '/checkout/session', [
             'methods'             => 'POST',
             'callback'            => [ __CLASS__, 'create_session' ],
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public — agent creates session, human pays
+            'permission_callback' => '__return_true',
         ] );
 
         register_rest_route( $ns, '/checkout/session/(?P<id>[a-f0-9]{32})', [
             [
+                // GET — intentionally public: returns only the non-PII session payload
+                // (products, prices, public URLs) to the bearer of the 32-hex session token.
                 'methods'             => 'GET',
                 'callback'            => [ __CLASS__, 'get_session' ],
-                'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public
+                'permission_callback' => '__return_true',
+                'args'                => [
+                    'id' => [
+                        'validate_callback' => [ __CLASS__, 'is_valid_session_token' ],
+                    ],
+                ],
             ],
             [
+                // DELETE — destructive. Access is gated by possession of the session
+                // token (bearer model): the callback validates the token format and
+                // requires the session to exist. Without a valid, existing token the
+                // request is rejected before reaching the handler.
                 'methods'             => 'DELETE',
                 'callback'            => [ __CLASS__, 'cancel_session' ],
-                'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public
+                'permission_callback' => [ __CLASS__, 'cancel_session_permission' ],
+                'args'                => [
+                    'id' => [
+                        'validate_callback' => [ __CLASS__, 'is_valid_session_token' ],
+                    ],
+                ],
             ],
         ] );
     }
@@ -118,7 +137,10 @@ class KaliCart_Bridge_Checkout {
             ];
         }
 
-        $session_id  = md5( uniqid( 'kb_', true ) );
+        // Cryptographically secure 128-bit token (32 hex chars), matching the
+        // route pattern [a-f0-9]{32}. The session ID doubles as a bearer token:
+        // possession of this unguessable value is what authorizes GET/DELETE.
+        $session_id  = bin2hex( random_bytes( 16 ) );
         $currency    = get_woocommerce_currency();
 
         // Costruisci query string multi-prodotto per WC
@@ -173,11 +195,26 @@ class KaliCart_Bridge_Checkout {
     // Aggiunge tutti i prodotti della sessione al carrello WC e redirige.
 
     /**
-     * Permission callback for public checkout session endpoints.
-     * No authentication required by design — sessions use token-based access.
+     * Validate the session token format: exactly 32 hexadecimal chars (md5).
+     * Used as args.validate_callback so malformed tokens are rejected at the
+     * REST layer before any handler or permission logic runs.
      */
-    public static function public_catalog_permission(): bool {
-        return true;
+    public static function is_valid_session_token( $value ): bool {
+        return is_string( $value ) && (bool) preg_match( '/^[a-f0-9]{32}$/', $value );
+    }
+
+    /**
+     * Permission callback for DELETE (cancel) — a destructive action.
+     * Access is gated by possession of a valid session token (bearer model):
+     * the token must be well-formed AND correspond to an existing session.
+     * This prevents unauthenticated cancellation of arbitrary or guessed IDs.
+     */
+    public static function cancel_session_permission( WP_REST_Request $req ): bool {
+        $id = (string) $req->get_param( 'id' );
+        if ( ! self::is_valid_session_token( $id ) ) {
+            return false;
+        }
+        return (bool) get_transient( 'kalicart_session_' . $id );
     }
 
     public static function handle_session_redirect(): void {

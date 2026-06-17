@@ -19,7 +19,7 @@ class KaliCart_Bridge_API {
         register_rest_route( $ns, '/discovery', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'discovery' ],
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
+            'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
         ] );
 
         // UCP profile over REST — always reachable even when /.well-known/ucp is
@@ -28,20 +28,20 @@ class KaliCart_Bridge_API {
         register_rest_route( $ns, '/ucp', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'ucp_profile' ],
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
+            'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
         ] );
 
         register_rest_route( $ns, '/catalog/search', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'catalog_search' ],
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
+            'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
             'args'                => self::common_filter_args( true ),
         ] );
 
         register_rest_route( $ns, '/catalog/products', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'catalog_products' ],
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
+            'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
             'args'                => self::common_filter_args( false ),
         ] );
 
@@ -55,13 +55,13 @@ class KaliCart_Bridge_API {
                     'hint'    => 'GET /wp-json/kalicart/v1/catalog/products to list all products with their IDs.',
                 ], 400 );
             },
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
+            'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
         ] );
 
         register_rest_route( $ns, '/catalog/product/(?P<id>[\d]+)', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'catalog_product' ],
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
+            'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
             'args'                => [
                 'id' => [
                     'required'          => true,
@@ -74,19 +74,19 @@ class KaliCart_Bridge_API {
         register_rest_route( $ns, '/catalog/categories', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'catalog_categories' ],
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
+            'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
         ] );
 
         register_rest_route( $ns, '/catalog/meta', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'catalog_meta' ],
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public catalog data — no authentication required by design
+            'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
         ] );
 
         register_rest_route( $ns, '/openapi', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'openapi' ],
-            'permission_callback' => [ __CLASS__, 'public_catalog_permission' ], // Read-only public API description — no authentication required by design
+            'permission_callback' => '__return_true', // Read-only public API description — no authentication required by design
         ] );
 
         register_rest_route( $ns, '/catalog/health', [
@@ -635,14 +635,6 @@ class KaliCart_Bridge_API {
 
     public static function require_admin(): bool {
         return current_user_can( 'manage_woocommerce' );
-    }
-
-    /**
-     * Permission callback for public read-only catalog endpoints.
-     * No authentication required by design — catalog data is intentionally public.
-     */
-    public static function public_catalog_permission(): bool {
-        return true;
     }
 
     // ── HELPERS ───────────────────────────────────────────────────────────────

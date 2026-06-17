@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.97
+Stable tag: 1.0.98
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -115,6 +115,9 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.98 =
+* Security / hardening - Checkout session REST endpoints reviewed for WordPress.org compliance. Read-only public routes now declare an explicit public permission_callback (__return_true). The destructive DELETE (cancel session) route uses a dedicated permission_callback that validates the token format and confirms the session exists before allowing cancellation. Session IDs are now cryptographically secure 128-bit random bearer tokens (random_bytes) instead of md5(uniqid()). The same explicit-public posture was applied to the read-only catalog and MCP endpoints
 
 = 1.0.97 =
 * Federated Catalog (opt-in) - New optional feature: from WP Admin you can join the KaliCart Global federated agent network. Clicking "Activate Federated Catalog" is an explicit consent action that sends only your store's public URL to KaliCart Global, which then includes your already-public catalog in federated agent search. A two-step "Revoke consent" control withdraws and parks your catalog at any time. No customer, order, or private data is ever sent
