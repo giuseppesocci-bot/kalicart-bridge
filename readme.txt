@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.99
+Stable tag: 1.0.100
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -115,6 +115,9 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.100 =
+* i18n - Translated the Federated Catalog admin panel into Italian, German, French and Spanish. The panel was already translation-ready in code but its strings (added in 1.0.97) were missing from the translation catalogs, so they previously fell back to English in every locale. Regenerated the translation template and updated all four locale catalogs: activation and revoke buttons, the consent description, the two-step revoke confirmation and the dynamic status messages are now localized
 
 = 1.0.99 =
 * Multilingual - Fixed duplicate products and categories on sites running a database-translating multilingual plugin (WPML/WooCommerce Multilingual, Polylang). The public agent catalog is now served exclusively in the site default language: each translated product or category previously appeared once per language, multiplying the catalog. The request context is pinned to the default language at the start of every public catalog request, so product enumeration, the category tree and the flat category list all return the canonical default-language entries only
