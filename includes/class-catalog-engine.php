@@ -148,6 +148,13 @@ class KaliCart_Bridge_Catalog_Engine {
             ];
         }
 
+        // Multilingual: pin enumeration to the site default language so translated
+        // products are not enumerated as duplicates. No-op on monolingual sites.
+        $default_lang = KaliCart_Bridge_API::default_language();
+        if ( $default_lang !== null ) {
+            $query_args['lang'] = $default_lang; // Polylang reads this; harmless otherwise
+        }
+
         $query    = new WP_Query( $query_args );
         $products = [];
 
@@ -1091,11 +1098,16 @@ class KaliCart_Bridge_Catalog_Engine {
     // ── Categories tree ──────────────────────────────────────────────────────
 
     public static function get_categories_tree(): array {
-        $terms = get_terms( [
+        $term_args = [
             'taxonomy'   => 'product_cat',
             'hide_empty' => false,
             'orderby'    => 'name',
-        ] );
+        ];
+        $default_lang = KaliCart_Bridge_API::default_language();
+        if ( $default_lang !== null ) {
+            $term_args['lang'] = $default_lang; // Polylang term-language filter
+        }
+        $terms = get_terms( $term_args );
 
         if ( is_wp_error( $terms ) ) return [];
 

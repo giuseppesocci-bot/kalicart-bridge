@@ -13,6 +13,88 @@ class KaliCart_Bridge_API {
         add_action( 'rest_api_init', [ __CLASS__, 'register_routes' ] );
     }
 
+    // ── MULTILINGUAL CANONICALIZATION ─────────────────────────────────────────
+    // The canonical catalog is served in the site default language only. On a
+    // DB-translating multilingual site (WPML/WCML, Polylang) each translation is a
+    // real post/term in the DB; without forcing the language context the Bridge
+    // would enumerate every translation as a duplicate. We pin the request context
+    // to the default language at the very start of every public catalog request so
+    // that all WP_Query / get_terms() / get_the_terms() calls inherit it. No-op on
+    // monolingual sites and on output-translating plugins (Weglot, GTranslate proxy)
+    // where the DB holds a single language.
+
+    /**
+     * Resolve the site default language slug, plugin-agnostically.
+     * Returns null on monolingual sites (nothing to force).
+     */
+    public static function default_language(): ?string {
+        if ( function_exists( 'pll_default_language' ) ) {
+            $lang = pll_default_language( 'slug' );
+            return $lang ? (string) $lang : null;
+        }
+        if ( has_filter( 'wpml_default_language' ) ) {
+            // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- third-party WPML hook
+            $lang = apply_filters( 'wpml_default_language', null );
+            return $lang ? (string) $lang : null;
+        }
+        return null; // monolingual or output-translating: nothing to canonicalize
+    }
+
+    /**
+     * Pin the current request to the site default language. Hooked at the start of
+     * every public catalog REST callback. Idempotent and no-op on monolingual sites.
+     */
+    public static function force_default_language(): void {
+        $default = self::default_language();
+        if ( $default === null ) {
+            return;
+        }
+        if ( function_exists( 'pll_default_language' ) && function_exists( 'PLL' ) ) {
+            $pll = PLL();
+            if ( $pll && isset( $pll->curlang ) && ! empty( $pll->model ) ) {
+                $lang_obj = $pll->model->get_language( $default );
+                if ( $lang_obj ) {
+                    $pll->curlang = $lang_obj;
+                }
+            }
+        }
+        if ( has_filter( 'wpml_default_language' ) ) {
+            // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- third-party WPML hook
+            do_action( 'wpml_switch_language', $default );
+        }
+    }
+
+    /**
+     * Canonicalize a (possibly translated) post ID to its default-language
+     * counterpart. Returns the default-language ID, or 0 if the ID has no
+     * mapping into the default language (orphan / unmappable).
+     */
+    public static function canonicalize_post_id( int $id, string $type = 'post' ): int {
+        $default = self::default_language();
+        if ( $default === null ) {
+            return $id; // monolingual: identity
+        }
+        if ( function_exists( 'pll_get_post' ) ) {
+            $lang = function_exists( 'pll_get_post_language' ) ? pll_get_post_language( $id ) : null;
+            if ( $lang && $lang === $default ) {
+                return $id; // already default
+            }
+            $mapped = pll_get_post( $id, $default );
+            // pll_get_post returns 0/null/false when no translation exists,
+            // and the same id when the post has no language assigned (orphan).
+            if ( ! $mapped ) {
+                return $lang ? 0 : 0; // translated-but-unmapped OR orphan => hidden
+            }
+            return (int) $mapped;
+        }
+        if ( has_filter( 'wpml_object_id' ) ) {
+            // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- third-party WPML hook
+            $mapped = apply_filters( 'wpml_object_id', $id, $type, false, $default );
+            return $mapped ? (int) $mapped : 0;
+        }
+        return $id;
+    }
+
     public static function register_routes(): void {
         $ns = KALICART_BRIDGE_API_NS;
 
@@ -508,6 +590,7 @@ class KaliCart_Bridge_API {
     }
 
     public static function catalog_search( WP_REST_Request $req ): WP_REST_Response {
+        self::force_default_language();
         $args = self::extract_query_args( $req );
         $q    = sanitize_text_field( $req->get_param( 'q' ) ?? '' );
 
@@ -535,6 +618,7 @@ class KaliCart_Bridge_API {
     // ── PRODUCTS ──────────────────────────────────────────────────────────────
 
     public static function catalog_products( WP_REST_Request $req ): WP_REST_Response {
+        self::force_default_language();
         $args   = self::extract_query_args( $req );
         $result = KaliCart_Bridge_Catalog_Engine::query_products( $args );
         return self::ok( $result );
@@ -543,8 +627,19 @@ class KaliCart_Bridge_API {
     // ── SINGLE PRODUCT ────────────────────────────────────────────────────────
 
     public static function catalog_product( WP_REST_Request $req ): WP_REST_Response {
-        $id = absint( $req->get_param( 'id' ) );
-        $p  = wc_get_product( $id );
+        self::force_default_language();
+        $requested_id = absint( $req->get_param( 'id' ) );
+
+        // Multilingual contract: the canonical catalog exists only in the site
+        // default language. A translated ID is canonicalized to its default-language
+        // counterpart; an ID with no mapping into the default language (a non-default
+        // translation without a default sibling, or a language-less orphan) is 404.
+        $id = self::canonicalize_post_id( $requested_id, 'product' );
+        if ( $id === 0 ) {
+            return self::error( 'Product not found.', 404 );
+        }
+
+        $p = wc_get_product( $id );
 
         if ( ! $p || $p->get_status() !== 'publish' ) {
             return self::error( 'Product not found.', 404 );
@@ -556,6 +651,7 @@ class KaliCart_Bridge_API {
     // ── CATEGORIES ────────────────────────────────────────────────────────────
 
     public static function catalog_categories( WP_REST_Request $req ): WP_REST_Response {
+        self::force_default_language();
         $tree = KaliCart_Bridge_Catalog_Engine::get_categories_tree();
         return self::ok( [
             'note'       => 'Merchant-native WooCommerce category taxonomy. Use category slug in /catalog/search?category={slug}.',
@@ -567,12 +663,21 @@ class KaliCart_Bridge_API {
     // ── META ──────────────────────────────────────────────────────────────────
 
     public static function catalog_meta( WP_REST_Request $req ): WP_REST_Response {
-        $cache_key = 'kalicart_bridge_meta';
+        self::force_default_language();
+        // Language-aware cache key: a value computed under one language context must
+        // never be served under another. Suffix is the default language slug (or
+        // 'mono' on monolingual sites).
+        $cache_key = 'kalicart_bridge_meta_' . ( self::default_language() ?? 'mono' );
         $cached    = get_transient( $cache_key );
         if ( $cached ) return self::ok( $cached );
 
-        // Categories flat list
-        $terms = get_terms( [ 'taxonomy' => 'product_cat', 'hide_empty' => true, 'number' => 500 ] );
+        // Categories flat list (default-language only on multilingual sites)
+        $flat_args = [ 'taxonomy' => 'product_cat', 'hide_empty' => true, 'number' => 500 ];
+        $flat_lang = self::default_language();
+        if ( $flat_lang !== null ) {
+            $flat_args['lang'] = $flat_lang;
+        }
+        $terms = get_terms( $flat_args );
         $categories = [];
         if ( ! is_wp_error( $terms ) ) {
             foreach ( $terms as $t ) {
@@ -580,7 +685,9 @@ class KaliCart_Bridge_API {
             }
         }
 
-        // Price range
+        // Price range — language-agnostic by design: translations carry identical
+        // _price meta, so MIN/MAX over all rows equals MIN/MAX over the default
+        // language alone. No language join needed.
         global $wpdb;
         $price_range = $wpdb->get_row( "SELECT MIN(CAST(meta_value AS DECIMAL(10,2))) as min_price, MAX(CAST(meta_value AS DECIMAL(10,2))) as max_price FROM {$wpdb->postmeta} WHERE meta_key='_price' AND meta_value != '' AND meta_value != '0'" );  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient in catalog_meta()
 
@@ -705,6 +812,22 @@ class KaliCart_Bridge_API {
     }
 
     private static function published_product_count(): int {
+        // Multilingual: wp_count_posts() bypasses the language context entirely and
+        // counts every translation, inflating the total. On a DB-translating site we
+        // count via a language-scoped WP_Query so the total reflects the canonical
+        // (default-language) catalog only. No-op on monolingual sites (no 'lang' arg).
+        $default_lang = self::default_language();
+        if ( $default_lang !== null ) {
+            $q = new WP_Query( [
+                'post_type'      => 'product',
+                'post_status'    => 'publish',
+                'posts_per_page' => 1,
+                'fields'         => 'ids',
+                'no_found_rows'  => false,
+                'lang'           => $default_lang,
+            ] );
+            return (int) $q->found_posts;
+        }
         $counts = wp_count_posts( 'product' );
         return (int) ( $counts->publish ?? 0 );
     }

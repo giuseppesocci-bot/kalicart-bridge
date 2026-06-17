@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, agent, catalog, machine-readable
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.98
+Stable tag: 1.0.99
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -115,6 +115,11 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.99 =
+* Multilingual - Fixed duplicate products and categories on sites running a database-translating multilingual plugin (WPML/WooCommerce Multilingual, Polylang). The public agent catalog is now served exclusively in the site default language: each translated product or category previously appeared once per language, multiplying the catalog. The request context is pinned to the default language at the start of every public catalog request, so product enumeration, the category tree and the flat category list all return the canonical default-language entries only
+* Multilingual - The single-product endpoint (/catalog/product/{id}) now canonicalizes a translated product ID to its default-language counterpart and returns it; an ID with no mapping into the default language returns 404, keeping the catalog identity stable for agents regardless of which translation ID they hold
+* Multilingual - The product total now reflects the canonical default-language catalog instead of counting every translation; the catalog meta cache is namespaced per language. No-op on monolingual sites and on output-translating plugins (e.g. Weglot, GTranslate proxy) where the database holds a single language
 
 = 1.0.98 =
 * Security / hardening - Checkout session REST endpoints reviewed for WordPress.org compliance. Read-only public routes now declare an explicit public permission_callback (__return_true). The destructive DELETE (cancel session) route uses a dedicated permission_callback that validates the token format and confirms the session exists before allowing cancellation. Session IDs are now cryptographically secure 128-bit random bearer tokens (random_bytes) instead of md5(uniqid()). The same explicit-public posture was applied to the read-only catalog and MCP endpoints
