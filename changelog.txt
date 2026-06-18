@@ -1,5 +1,10 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-18 - version 1.0.101
+
+* Discoverability - Refined the plugin's directory metadata to better describe what it does and who it is for. The display name, search tags, short description and opening description now state plainly that the plugin makes a WooCommerce catalog computable and readable by AI agents and assistants (via REST API and an MCP server). No functional code changed in this release
+
+
 2026-06-17 - version 1.0.100
 
 * i18n - Translated the Federated Catalog admin panel into Italian, German, French and Spanish. The panel was already translation-ready in code but its strings (added in 1.0.97) were missing from the translation catalogs, so they previously fell back to English in every locale. Regenerated the translation template and updated all four locale catalogs: activation and revoke buttons, the consent description, the two-step revoke confirmation and the dynamic status messages are now localized

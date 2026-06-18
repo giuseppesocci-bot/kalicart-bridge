@@ -1,21 +1,21 @@
-=== KaliCart Bridge ===
+=== KaliCart Bridge – Computable WooCommerce Catalog for AI Agents ===
 Contributors: carthub
-Tags: woocommerce, ai, agent, catalog, machine-readable
+Tags: woocommerce, ai, mcp, rest api, chatgpt
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.100
+Stable tag: 1.0.101
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Makes your WooCommerce catalog machine-readable and agent-accessible. No LLM. No cloud. No API key.
+Makes your WooCommerce catalog computable and discoverable by AI agents and assistants — ChatGPT, Claude, Gemini and any MCP client. No API key.
 
 Documentation: https://bridge.kalicart.com/docs/
 
 == Description ==
 
-KaliCart Bridge exposes your WooCommerce product catalog as a structured, normalized REST API designed for AI shopping agents to consume directly.
+KaliCart Bridge makes your WooCommerce product catalog computable: it exposes a structured, normalized REST API and an MCP server that AI shopping agents and assistants — such as ChatGPT, Claude, Gemini, Perplexity and any MCP-capable client — can read and act on directly. No LLM runs on your server; the plugin only turns your existing catalog into clean, computable data.
 
 **What it does:**
 
@@ -115,6 +115,9 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.101 =
+* Discoverability - Refined the plugin's directory metadata to better describe what it does and who it is for. The display name, search tags, short description and opening description now state plainly that the plugin makes a WooCommerce catalog computable and readable by AI agents and assistants (via REST API and an MCP server). No functional code changed in this release
 
 = 1.0.100 =
 * i18n - Translated the Federated Catalog admin panel into Italian, German, French and Spanish. The panel was already translation-ready in code but its strings (added in 1.0.97) were missing from the translation catalogs, so they previously fell back to English in every locale. Regenerated the translation template and updated all four locale catalogs: activation and revoke buttons, the consent description, the two-step revoke confirmation and the dynamic status messages are now localized
