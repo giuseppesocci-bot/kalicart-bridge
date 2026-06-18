@@ -1,4 +1,4 @@
-=== KaliCart Bridge – Computable WooCommerce Catalog for AI Agents ===
+=== KaliCart Bridge – AI Agent Catalog for WooCommerce ===
 Contributors: carthub
 Tags: woocommerce, ai, mcp, rest api, chatgpt
 Requires at least: 6.0
@@ -9,13 +9,13 @@ WC requires at least: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Makes your WooCommerce catalog computable and discoverable by AI agents and assistants — ChatGPT, Claude, Gemini and any MCP client. No API key.
-
-Documentation: https://bridge.kalicart.com/docs/
+Makes your WooCommerce catalog computable and readable by AI agents and MCP clients like ChatGPT, Claude and Gemini. No API key.
 
 == Description ==
 
 KaliCart Bridge makes your WooCommerce product catalog computable: it exposes a structured, normalized REST API and an MCP server that AI shopping agents and assistants — such as ChatGPT, Claude, Gemini, Perplexity and any MCP-capable client — can read and act on directly. No LLM runs on your server; the plugin only turns your existing catalog into clean, computable data.
+
+Documentation: https://bridge.kalicart.com/docs/
 
 **What it does:**
 
