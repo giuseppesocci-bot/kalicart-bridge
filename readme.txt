@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, mcp, rest api, chatgpt
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.101
+Stable tag: 1.0.102
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -115,6 +115,9 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.102 =
+* Federated Catalog panel - Updated the activation banner copy to make the benefit clearer and the action more deliberate, and added a distinct post-activation confirmation message (the panel now reads differently before and after the catalog is federated). Text and translation update only; no functional code changed. Strings localized in Italian, German, French and Spanish
 
 = 1.0.101 =
 * Discoverability - Refined the plugin's directory metadata to better describe what it does and who it is for. The display name, search tags, short description and opening description now state plainly that the plugin makes a WooCommerce catalog computable and readable by AI agents and assistants (via REST API and an MCP server). No functional code changed in this release

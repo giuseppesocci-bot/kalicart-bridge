@@ -17,14 +17,28 @@
 
   <!-- FEDERATION (sempre visibile, sotto l'header): announce + revoca consensuale -->
   <div class="kali-federation-block" style="margin:0 0 4px;padding:14px 16px;border:1px solid var(--kb-border,#e2e4e7);border-radius:10px;background:var(--kb-acc-bg,#f6f9ff)">
-    <strong style="display:block;margin-bottom:6px"><?php esc_html_e( 'Federated catalog', 'kalicart-bridge' ); ?></strong>
+    <?php $kalicart_bridge_is_federated = (bool) get_option( 'kalicart_bridge_federation_registered_at', '' ); ?>
+    <strong style="display:block;margin-bottom:6px"><?php
+      echo esc_html( $kalicart_bridge_is_federated
+        ? __( 'Great choice! Your catalog is going global.', 'kalicart-bridge' )
+        : __( 'Increase your catalog\'s visibility', 'kalicart-bridge' )
+      ); ?></strong>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--kb-muted,#555)">
-      <?php echo wp_kses_post( sprintf(
-        /* translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag */
-        __( 'Clicking Activate sends your store\'s public URL once to KaliCart Global, which then periodically reads your public catalog and includes it in federated agent search. No customer, order, or private data is ever sent. You can revoke anytime. %1$sWhat is sent and how it is used%2$s.', 'kalicart-bridge' ),
-        '<a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">',
-        '</a>'
-      ) ); ?>
+      <?php if ( $kalicart_bridge_is_federated ) : ?>
+        <?php echo wp_kses_post( sprintf(
+          /* translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag */
+          __( 'AI assistants can now find your products across the KaliCart global network. Only public catalog data is shared, and you can deactivate it anytime. %1$sSee what is shared%2$s.', 'kalicart-bridge' ),
+          '<a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">',
+          '</a>'
+        ) ); ?>
+      <?php else : ?>
+        <?php echo wp_kses_post( sprintf(
+          /* translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag */
+          __( 'Activate the Federated Catalog for free: your products join a global network where AI assistants can find them. It only takes one click, and you can deactivate it anytime. %1$sSee what is shared%2$s.', 'kalicart-bridge' ),
+          '<a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">',
+          '</a>'
+        ) ); ?>
+      <?php endif; ?>
     </p>
     <button type="button" class="kali-btn kali-btn--primary" id="federationActivateBtn"><?php esc_html_e( 'Activate Federated Catalog', 'kalicart-bridge' ); ?></button>
     <button type="button" class="kali-btn kali-btn--secondary" id="federationRevokeBtn" style="display:none"><?php esc_html_e( 'Revoke consent', 'kalicart-bridge' ); ?></button>

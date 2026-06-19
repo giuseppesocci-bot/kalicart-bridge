@@ -828,3 +828,16 @@ msgstr "Cochez d'abord la case de consentement ci-dessus."
 #: includes/class-admin.php:79
 msgid "Activation failed. Please try again."
 msgstr "Échec de l'activation. Veuillez réessayer."
+
+
+msgid "Increase your catalog's visibility"
+msgstr "Augmentez la visibilité de votre catalogue"
+
+msgid "Great choice! Your catalog is going global."
+msgstr "Excellent choix ! Votre catalogue devient mondial."
+
+msgid "Activate the Federated Catalog for free: your products join a global network where AI assistants can find them. It only takes one click, and you can deactivate it anytime. %1$sSee what is shared%2$s."
+msgstr "Activez gratuitement le Catalogue fédéré : vos produits rejoignent un réseau mondial où les assistants IA peuvent les trouver. Un seul clic suffit, et vous pouvez le désactiver à tout moment. %1$sDécouvrez ce qui est partagé%2$s."
+
+msgid "AI assistants can now find your products across the KaliCart global network. Only public catalog data is shared, and you can deactivate it anytime. %1$sSee what is shared%2$s."
+msgstr "Les assistants IA peuvent désormais trouver vos produits sur le réseau mondial KaliCart. Seules les données publiques du catalogue sont partagées, et vous pouvez désactiver cette fonction à tout moment. %1$sDécouvrez ce qui est partagé%2$s."
