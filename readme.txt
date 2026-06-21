@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, mcp, rest api, chatgpt
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.102
+Stable tag: 1.0.103
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -115,6 +115,9 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.103 =
+* Agent coupon visibility - Merchants can now choose exactly which coupons AI agents are allowed to see. A new Coupons tab adds a master switch (off by default, so no coupon is ever exposed unless you decide to) and a list of your active coupons to pick from. Selected coupons are presented to agents as conditional savings, with WooCommerce checkout always remaining the final authority on whether a coupon actually applies. Private, targeted or newsletter codes you do not select are never shared with agents
 
 = 1.0.102 =
 * Federated Catalog panel - Updated the activation banner copy to make the benefit clearer and the action more deliberate, and added a distinct post-activation confirmation message (the panel now reads differently before and after the catalog is federated). Text and translation update only; no functional code changed. Strings localized in Italian, German, French and Spanish

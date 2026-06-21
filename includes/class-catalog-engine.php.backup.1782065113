@@ -621,18 +621,9 @@ class KaliCart_Bridge_Catalog_Engine {
     public static function active_coupons_for_product( WC_Product $p, array $price_data = [] ): array {
         if ( ! class_exists( 'WC_Coupon' ) ) return [];
 
-        // Agent coupon exposure is opt-in. Master switch OFF or an empty whitelist
-        // means the catalog stays silent on coupons: active_coupons is always [].
-        // The whitelist stores coupon POST IDs (stable across code renames).
-        if ( ! get_option( 'kalicart_bridge_coupons_agent_enabled', false ) ) return [];
-        $whitelist = get_option( 'kalicart_bridge_coupons_agent_whitelist', [] );
-        if ( ! is_array( $whitelist ) || empty( $whitelist ) ) return [];
-        $whitelist = array_map( 'intval', $whitelist );
-
         $coupon_posts = get_posts( [
             'post_type' => 'shop_coupon',
             'post_status' => 'publish',
-            'post__in' => $whitelist,
             'numberposts' => 200,
             'orderby' => 'date',
             'order' => 'DESC',
@@ -641,10 +632,6 @@ class KaliCart_Bridge_Catalog_Engine {
 
         $out = [];
         foreach ( $coupon_posts as $post ) {
-            // Whitelist gate: coupon ID must be explicitly selected by the merchant.
-            // Additive — the activity/applicability checks below still apply.
-            if ( ! in_array( (int) $post->ID, $whitelist, true ) ) continue;
-
             $coupon = new WC_Coupon( $post->post_name );
             if ( ! $coupon || ! $coupon->get_code() ) continue;
             if ( ! self::coupon_is_currently_active( $coupon ) ) continue;

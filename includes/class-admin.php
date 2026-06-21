@@ -66,9 +66,55 @@ class KaliCart_Bridge_Admin {
             'federation_registered_at' => get_option( 'kalicart_bridge_federation_registered_at', '' ),
             'sitemap_enabled' => (bool) get_option( 'kalicart_bridge_sitemap_enabled', true ),
             'return_policy_url'  => get_option( 'kalicart_bridge_return_policy_url', '' ),
+            'coupons_agent_enabled'   => (bool) get_option( 'kalicart_bridge_coupons_agent_enabled', false ),
+            'coupons_agent_whitelist' => array_map( 'intval', (array) get_option( 'kalicart_bridge_coupons_agent_whitelist', [] ) ),
+            'coupons_eligible'        => self::eligible_coupons_for_ui(),
+            'currency'                => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : '',
             'site_url'           => trailingslashit( get_site_url() ),
             'i18n'               => self::js_i18n(),
         ] );
+    }
+
+    /**
+     * Coupon eligible for the agent-exposure UI list.
+     * Eligible = published + currently active (not expired, usage limit not reached).
+     * Product-level applicability is intentionally NOT checked here: the read path
+     * decides per-product. Expired coupons simply do not appear.
+     *
+     * @return array<int,array{id:int,code:string,type:string,amount:float}>
+     */
+    private static function eligible_coupons_for_ui(): array {
+        if ( ! class_exists( 'WC_Coupon' ) ) return [];
+
+        $posts = get_posts( [
+            'post_type'   => 'shop_coupon',
+            'post_status' => 'publish',
+            'numberposts' => 200,
+            'orderby'     => 'date',
+            'order'       => 'DESC',
+        ] );
+        if ( empty( $posts ) ) return [];
+
+        $out = [];
+        foreach ( $posts as $post ) {
+            $coupon = new WC_Coupon( $post->post_name );
+            if ( ! $coupon || ! $coupon->get_code() ) continue;
+
+            // Same activity gate as the read path (expiry + usage limit), inlined to
+            // avoid coupling the admin class to the catalog engine internals.
+            $expires = $coupon->get_date_expires();
+            if ( $expires && $expires->getTimestamp() < time() ) continue;
+            $limit = $coupon->get_usage_limit();
+            if ( $limit && $coupon->get_usage_count() >= $limit ) continue;
+
+            $out[] = [
+                'id'     => (int) $post->ID,
+                'code'   => $coupon->get_code(),
+                'type'   => $coupon->get_discount_type(),
+                'amount' => (float) $coupon->get_amount(),
+            ];
+        }
+        return $out;
     }
 
     private static function js_i18n(): array {
@@ -124,6 +170,9 @@ class KaliCart_Bridge_Admin {
             'warn_global'    => __( 'Disabling Global indexing consent removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Direct agent access to this store stays active.', 'kalicart-bridge' ),
             'warn_sitemap'   => __( 'Disabling the agentic sitemap removes the structured endpoint map that agents use to enumerate your catalog surfaces.', 'kalicart-bridge' ),
             'warn_wellknown' => __( 'Disabling .well-known discovery files removes the first-probe signal used by agents that check standard discovery paths before loading your storefront.', 'kalicart-bridge' ),
+            'warn_coupons'   => __( 'When enabled, only the coupons you tick below are exposed to agents. Selected coupons appear in catalog results as conditional checkout savings; WooCommerce checkout remains the final authority on validity. Coupons you do not tick — including private or targeted codes — are never sent to agents.', 'kalicart-bridge' ),
+            'coupons_none'   => __( 'No active coupons available to expose.', 'kalicart-bridge' ),
+            'coupons_hint'   => __( 'Tick the coupons you want agents to see. Expired or used-up coupons are not listed.', 'kalicart-bridge' ),
         ];
     }
 
@@ -173,7 +222,16 @@ class KaliCart_Bridge_Admin {
             'hint_category'      => filter_input( INPUT_POST, 'hint_category',      FILTER_VALIDATE_BOOLEAN ),
             'agent_index_url'    => esc_url_raw( filter_input( INPUT_POST, 'agent_index_url', FILTER_SANITIZE_URL ) ?? '' ),
             'return_policy_url'  => esc_url_raw( filter_input( INPUT_POST, 'return_policy_url', FILTER_SANITIZE_URL ) ?? '' ),
+            'coupons_agent_enabled' => filter_input( INPUT_POST, 'coupons_agent_enabled', FILTER_VALIDATE_BOOLEAN ),
         ];
+
+        // Coupon whitelist: comma-separated coupon POST IDs, sanitized to a clean int array.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each id is run through absint() below.
+        $coupon_ids_raw = wp_unslash( $_POST['coupons_agent_whitelist'] ?? '' );
+        $coupon_ids = array_values( array_unique( array_filter( array_map(
+            'absint',
+            explode( ',', is_string( $coupon_ids_raw ) ? $coupon_ids_raw : '' )
+        ) ) ) );
 
         update_option( 'kalicart_bridge_badge_enabled',   $settings['badge_enabled'] );
         update_option( 'kalicart_bridge_robots_enabled',  $settings['robots_enabled'] );
@@ -187,6 +245,8 @@ class KaliCart_Bridge_Admin {
         update_option( 'kalicart_bridge_hint_category',      $settings['hint_category'] );
         update_option( 'kalicart_bridge_agent_index_url',    $settings['agent_index_url'] ?: null );
         update_option( 'kalicart_bridge_return_policy_url',  $settings['return_policy_url'] ?: null );
+        update_option( 'kalicart_bridge_coupons_agent_enabled', $settings['coupons_agent_enabled'] );
+        update_option( 'kalicart_bridge_coupons_agent_whitelist', $coupon_ids );
         if ( $settings['well_known_enabled'] ) {
             KaliCart_Bridge_Signals::write_well_known_files();
         }

@@ -63,6 +63,7 @@
       <button class="kali-tab" data-tab="quarantine"><?php esc_html_e( 'Quarantine', 'kalicart-bridge' ); ?></button>
       <button class="kali-tab" data-tab="endpoints"><?php esc_html_e( 'Endpoints', 'kalicart-bridge' ); ?></button>
       <button class="kali-tab" data-tab="settings"><?php esc_html_e( 'Settings', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab" data-tab="coupons"><?php esc_html_e( 'Coupons', 'kalicart-bridge' ); ?></button>
     </div>
   </div>
 
@@ -357,6 +358,36 @@
     <div class="kali-settings-footer">
       <button id="btnSaveSettings" class="kali-btn kali-btn--primary"><?php esc_html_e( 'Save settings', 'kalicart-bridge' ); ?></button>
       <span id="settingsSaved" class="kali-saved-notice" style="display:none">&#x2713; <?php esc_html_e( 'Saved', 'kalicart-bridge' ); ?></span>
+    </div>
+  </div>
+
+  <!-- TAB: COUPONS -->
+  <div id="kali-tab-coupons" class="kali-panel" style="display:none">
+
+    <div class="kali-section-title"><?php esc_html_e( 'Agent coupon exposure', 'kalicart-bridge' ); ?></div>
+    <p style="margin:0 0 16px;font-size:13px;color:var(--kb-muted,#555);line-height:1.6;max-width:680px;">
+      <?php esc_html_e( 'By default the catalog tells agents nothing about your coupons. Turn this on and pick exactly which active coupons agents may see. Selected coupons are presented to agents as conditional savings — WooCommerce checkout always has the final say on whether a coupon actually applies. Private, targeted or newsletter codes you leave unticked are never exposed.', 'kalicart-bridge' ); ?>
+    </p>
+
+    <div class="kali-settings-list">
+      <label class="kali-toggle-row">
+        <div class="kali-toggle-info">
+          <strong><?php esc_html_e( 'Expose coupons to agents', 'kalicart-bridge' ); ?></strong>
+          <span><?php esc_html_e( 'Master switch. When off, active_coupons is always empty regardless of selection below.', 'kalicart-bridge' ); ?></span>
+        </div>
+        <div class="kali-toggle"><input type="checkbox" id="toggleCouponsAgent"><span class="kali-toggle__slider"></span></div>
+      </label>
+    </div>
+
+    <div id="couponsWhitelistWrap" style="margin-top:18px;display:none">
+      <div class="kali-section-title" style="margin-bottom:6px"><?php esc_html_e( 'Eligible coupons', 'kalicart-bridge' ); ?></div>
+      <p id="couponsHint" style="margin:0 0 12px;font-size:12px;color:var(--kb-muted,#999);"></p>
+      <div id="couponsList" class="kali-coupons-list"></div>
+    </div>
+
+    <div class="kali-settings-footer">
+      <button id="btnSaveCoupons" class="kali-btn kali-btn--primary"><?php esc_html_e( 'Save settings', 'kalicart-bridge' ); ?></button>
+      <span id="couponsSaved" class="kali-saved-notice" style="display:none">&#x2713; <?php esc_html_e( 'Saved', 'kalicart-bridge' ); ?></span>
     </div>
   </div>
 

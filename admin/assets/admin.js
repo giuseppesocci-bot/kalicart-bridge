@@ -397,6 +397,7 @@
     if ( $( 'toggleGlobalConsent' ) ) $( 'toggleGlobalConsent' ).checked = KaliBridge.global_consent;
     if ( $( 'toggleSitemap' ) ) $( 'toggleSitemap' ).checked = KaliBridge.sitemap_enabled;
     initFederation();
+    initCoupons();
 
     syncPositionWrap();
     $( 'toggleBadge' )?.addEventListener( 'change', syncPositionWrap );
@@ -410,6 +411,7 @@
     } );
 
     $( 'btnSaveSettings' )?.addEventListener( 'click', saveSettings );
+    $( 'btnSaveCoupons' )?.addEventListener( 'click', saveSettings );
     $( 'returnPolicySlug' )?.addEventListener( 'input', updateReturnPolicyBlock );
 
     // Alert gialli su toggle critici
@@ -593,6 +595,8 @@
     fd.append( 'hint_search',        $( 'toggleHintSearch' )?.checked   ? '1' : '0' );
     fd.append( 'hint_zero',          $( 'toggleHintZero' )?.checked     ? '1' : '0' );
     fd.append( 'hint_category',      $( 'toggleHintCategory' )?.checked ? '1' : '0' );
+    fd.append( 'coupons_agent_enabled', $( 'toggleCouponsAgent' )?.checked ? '1' : '0' );
+    fd.append( 'coupons_agent_whitelist', collectCouponSelection() );
     fd.append( 'badge_position',  badgePosition );
     fd.append( 'agent_index_url', $( 'agentIndexUrl' )?.value?.trim() ?? '' );
     const slug = $( 'returnPolicySlug' )?.value?.trim() ?? '';
@@ -604,6 +608,8 @@
         if ( res.success ) {
           const notice = $( 'settingsSaved' );
           if ( notice ) { notice.style.display = 'inline'; setTimeout( () => ( notice.style.display = 'none' ), 2500 ); }
+          const cnotice = $( 'couponsSaved' );
+          if ( cnotice ) { cnotice.style.display = 'inline'; setTimeout( () => ( cnotice.style.display = 'none' ), 2500 ); }
 
           updateReturnPolicyBlock();
           loadHealth( true );
@@ -618,6 +624,55 @@
     navigator.clipboard.writeText( text ).catch( () => {} );
     const btn = $( 'copyHeadLink' );
     if ( btn ) { btn.style.color = '#22c55e'; setTimeout( () => ( btn.style.color = '' ), 1500 ); }
+  }
+
+  // ── Coupons (agent exposure whitelist) ────────────────────────────────────
+  function initCoupons() {
+    const master = $( 'toggleCouponsAgent' );
+    if ( ! master ) return;
+    master.checked = !! KaliBridge.coupons_agent_enabled;
+
+    const hint = $( 'couponsHint' );
+    if ( hint ) hint.textContent = KaliBridge.i18n?.coupons_hint || '';
+
+    renderCouponList();
+    syncCouponWrap();
+    master.addEventListener( 'change', syncCouponWrap );
+  }
+
+  function syncCouponWrap() {
+    const wrap = $( 'couponsWhitelistWrap' );
+    if ( wrap ) wrap.style.display = $( 'toggleCouponsAgent' )?.checked ? 'block' : 'none';
+  }
+
+  function renderCouponList() {
+    const list = $( 'couponsList' );
+    if ( ! list ) return;
+    const eligible = Array.isArray( KaliBridge.coupons_eligible ) ? KaliBridge.coupons_eligible : [];
+    const selected = ( KaliBridge.coupons_agent_whitelist || [] ).map( Number );
+
+    if ( ! eligible.length ) {
+      list.innerHTML = '<p style="font-size:13px;color:var(--kb-muted,#999);margin:0;">'
+        + esc( KaliBridge.i18n?.coupons_none || 'No active coupons available to expose.' ) + '</p>';
+      return;
+    }
+
+    list.innerHTML = eligible.map( c => {
+      const checked = selected.includes( Number( c.id ) ) ? ' checked' : '';
+      const value = c.type === 'percent'
+        ? ( c.amount + '%' )
+        : ( c.amount + ' ' + ( KaliBridge.currency || '' ) ).trim();
+      return '<label class="kali-coupon-item" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--kb-border,#e5e5e5);border-radius:6px;margin-bottom:8px;cursor:pointer;">'
+        + '<input type="checkbox" class="kali-coupon-cb" value="' + Number( c.id ) + '"' + checked + ' style="margin:0;">'
+        + '<code style="background:var(--kb-code-bg,#fff);border:1px solid var(--kb-border,#ddd);border-radius:4px;padding:2px 8px;font-size:13px;">' + esc( c.code ) + '</code>'
+        + '<span style="font-size:12px;color:var(--kb-muted,#777);">' + esc( value ) + '</span>'
+        + '</label>';
+    } ).join( '' );
+  }
+
+  function collectCouponSelection() {
+    return Array.from( document.querySelectorAll( '.kali-coupon-cb:checked' ) )
+      .map( cb => cb.value ).join( ',' );
   }
 
   // ── Util ──────────────────────────────────────────────────────────────────
