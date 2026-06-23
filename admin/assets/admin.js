@@ -394,7 +394,6 @@
     if ( $( 'toggleHintZero' ) )     $( 'toggleHintZero' ).checked     = KaliBridge.hint_zero;
     if ( $( 'toggleHintCategory' ) ) $( 'toggleHintCategory' ).checked = KaliBridge.hint_category;
     if ( $( 'toggleRobots' ) )  $( 'toggleRobots' ).checked  = KaliBridge.robots_enabled;
-    if ( $( 'toggleGlobalConsent' ) ) $( 'toggleGlobalConsent' ).checked = KaliBridge.global_consent;
     if ( $( 'toggleSitemap' ) ) $( 'toggleSitemap' ).checked = KaliBridge.sitemap_enabled;
     initFederation();
     initCoupons();
@@ -418,7 +417,6 @@
     const WARNINGS = {
       toggleBadge:      STR.warn_badge,
       toggleRobots:     STR.warn_robots,
-      toggleGlobalConsent: STR.warn_global,
       toggleSitemap:    STR.warn_sitemap,
       toggleWellKnown:  STR.warn_wellknown,
     };
@@ -480,7 +478,6 @@
 
   // ── Federation (announce / revoke) ──────────────────────────────────────────
   function renderFederation() {
-    const consent  = $( 'toggleGlobalConsent' )?.checked;
     const regAt    = KaliBridge.federation_registered_at;
     const actBtn   = $( 'federationActivateBtn' );
     const revBtn   = $( 'federationRevokeBtn' );
@@ -515,9 +512,6 @@
     if ( ! actBtn ) return;
 
     renderFederation();
-    // il consenso governa l'abilitazione del bottone in tempo reale
-    $( 'toggleGlobalConsent' )?.addEventListener( 'change', renderFederation );
-
     actBtn.addEventListener( 'click', () => {
       // Il click E' il consenso: niente guardia, il server accende il consenso e annuncia.
       actBtn.disabled = true;
@@ -529,9 +523,7 @@
         .then( res => {
           if ( res.success ) {
             KaliBridge.federation_registered_at = res.data.registered_at;
-            // sincronizza la casella consenso nei Settings (stessa verita' lato server)
             KaliBridge.global_consent = true;
-            if ( $( 'toggleGlobalConsent' ) ) $( 'toggleGlobalConsent' ).checked = true;
             renderFederation();
           } else {
             actBtn.disabled = false;
@@ -569,8 +561,6 @@
           const confirmBox = $( 'federationRevokeConfirm' );
           if ( confirmBox ) confirmBox.style.display = 'none';
           if ( res.success ) {
-            // la revoca spegne il consenso lato server: rifletti in UI
-            if ( $( 'toggleGlobalConsent' ) ) $( 'toggleGlobalConsent' ).checked = false;
             KaliBridge.global_consent = false;
             KaliBridge.federation_registered_at = '';
           }
@@ -588,7 +578,6 @@
     fd.append( 'nonce',           KaliBridge.nonce );
     fd.append( 'badge_enabled',   $( 'toggleBadge' )?.checked   ? '1' : '0' );
     fd.append( 'robots_enabled',  $( 'toggleRobots' )?.checked  ? '1' : '0' );
-    fd.append( 'global_consent',  $( 'toggleGlobalConsent' )?.checked ? '1' : '0' );
     fd.append( 'sitemap_enabled',  $( 'toggleSitemap' )?.checked  ? '1' : '0' );
     fd.append( 'checkout_enabled',  $( 'toggleCheckout' )?.checked  ? '1' : '0' );
     fd.append( 'well_known_enabled', $( 'toggleWellKnown' )?.checked    ? '1' : '0' );

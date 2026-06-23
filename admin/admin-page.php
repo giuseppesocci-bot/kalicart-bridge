@@ -43,7 +43,7 @@
     <button type="button" class="kali-btn kali-btn--primary" id="federationActivateBtn"><?php esc_html_e( 'Activate Federated Catalog', 'kalicart-bridge' ); ?></button>
     <button type="button" class="kali-btn kali-btn--secondary" id="federationRevokeBtn" style="display:none"><?php esc_html_e( 'Revoke consent', 'kalicart-bridge' ); ?></button>
     <span id="federationStatus" style="display:none;margin-left:10px;font-size:13px;color:var(--kb-ok,#00a32a)"></span>
-    <span id="federationHint" style="display:none;margin-left:10px;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Tick the Global indexing consent box in Settings first.', 'kalicart-bridge' ); ?></span>
+    <span id="federationHint" style="display:none;margin-left:10px;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Use the Federated Catalog banner above to manage consent.', 'kalicart-bridge' ); ?></span>
 
     <!-- Filtro revoca a due step (stile plugin: kali-warn-alert). Nascosto finche' non si clicca Revoke. -->
     <div id="federationRevokeConfirm" class="kali-warn-alert" style="display:none;margin-top:12px">
@@ -275,15 +275,6 @@
         </div>
         <div class="kali-toggle"><input type="checkbox" id="toggleRobots"><span class="kali-toggle__slider"></span></div>
       </label>
-
-      <label class="kali-toggle-row">
-        <div class="kali-toggle-info">
-          <strong><?php esc_html_e( 'KaliCart Global indexing consent', 'kalicart-bridge' ); ?></strong>
-          <span><?php echo wp_kses_post( sprintf( /* translators: %1$s and %2$s: discovery-document field names, shown as code */ __( 'Allows KaliCart Global to index this catalog and include it in federated agent search. Published in the discovery document as %1$s and %2$s. Read-only: Global never writes to your store.', 'kalicart-bridge' ), '<code>crawler_policy.allow_global_indexing</code>', '<code>intent_flags</code>' ) ); ?></span>
-        </div>
-        <div class="kali-toggle"><input type="checkbox" id="toggleGlobalConsent"><span class="kali-toggle__slider"></span></div>
-      </label>
-
 
       <label class="kali-toggle-row">
         <div class="kali-toggle-info">

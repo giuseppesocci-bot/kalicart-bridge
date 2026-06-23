@@ -310,6 +310,25 @@ class KaliCart_Bridge_API {
                 'read_only'             => true,
                 'cache'                 => 'public, max-age=300, stale-while-revalidate=900',
 
+                'request_contract' => [
+                    'search_endpoint' => [
+                        'url'                    => $base . '/search',
+                        'text_parameter'         => 'q',
+                        'result_count_parameter' => 'per_page',
+                        'invalid_aliases'        => [ 'query' => 'q', 'limit' => 'per_page' ],
+                        'copy_paste_example'     => $base . '/search?q=Nike&per_page=10',
+                    ],
+                    'products_endpoint' => [
+                        'url'                    => $base . '/products',
+                        'role'                   => 'browse/list products with filters; not full-text search',
+                        'does_not_accept'        => [ 'q', 'query', 'limit' ],
+                        'use_for_text_search'    => $base . '/search?q={q}',
+                        'result_count_parameter' => 'per_page',
+                        'copy_paste_example'     => $base . '/products?per_page=10',
+                    ],
+                    'runtime_guidance' => 'If an agent uses query instead of q, limit instead of per_page, or sends q to /catalog/products, the API returns a 400 response with the corrected endpoint and suggested_url.',
+                ],
+
                 'query_construction' => [
                     'rule'    => 'CRITICAL. q must contain ONLY the bare product noun (the spine). Every attribute (category, gender, color, price) MUST go in its own structured filter, never inside q. size is NOT a search filter — use product detail after candidate selection. Stacking attributes into q returns 0 results.',
                     'correct' => [ '?q=t-shirt&gender=male&max_price=50', '?q=costume&gender=female&color=blue', '?q=scarpe&category=scarpe-uomo' ],
@@ -413,16 +432,17 @@ class KaliCart_Bridge_API {
                 '1) GET public_catalog.meta_url first to discover valid category slugs, accepted filter values, price range.',
                 '2) Use public_catalog.search_url_template with bare product spine in q. Put every attribute in its own filter.',
                 '3) If 0 results: follow query_construction.zero_results_recovery (barer q, then category browse).',
-                '4) Never stack brand, color, gender or price inside q. size is not a search filter — read it from product variations after candidate selection.',
-                '5) Read price.current for the actual catalog price. Check stock.in_stock before presenting offers.',
-                '6) If active_coupons is present, present coupons as conditional checkout savings only; never replace price.current.',
-                '7) Use merchant_shipping_policy/product shipping hints for reasoning, but exact shipping is verified by WooCommerce checkout.',
-                '8) This catalog is live WooCommerce — no sync delay. Always current.',
-                '9) Taxonomy is merchant-native: use /catalog/categories to enumerate valid category paths, not assumed global taxonomy.',
-                '10) Check stock.confidence before reporting availability. If null quantity, report status only.',
-                '11) For variable products, read purchase_readiness.blocking_fields before quoting price or proposing checkout.',
-                '12) All totals are preliminary until verified at cart/checkout. Label estimates as such.',
-                '13) Verify semantic fit before proposing checkout — category match is not sufficient.',
+                '4) Use q, never query. Use per_page, never limit. Use /catalog/search for text search and /catalog/products only for browse/listing.',
+                '5) Never stack brand, color, gender or price inside q. size is not a search filter — read it from product variations after candidate selection.',
+                '6) Read price.current for the actual catalog price. Check stock.in_stock before presenting offers.',
+                '7) If active_coupons is present, present coupons as conditional checkout savings only; never replace price.current.',
+                '8) Use merchant_shipping_policy/product shipping hints for reasoning, but exact shipping is verified by WooCommerce checkout.',
+                '9) This catalog is live WooCommerce — no sync delay. Always current.',
+                '10) Taxonomy is merchant-native: use /catalog/categories to enumerate valid category paths, not assumed global taxonomy.',
+                '11) Check stock.confidence before reporting availability. If null quantity, report status only.',
+                '12) For variable products, read purchase_readiness.blocking_fields before quoting price or proposing checkout.',
+                '13) All totals are preliminary until verified at cart/checkout. Label estimates as such.',
+                '14) Verify semantic fit before proposing checkout — category match is not sufficient.',
             ] ),
 
             'placement_guidance' => 'The <link rel="kalicart-agent"> in <head> and the body anchor badge both carry this discovery URL. Head covers head-reading agents; body anchor covers DOM/content-parsing agents. Both are in raw HTML — not injected via JavaScript.',
@@ -497,11 +517,11 @@ class KaliCart_Bridge_API {
             [ 'name' => 'on_sale',   'in' => 'query', 'description' => 'Only on-sale products when true.', 'schema' => [ 'type' => 'boolean' ] ],
             [ 'name' => 'orderby',   'in' => 'query', 'description' => 'Sort field.', 'schema' => [ 'type' => 'string', 'enum' => [ 'date', 'price', 'title', 'popularity' ], 'default' => 'date' ] ],
             [ 'name' => 'order',     'in' => 'query', 'description' => 'Sort direction.', 'schema' => [ 'type' => 'string', 'enum' => [ 'ASC', 'DESC' ], 'default' => 'DESC' ] ],
-            [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100).', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
+            [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100). Parameter name is per_page; do not use limit.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
             [ 'name' => 'page',      'in' => 'query', 'description' => 'Page number.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'default' => 1 ] ],
         ];
 
-        $q_param = [ 'name' => 'q', 'in' => 'query', 'description' => 'Full-text search query.', 'schema' => [ 'type' => 'string' ] ];
+        $q_param = [ 'name' => 'q', 'in' => 'query', 'description' => 'Full-text search query. Parameter name is exactly q; do not use query. Use only on /catalog/search, never on /catalog/products.', 'schema' => [ 'type' => 'string' ] ];
 
         $list_response = [
             'description' => 'Matching products with pagination.',
@@ -539,9 +559,9 @@ class KaliCart_Bridge_API {
                 ] ],
                 '/catalog/products' => [ 'get' => [
                     'operationId' => 'listProducts',
-                    'summary'     => 'Paginated product listing with optional filters.',
+                    'summary'     => 'Paginated product listing with optional filters. This endpoint does not accept q/query; use /catalog/search?q=... for text search.',
                     'parameters'  => $filter_params,
-                    'responses'   => [ '200' => $list_response ],
+                    'responses'   => [ '200' => $list_response, '400' => [ 'description' => 'Invalid search-style parameter supplied to listing endpoint.' ] ],
                 ] ],
                 '/catalog/product/{id}' => [ 'get' => [
                     'operationId' => 'getProduct',
@@ -591,6 +611,11 @@ class KaliCart_Bridge_API {
 
     public static function catalog_search( WP_REST_Request $req ): WP_REST_Response {
         self::force_default_language();
+        $param_error = self::catalog_param_alias_error( $req, 'search' );
+        if ( $param_error ) {
+            return $param_error;
+        }
+
         $args = self::extract_query_args( $req );
         $q    = sanitize_text_field( $req->get_param( 'q' ) ?? '' );
 
@@ -612,6 +637,10 @@ class KaliCart_Bridge_API {
             'on_sale'  => $args['on_sale'] ?? null,
         ], fn( $v ) => $v !== null && $v !== '' );
 
+        if ( (int) ( $result['total'] ?? 0 ) === 0 ) {
+            $result['result_guidance'] = self::zero_results_guidance( $q, $args );
+        }
+
         return self::ok( $result );
     }
 
@@ -619,6 +648,11 @@ class KaliCart_Bridge_API {
 
     public static function catalog_products( WP_REST_Request $req ): WP_REST_Response {
         self::force_default_language();
+        $param_error = self::catalog_param_alias_error( $req, 'products' );
+        if ( $param_error ) {
+            return $param_error;
+        }
+
         $args   = self::extract_query_args( $req );
         $result = KaliCart_Bridge_Catalog_Engine::query_products( $args );
         return self::ok( $result );
@@ -807,8 +841,101 @@ class KaliCart_Bridge_API {
         return new WP_REST_Response( array_merge( [ 'success' => true ], $data ), 200 );
     }
 
-    private static function error( string $message, int $status = 400 ): WP_REST_Response {
-        return new WP_REST_Response( [ 'success' => false, 'message' => $message ], $status );
+    private static function error( string $message, int $status = 400, array $extra = [] ): WP_REST_Response {
+        return new WP_REST_Response( array_merge( [ 'success' => false, 'message' => $message ], $extra ), $status );
+    }
+
+    private static function query_param_present( WP_REST_Request $req, string $name ): bool {
+        return array_key_exists( $name, $req->get_query_params() );
+    }
+
+    private static function catalog_param_alias_error( WP_REST_Request $req, string $endpoint ): ?WP_REST_Response {
+        $invalid = [];
+
+        if ( self::query_param_present( $req, 'query' ) ) {
+            $invalid['query'] = 'q';
+        }
+        if ( self::query_param_present( $req, 'limit' ) ) {
+            $invalid['limit'] = 'per_page';
+        }
+        if ( $endpoint === 'products' && self::query_param_present( $req, 'q' ) ) {
+            $invalid['q'] = '/catalog/search?q=...';
+        }
+
+        if ( empty( $invalid ) ) {
+            return null;
+        }
+
+        $target = ( $endpoint === 'products' && ( isset( $invalid['q'] ) || isset( $invalid['query'] ) ) )
+            ? 'search'
+            : $endpoint;
+
+        $message = $target === 'search'
+            ? 'Invalid catalog search parameters. Use q for search text and per_page for result count.'
+            : 'Invalid catalog listing parameters. Use per_page for result count.';
+
+        return self::error( $message, 400, [
+            'error_code'            => 'KALICART_INVALID_CATALOG_PARAMETERS',
+            'invalid_parameters'    => array_keys( $invalid ),
+            'parameter_corrections' => $invalid,
+            'correct_endpoint'      => rest_url( KALICART_BRIDGE_API_NS . '/catalog/' . $target ),
+            'suggested_url'         => self::suggested_catalog_url( $req, $target ),
+            'agent_guidance'        => 'Use /catalog/search?q={bare product noun}&per_page={1-100} for text search. Use /catalog/products?per_page={1-100} for browsing/listing. Do not use query or limit.',
+        ] );
+    }
+
+    private static function suggested_catalog_url( WP_REST_Request $req, string $target ): string {
+        $params = [];
+
+        if ( $target === 'search' ) {
+            $q = $req->get_param( 'q' );
+            if ( $q === null || $q === '' ) {
+                $q = $req->get_param( 'query' );
+            }
+            $q = sanitize_text_field( $q ?? '' );
+            if ( $q !== '' ) {
+                $params['q'] = $q;
+            }
+        }
+
+        foreach ( [ 'category', 'gender', 'color', 'min_price', 'max_price', 'in_stock', 'on_sale', 'orderby', 'order', 'page', 'modified_after' ] as $key ) {
+            if ( self::query_param_present( $req, $key ) ) {
+                $value = $req->get_param( $key );
+                if ( $value !== null && $value !== '' ) {
+                    $params[ $key ] = sanitize_text_field( (string) $value );
+                }
+            }
+        }
+
+        if ( self::query_param_present( $req, 'per_page' ) || self::query_param_present( $req, 'limit' ) ) {
+            $raw = self::query_param_present( $req, 'per_page' ) ? $req->get_param( 'per_page' ) : $req->get_param( 'limit' );
+            $params['per_page'] = min( 100, max( 1, absint( $raw ) ) );
+        }
+
+        return add_query_arg( $params, rest_url( KALICART_BRIDGE_API_NS . '/catalog/' . $target ) );
+    }
+
+    private static function zero_results_guidance( string $q, array $args ): array {
+        return [
+            'code'          => 'ZERO_RESULTS_RECOVERY',
+            'reason'        => 'No products matched the current query and filters.',
+            'next_steps'    => [
+                'If q contains attributes, retry with a barer product noun in q and move attributes into filters.',
+                'Fetch /catalog/meta to inspect accepted filters and price range.',
+                'Fetch /catalog/categories to browse valid merchant category slugs.',
+                'Only report not available after bare-q search and relevant category browse both return 0.',
+            ],
+            'current_query' => array_filter( [
+                'q'         => $q ?: null,
+                'category'  => $args['category'] ?: null,
+                'gender'    => $args['gender'] ?: null,
+                'color'     => $args['color'] ?: null,
+                'min_price' => $args['min_price'],
+                'max_price' => $args['max_price'],
+                'in_stock'  => $args['in_stock'],
+                'on_sale'   => $args['on_sale'] ?? null,
+            ], fn( $v ) => $v !== null && $v !== '' ),
+        ];
     }
 
     private static function published_product_count(): int {

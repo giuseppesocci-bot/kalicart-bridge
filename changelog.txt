@@ -1,5 +1,13 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-23 - version 1.0.104
+
+* Agent guidance - Added explicit runtime signals for agents using the public catalog API: `q` is the only text-search parameter, `per_page` is the result-count parameter, `/catalog/search` is for text search, and `/catalog/products` is for browsing/listing. Invalid aliases such as `query`, `limit`, or `q` on `/catalog/products` now return a guided 400 response with the corrected endpoint and `suggested_url`
+* Agent guidance - Zero-result searches now include recovery guidance so agents retry with a simpler product spine or category browse before declaring an item unavailable
+* Documentation - Added FAQs explaining the optional Federated Catalog and how WooCommerce chatbot/assistant services can use the Bridge as a structured catalog source instead of scraping product pages
+* Admin - Removed the duplicate Global indexing consent toggle from the Settings tab. Federated Catalog consent is now managed only from the header banner via Activate/Revoke, while the internal consent flag remains the discovery source of truth
+
+
 2026-06-21 - version 1.0.103
 
 * Agent coupon visibility - Merchants can now choose exactly which coupons AI agents are allowed to see. A new Coupons tab adds a master switch (off by default, so no coupon is ever exposed unless you decide to) and a list of your active coupons to pick from. Selected coupons are presented to agents as conditional savings, with WooCommerce checkout always remaining the final authority on whether a coupon actually applies. Private, targeted or newsletter codes you do not select are never shared with agents

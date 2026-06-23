@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, mcp, rest api, chatgpt
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.103
+Stable tag: 1.0.104
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -22,6 +22,7 @@ Documentation: https://bridge.kalicart.com/docs/
 * Exposes a `/discovery` endpoint — the single entry point any agent needs to understand your catalog
 * Provides `/catalog/search`, `/catalog/products`, `/catalog/product/{id}`, `/catalog/categories` endpoints
 * Exposes a Model Context Protocol (MCP) server at `/wp-json/kalicart/v1/mcp` (JSON-RPC 2.0) so MCP-capable agents can call the catalog as tools — same data as the REST endpoints, no API key
+* Gives AI chatbot and assistant builders a structured catalog source to ingest or call, instead of scraping product pages
 * Computationally normalizes product data: prices (min/max for variables, sale %, discount), stock, gender inference, color family mapping, size type detection
 * Exposes WooCommerce shipping-zone policy for agent reasoning; checkout remains the final authority for exact destination/cart shipping cost
 * Exposes active product/category-compatible coupons as conditional checkout savings; coupons never replace the catalog price
@@ -81,6 +82,14 @@ Not unless you choose to. By default the plugin runs entirely on your server and
 
 No. This plugin is fully standalone and free.
 
+= What is the Federated Catalog? =
+
+The Federated Catalog is an optional discovery network operated by KaliCart Global. The Bridge makes your catalog readable by agents that already reach your domain; the Federated Catalog makes it discoverable by agents that do not know your store yet. It is opt-in, separate from the local Bridge endpoints, and revocable at any time.
+
+There are two discovery paths. Local signals — `.well-known` files, robots.txt entries, the `rel="kalicart-agent"` head link and the badge — help an agent that lands on your own domain find the Bridge. They do not feed the federated index by themselves. The federated index is a separate cross-merchant index: after you activate it, KaliCart Global reads your already-public `/discovery` and `/catalog/*` endpoints and lets agents search across participating stores.
+
+End to end: from WP Admin → KaliCart Bridge you activate the Federated Catalog; the plugin sends only your public site URL; KaliCart Global pulls the public catalog read-only; matching results route agents back to your store. Authoritative price, availability and checkout stay on your WooCommerce site, served live by your Bridge. If you revoke consent, your catalog leaves federated results while direct agent access to your store remains active.
+
 = Who can access the catalog endpoints? =
 
 Public endpoints (discovery, search, products, categories) are accessible without authentication — same as the WooCommerce REST API public surfaces. The `/health` endpoint requires `manage_woocommerce` capability.
@@ -96,6 +105,12 @@ Yes — all three signals (badge, robots.txt, sitemap) can be toggled individual
 = How do I connect this to an AI assistant or MCP client? =
 
 The catalog can be consumed two ways. Any agent can call the plain REST endpoints under `/wp-json/kalicart/v1/catalog/` directly. MCP-capable clients can instead connect to the MCP server at `/wp-json/kalicart/v1/mcp` (JSON-RPC 2.0): the assistant connects to that URL — no API key — and gains the catalog tools (search_products, get_product, list_categories, get_meta, list_products). In clients that support remote MCP connectors, add it as a custom connector pointing to that URL.
+
+= Can WooCommerce chatbot services use the Bridge? =
+
+Yes, when the chatbot service can ingest URLs, API documents or external knowledge sources. Give it the discovery URL first: `https://yourdomain.com/wp-json/kalicart/v1/discovery`. From there it can find the catalog endpoints, the OpenAPI description and the MCP endpoint. If the service supports live REST or MCP calls, it can query current catalog data directly. If it only imports a knowledge base, it may create a snapshot: useful for product answers, but final price, stock, coupons, shipping and checkout should still be verified on the merchant site.
+
+The benefit is practical: chatbot builders can read a structured, machine-readable WooCommerce catalog instead of scraping product pages. The Bridge does not add an LLM to your site and does not decide how the chatbot works; it supplies cleaner catalog data for tools that can consume it.
 
 
 
@@ -115,6 +130,12 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.104 =
+* Agent guidance - Added explicit runtime signals for agents using the public catalog API: `q` is the only text-search parameter, `per_page` is the result-count parameter, `/catalog/search` is for text search, and `/catalog/products` is for browsing/listing. Invalid aliases such as `query`, `limit`, or `q` on `/catalog/products` now return a guided 400 response with the corrected endpoint and `suggested_url`
+* Agent guidance - Zero-result searches now include recovery guidance so agents retry with a simpler product spine or category browse before declaring an item unavailable
+* Documentation - Added FAQs explaining the optional Federated Catalog and how WooCommerce chatbot/assistant services can use the Bridge as a structured catalog source instead of scraping product pages
+* Admin - Removed the duplicate Global indexing consent toggle from the Settings tab. Federated Catalog consent is now managed only from the header banner via Activate/Revoke, while the internal consent flag remains the discovery source of truth
 
 = 1.0.103 =
 * Agent coupon visibility - Merchants can now choose exactly which coupons AI agents are allowed to see. A new Coupons tab adds a master switch (off by default, so no coupon is ever exposed unless you decide to) and a list of your active coupons to pick from. Selected coupons are presented to agents as conditional savings, with WooCommerce checkout always remaining the final authority on whether a coupon actually applies. Private, targeted or newsletter codes you do not select are never shared with agents
