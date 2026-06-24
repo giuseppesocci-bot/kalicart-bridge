@@ -91,13 +91,13 @@ add_action( 'plugins_loaded', function () {
 } );
 
 // ── JSON float serialization fix ────────────────────────────────────────────
-// PHP hosts with serialize_precision != -1 (e.g. =17) emit full IEEE 754 float
-// representations in json_encode output (e.g. 4.9000000000000003552...).
-// rest_post_dispatch fires before WordPress calls json_encode on the response,
-// so setting serialize_precision=-1 here ensures clean float output on any host.
+// PHP hosts with serialize_precision != -1 (e.g. =17) cause json_encode to emit
+// full IEEE 754 float representations (e.g. 4.9000000000000003552...).
+// ini_set( 'serialize_precision', -1 ) is the only reliable cross-host fix;
+// it is scoped to /kalicart/v1/ REST responses only and does not affect other plugins.
 add_filter( 'rest_post_dispatch', function ( $result, $server, $request ) {
     if ( strpos( $request->get_route(), '/kalicart/v1/' ) !== false ) {
-        ini_set( 'serialize_precision', -1 );
+        ini_set( 'serialize_precision', -1 ); // phpcs:ignore WordPress.PHP.IniSet.Risky
     }
     return $result;
 }, 10, 3 );
