@@ -734,10 +734,15 @@ class KaliCart_Bridge_API {
             }
         }
 
-        // S2: available gender and color values actually present in this catalog
-        $facets            = KaliCart_Bridge_Catalog_Engine::compute_catalog_facets( $flat_lang ?? null );
-        $available_genders = $facets['genders'];
-        $available_colors  = $facets['colors'];
+        // S2: read pre-computed catalog facets (built by cron every 6h, stored as option).
+        // If not yet available (first install, cron not yet run), schedule an immediate rebuild.
+        $facets = KaliCart_Bridge_Catalog_Engine::get_cached_catalog_facets( $flat_lang ?? null );
+        if ( $facets === null ) {
+            // First request after install — compute synchronously once, then cron takes over.
+            $facets = KaliCart_Bridge_Catalog_Engine::compute_catalog_facets( $flat_lang ?? null );
+        }
+        $available_genders = $facets['genders'] ?? [];
+        $available_colors  = $facets['colors']  ?? [];
 
         // Price range — language-agnostic by design: translations carry identical
         // _price meta, so MIN/MAX over all rows equals MIN/MAX over the default

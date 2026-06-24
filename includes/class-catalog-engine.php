@@ -73,11 +73,17 @@ class KaliCart_Bridge_Catalog_Engine {
         ];
         $args = wp_parse_args( $args, $defaults );
 
+        // Determine if PHP post-filters are active. When yes, WP_Query must collect all
+        // matching candidates (posts_per_page=-1) so slicing is done on the full filtered set.
+        $has_php_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] )
+                              || $args['on_sale'] === true
+                              || $args['min_price'] !== null || $args['max_price'] !== null;
+
         $query_args = [
             'post_type'      => 'product',
             'post_status'    => 'publish',
-            'posts_per_page' => (int) $args['per_page'],
-            'paged'          => (int) $args['page'],
+            'posts_per_page' => $has_php_postfilter ? -1 : (int) $args['per_page'],
+            'paged'          => $has_php_postfilter ? 1  : (int) $args['page'],
             'orderby'        => self::map_orderby( $args['orderby'] ),
             'order'          => strtoupper( $args['order'] ) === 'ASC' ? 'ASC' : 'DESC',
         ];
@@ -207,16 +213,36 @@ class KaliCart_Bridge_Catalog_Engine {
             $products[] = $normalized;
         }
 
-        // B3: total must reflect post-filter (gender/color are PHP post-filters, not WP_Query filters)
-        $filtered_total = count( $products );
-        $has_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] );
+        // B3 + PAGINATION: with post-filters active, $products is the full filtered set
+        // (WP_Query was run with posts_per_page=-1 when post-filters are active — see below).
+        // Slice to the requested page/per_page here.
+        $has_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] )
+                          || $args['on_sale'] === true
+                          || ( $args['min_price'] !== null || $args['max_price'] !== null );
+
+        if ( $has_postfilter ) {
+            $filtered_total = count( $products );
+            $per_page       = (int) $args['per_page'];
+            $page           = max( 1, (int) $args['page'] );
+            $offset         = ( $page - 1 ) * $per_page;
+            $total_pages    = $per_page > 0 ? (int) ceil( $filtered_total / $per_page ) : 1;
+            $products       = array_slice( $products, $offset, $per_page );
+
+            return [
+                'products'    => $products,
+                'total'       => $filtered_total,
+                'page'        => $page,
+                'per_page'    => $per_page,
+                'total_pages' => $total_pages,
+            ];
+        }
 
         return [
             'products'    => $products,
-            'total'       => $has_postfilter ? $filtered_total : (int) $query->found_posts,
+            'total'       => (int) $query->found_posts,
             'page'        => (int) $args['page'],
             'per_page'    => (int) $args['per_page'],
-            'total_pages' => $has_postfilter ? 1 : (int) $query->max_num_pages,
+            'total_pages' => (int) $query->max_num_pages,
         ];
     }
 
@@ -1178,8 +1204,10 @@ class KaliCart_Bridge_Catalog_Engine {
 
     /**
      * Compute available gender and color values actually present in the catalog.
-     * Used by /catalog/meta to expose real filter options alongside theoretical accepted_filters.
-     * Results are cached by the caller (catalog_meta transient).
+     * Heavy operation — runs via WP-Cron (kalicart_bridge_facets_rebuild) every 6 hours.
+     * Results stored in option kalicart_bridge_catalog_facets_{lang}.
+     *
+     * Direct callers: cron handler + admin force-rebuild. Never call inline on a web request.
      *
      * @param string|null $lang Polylang language slug, or null on monolingual sites.
      * @return array{ genders: list<array{value:string,count:int}>, colors: list<array{value:string,count:int}> }
@@ -1226,7 +1254,26 @@ class KaliCart_Bridge_Catalog_Engine {
             $colors[] = [ 'value' => $v, 'count' => $cnt ];
         }
 
-        return [ 'genders' => $genders, 'colors' => $colors ];
+        $result = [ 'genders' => $genders, 'colors' => $colors ];
+
+        // Persist result so meta endpoint can read it without re-computing.
+        $option_key = 'kalicart_bridge_catalog_facets_' . ( $lang ?? 'mono' );
+        update_option( $option_key, $result, false ); // autoload=false
+
+        return $result;
+    }
+
+    /**
+     * Read pre-computed catalog facets from option storage.
+     * Returns null if facets have never been computed (cron not yet run).
+     *
+     * @param string|null $lang
+     * @return array|null
+     */
+    public static function get_cached_catalog_facets( ?string $lang = null ): ?array {
+        $option_key = 'kalicart_bridge_catalog_facets_' . ( $lang ?? 'mono' );
+        $cached = get_option( $option_key, null );
+        return is_array( $cached ) ? $cached : null;
     }
 
     public static function get_categories_tree(): array {

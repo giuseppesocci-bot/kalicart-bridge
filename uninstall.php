@@ -24,10 +24,14 @@ $kalicart_bridge_options = [
     'kalicart_bridge_agent_index_url',
     'kalicart_bridge_return_policy_url',
     'kalicart_bridge_wk_version',
+    'kalicart_bridge_catalog_facets_mono',
 ];
 foreach ( $kalicart_bridge_options as $kalicart_bridge_option ) {
     delete_option( $kalicart_bridge_option );
 }
+
+// Cron
+wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
 
 // Transients
 $kalicart_bridge_transients = [

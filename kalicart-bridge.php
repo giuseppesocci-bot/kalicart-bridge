@@ -90,6 +90,19 @@ add_action( 'plugins_loaded', function () {
     }
 } );
 
+// ── Catalog facets cron ─────────────────────────────────────────────────────
+// Rebuilds available_genders / available_colors every 6 hours.
+// Heavy computation (O(n) over all products) — must never run inline on web requests.
+add_action( 'kalicart_bridge_facets_rebuild', function () {
+    if ( ! class_exists( 'KaliCart_Bridge_Catalog_Engine' ) ) return;
+    $lang = KaliCart_Bridge_API::default_language();
+    KaliCart_Bridge_Catalog_Engine::compute_catalog_facets( $lang );
+} );
+
+if ( ! wp_next_scheduled( 'kalicart_bridge_facets_rebuild' ) ) {
+    wp_schedule_event( time(), 'twicedaily', 'kalicart_bridge_facets_rebuild' );
+}
+
 register_activation_hook( __FILE__, function () {
     // Hard dependency guard: refuse activation when WooCommerce is not active.
     // Covers WordPress < 6.5, where the "Requires Plugins" header is ignored.
