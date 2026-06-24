@@ -82,6 +82,16 @@ class KaliCart_Bridge_Catalog_Engine {
             'order'          => strtoupper( $args['order'] ) === 'ASC' ? 'ASC' : 'DESC',
         ];
 
+        // B2: orderby=price requires meta_key and must exclude products with no price
+        if ( $args['orderby'] === 'price' ) {
+            $query_args['meta_key'] = '_price';
+            $query_args['meta_query'][] = [
+                'key'     => '_price',
+                'value'   => '',
+                'compare' => '!=',
+            ];
+        }
+
         if ( ! empty( $args['search'] ) ) {
             $query_args['s'] = sanitize_text_field( $args['search'] );
         }
@@ -175,15 +185,38 @@ class KaliCart_Bridge_Catalog_Engine {
                 }
             }
 
+            // Post-filter on_sale: wc_get_product_ids_on_sale() does not apply the Bridge
+            // 1% discount threshold — exclude products where compute_price() set on_sale=false.
+            if ( $args['on_sale'] === true && ! ( $normalized['price']['on_sale'] ?? false ) ) {
+                continue;
+            }
+
+            // Post-filter price for variable products: WooCommerce _price meta on the parent
+            // may be stale (legacy from before product was converted to variable). Use the
+            // authoritative price.current computed from get_variation_prices() instead.
+            if ( $wc_product->is_type( 'variable' ) ) {
+                $current = $normalized['price']['current'] ?? null;
+                if ( $args['min_price'] !== null && ( $current === null || $current < (float) $args['min_price'] ) ) {
+                    continue;
+                }
+                if ( $args['max_price'] !== null && ( $current === null || $current > (float) $args['max_price'] ) ) {
+                    continue;
+                }
+            }
+
             $products[] = $normalized;
         }
 
+        // B3: total must reflect post-filter (gender/color are PHP post-filters, not WP_Query filters)
+        $filtered_total = count( $products );
+        $has_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] );
+
         return [
-            'products'   => $products,
-            'total'      => (int) $query->found_posts,
-            'page'       => (int) $args['page'],
-            'per_page'   => (int) $args['per_page'],
-            'total_pages' => (int) $query->max_num_pages,
+            'products'    => $products,
+            'total'       => $has_postfilter ? $filtered_total : (int) $query->found_posts,
+            'page'        => (int) $args['page'],
+            'per_page'    => (int) $args['per_page'],
+            'total_pages' => $has_postfilter ? 1 : (int) $query->max_num_pages,
         ];
     }
 
@@ -235,6 +268,17 @@ class KaliCart_Bridge_Catalog_Engine {
                     'barcodes'            => $barcodes,
                 ] ]
                 : [];
+
+            // Reinforce guidance for variable products in list/search context:
+            // attributes lists possible options; per-variant stock requires product detail.
+            if ( $type === 'variable' ) {
+                $attr_names = array_column( $attributes, 'name' );
+                $purchase_readiness['variant_options_note'] = sprintf(
+                    'attributes lists possible options (%s). Per-variant price and stock require product detail: /catalog/product/%d',
+                    implode( ', ', $attr_names ),
+                    $id
+                );
+            }
         }
 
         return [
@@ -495,16 +539,25 @@ class KaliCart_Bridge_Catalog_Engine {
                 $clean_key = str_replace( 'attribute_', '', $key );
                 $attrs[ $clean_key ] = $value ?: null; // null = any value
             }
-            $price_data = self::compute_price( $variation );
+            $price_data   = self::compute_price( $variation );
+            $var_in_stock = $variation->is_in_stock();
+            $var_manage   = $variation->managing_stock();
+            $var_qty      = $var_manage ? $variation->get_stock_quantity() : null;
             $out[] = [
-                'variation_id' => $variation_id,
-                'attributes'   => $attrs,
-                'price'        => $price_data,
-                'in_stock'            => $variation->is_in_stock(),
-                'availability_status' => $variation->is_in_stock() ? 'in_stock' : ( $variation->get_stock_status() === 'onbackorder' ? 'backorder' : 'out_of_stock' ),
+                'variation_id'        => $variation_id,
+                'attributes'          => $attrs,
+                'price'               => $price_data,
+                'in_stock'            => $var_in_stock,
+                'availability_status' => $var_in_stock ? 'in_stock' : ( $variation->get_stock_status() === 'onbackorder' ? 'backorder' : 'out_of_stock' ),
+                'stock'               => [
+                    'in_stock'         => $var_in_stock,
+                    'quantity'         => $var_qty,
+                    'quantity_tracked' => $var_manage,
+                    'confidence'       => $var_manage ? 'numeric_stock_quantity' : 'availability_status_only',
+                ],
                 'sku'                 => $variation->get_sku() ?: null,
                 'barcodes'            => self::get_barcodes( $variation ),
-                'purchasable'  => $variation->is_purchasable(),
+                'purchasable'         => $variation->is_purchasable(),
             ];
         }
         return $out;
@@ -571,13 +624,22 @@ class KaliCart_Bridge_Catalog_Engine {
         $type = $p->get_type();
 
         if ( $type === 'variable' ) {
+            // B5: if the parent product is OOS, no variant selection makes sense
+            if ( ! $p->is_in_stock() ) {
+                return [
+                    'status'                   => 'out_of_stock',
+                    'blocking_fields'          => [],
+                    'can_add_to_cart_directly' => false,
+                    'agent_rule'               => 'Product is out of stock. Do not present for purchase.',
+                ];
+            }
             $attributes = $p->get_variation_attributes();
             $blocking   = array_keys( $attributes );
             return [
-                'status'                 => 'variant_selection_required',
-                'blocking_fields'        => $blocking,
+                'status'                   => 'variant_selection_required',
+                'blocking_fields'          => $blocking,
                 'can_add_to_cart_directly' => false,
-                'agent_rule'             => 'Do not quote a final price until a variation is selected. Price may differ per variant.',
+                'agent_rule'               => 'Do not quote a final price until a variation is selected. Price may differ per variant.',
             ];
         }
 
@@ -764,6 +826,9 @@ class KaliCart_Bridge_Catalog_Engine {
             $vat_included = wc_prices_include_tax();
             $tax_enabled  = wc_tax_enabled();
 
+            // current: lowest active price — canonical readable field for all product types
+            $current_range = $min_sale ?? $min_regular;
+
             return [
                 'type'         => 'range',
                 'currency'     => $currency,
@@ -771,6 +836,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 'price_type'   => 'STATIC',
                 'vat_included' => $vat_included,
                 'tax_enabled'  => $tax_enabled,
+                'current'      => $current_range,
                 'min_regular'  => $min_regular,
                 'max_regular'  => $max_regular,
                 'min_sale'     => $min_sale,
@@ -1109,6 +1175,59 @@ class KaliCart_Bridge_Catalog_Engine {
     }
 
     // ── Categories tree ──────────────────────────────────────────────────────
+
+    /**
+     * Compute available gender and color values actually present in the catalog.
+     * Used by /catalog/meta to expose real filter options alongside theoretical accepted_filters.
+     * Results are cached by the caller (catalog_meta transient).
+     *
+     * @param string|null $lang Polylang language slug, or null on monolingual sites.
+     * @return array{ genders: list<array{value:string,count:int}>, colors: list<array{value:string,count:int}> }
+     */
+    public static function compute_catalog_facets( ?string $lang = null ): array {
+        $args = [ 'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => -1, 'fields' => 'ids' ];
+        if ( $lang !== null ) {
+            $args['lang'] = $lang;
+        }
+        $ids = get_posts( $args );
+
+        $gender_counts = [];
+        $color_counts  = [];
+
+        foreach ( $ids as $pid ) {
+            $p = wc_get_product( $pid );
+            if ( ! $p ) continue;
+            $attrs = self::get_normalized_attributes( $p );
+            $tags  = self::get_product_tags( $p );
+            $cats  = self::get_product_categories( $p );
+
+            $g = self::infer_gender( $p, $cats, $tags, $attrs );
+            if ( $g ) {
+                $gender_counts[ $g ] = ( $gender_counts[ $g ] ?? 0 ) + 1;
+            }
+
+            foreach ( self::extract_colors( $attrs, $p->get_name(), $tags ) as $col ) {
+                $fam = $col['family'] ?? null;
+                if ( $fam ) {
+                    $color_counts[ $fam ] = ( $color_counts[ $fam ] ?? 0 ) + 1;
+                }
+            }
+        }
+
+        arsort( $gender_counts );
+        arsort( $color_counts );
+
+        $genders = [];
+        foreach ( $gender_counts as $v => $cnt ) {
+            $genders[] = [ 'value' => $v, 'count' => $cnt ];
+        }
+        $colors = [];
+        foreach ( $color_counts as $v => $cnt ) {
+            $colors[] = [ 'value' => $v, 'count' => $cnt ];
+        }
+
+        return [ 'genders' => $genders, 'colors' => $colors ];
+    }
 
     public static function get_categories_tree(): array {
         $term_args = [

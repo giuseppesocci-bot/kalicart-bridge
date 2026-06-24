@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, mcp, rest api, chatgpt
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.104
+Stable tag: 1.0.105
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -130,6 +130,18 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.105 =
+* Catalog search - price.current is now always present on variable products (type=range). Previously only min_regular, max_sale etc. were exposed; agents reading price.current on a variable product received a missing field. The field is now computed as min_sale ?? min_regular and returned alongside the range fields
+* Catalog search - orderby=price now excludes products with no price from results. Previously products with a missing _price meta were sorted before all priced products when ordering ASC, making the first result useless to agents
+* Catalog search - total and total_pages now reflect post-filters (gender, color, on_sale, variable price). Previously total reflected the WP_Query count before PHP-side filtering, so an agent could see total=120 with returned=0 when filtering by color
+* Catalog search - on_sale=true now excludes products where the Bridge discount threshold (1%) is not met. WooCommerce includes products with a sub-1% discount in its sale index; the Bridge now applies the same gate it uses in price.on_sale so the two are always consistent
+* Catalog search - max_price and min_price filters now use the authoritative price computed from variant prices for variable products, instead of the stale _price meta WooCommerce may have left on the parent when the product type was changed. Variable products are now post-filtered against price.current after normalization
+* Product detail - Variant objects now include a stock field with in_stock, quantity, quantity_tracked and confidence. Previously the field was null on every variant
+* Product detail - Variable products that are out of stock now report purchase_readiness.status as out_of_stock instead of variant_selection_required. Asking an agent to select a variant on an OOS product was a contradictory signal
+* Catalog search - Variable products in list and search context now include purchase_readiness.variant_options_note, which names the available attribute options and links directly to the product detail endpoint for per-variant price and stock
+* Categories - /catalog/categories response now includes total_root (root-level count) and total_all (all nodes including children). The note field now explains that the response is hierarchical (subcategories are in children[]) and directs agents to /catalog/meta for a flat list of all slugs
+* Catalog meta - /catalog/meta now includes available_genders and available_colors: the gender and color values actually present in this merchant catalog, with counts, computed at meta generation time and cached with the rest of the meta response. This is distinct from accepted_filters which lists theoretically valid values regardless of catalog content
 
 = 1.0.104 =
 * Agent guidance - Added explicit runtime signals for agents using the public catalog API: `q` is the only text-search parameter, `per_page` is the result-count parameter, `/catalog/search` is for text search, and `/catalog/products` is for browsing/listing. Invalid aliases such as `query`, `limit`, or `q` on `/catalog/products` now return a guided 400 response with the corrected endpoint and `suggested_url`

@@ -687,10 +687,25 @@ class KaliCart_Bridge_API {
     public static function catalog_categories( WP_REST_Request $req ): WP_REST_Response {
         self::force_default_language();
         $tree = KaliCart_Bridge_Catalog_Engine::get_categories_tree();
+
+        // S1: count total nodes including nested children for transparency
+        $count_nodes = function( array $nodes ) use ( &$count_nodes ): int {
+            $n = 0;
+            foreach ( $nodes as $node ) {
+                $n++;
+                if ( ! empty( $node['children'] ) ) {
+                    $n += $count_nodes( $node['children'] );
+                }
+            }
+            return $n;
+        };
+        $total_all = $count_nodes( $tree );
+
         return self::ok( [
-            'note'       => 'Merchant-native WooCommerce category taxonomy. Use category slug in /catalog/search?category={slug}.',
-            'categories' => $tree,
-            'total'      => count( $tree ),
+            'note'        => 'Merchant-native WooCommerce category taxonomy. Hierarchical: root categories are at top level, subcategories are in children[]. Use category slug in /catalog/search?category={slug}. For a flat list of all slugs, use /catalog/meta which returns categories as a flat array.',
+            'categories'  => $tree,
+            'total_root'  => count( $tree ),
+            'total_all'   => $total_all,
         ] );
     }
 
@@ -719,6 +734,11 @@ class KaliCart_Bridge_API {
             }
         }
 
+        // S2: available gender and color values actually present in this catalog
+        $facets            = KaliCart_Bridge_Catalog_Engine::compute_catalog_facets( $flat_lang ?? null );
+        $available_genders = $facets['genders'];
+        $available_colors  = $facets['colors'];
+
         // Price range — language-agnostic by design: translations carry identical
         // _price meta, so MIN/MAX over all rows equals MIN/MAX over the default
         // language alone. No language join needed.
@@ -726,9 +746,11 @@ class KaliCart_Bridge_API {
         $price_range = $wpdb->get_row( "SELECT MIN(CAST(meta_value AS DECIMAL(10,2))) as min_price, MAX(CAST(meta_value AS DECIMAL(10,2))) as max_price FROM {$wpdb->postmeta} WHERE meta_key='_price' AND meta_value != '' AND meta_value != '0'" );  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient in catalog_meta()
 
         $meta = [
-            'total_products' => self::published_product_count(),
-            'currency'       => get_woocommerce_currency(),
-            'categories'     => $categories,
+            'total_products'    => self::published_product_count(),
+            'currency'          => get_woocommerce_currency(),
+            'categories'        => $categories,
+            'available_genders' => $available_genders,
+            'available_colors'  => $available_colors,
             'merchant_shipping_policy' => KaliCart_Bridge_Catalog_Engine::merchant_shipping_policy(),
             'coupon_policy' => [
                 'source'                   => 'live_woocommerce_coupons',
