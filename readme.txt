@@ -142,6 +142,7 @@ This plugin works fully standalone. It connects to one external service **only i
 * Catalog meta - accepted_filters.orderby is now a structured object with values, default, default_order and a note explaining that price sorts by WooCommerce _price meta and that variable product parent price may differ from variant prices
 * Discovery - shipping cost fields now serialized with round() to 2 decimal places, eliminating IEEE 754 float artifacts (e.g. 4.9000000000000003552...) in the JSON wire format
 * Discovery - size filter documentation updated across discovery, accepted_filters and query construction guidance to reflect the new soft post-filter behaviour
+* Core - added rest_post_dispatch filter that sets serialize_precision=-1 for all /kalicart/v1/ REST responses. On PHP hosts where serialize_precision is set to a high value (e.g. 17), json_encode emits full IEEE 754 float representations regardless of rounding applied in PHP code. Setting serialize_precision=-1 before WordPress serializes the response ensures floats are always emitted with the minimum digits needed to round-trip correctly, on any hosting environment
 
 = 1.0.105 =
 * Catalog search - price.current is now always present on variable products (type=range). Previously only min_regular, max_sale etc. were exposed; agents reading price.current on a variable product received a missing field. The field is now computed as min_sale ?? min_regular and returned alongside the range fields

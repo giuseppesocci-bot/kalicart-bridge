@@ -90,6 +90,18 @@ add_action( 'plugins_loaded', function () {
     }
 } );
 
+// ── JSON float serialization fix ────────────────────────────────────────────
+// PHP hosts with serialize_precision != -1 (e.g. =17) emit full IEEE 754 float
+// representations in json_encode output (e.g. 4.9000000000000003552...).
+// rest_post_dispatch fires before WordPress calls json_encode on the response,
+// so setting serialize_precision=-1 here ensures clean float output on any host.
+add_filter( 'rest_post_dispatch', function ( $result, $server, $request ) {
+    if ( strpos( $request->get_route(), '/kalicart/v1/' ) !== false ) {
+        ini_set( 'serialize_precision', -1 );
+    }
+    return $result;
+}, 10, 3 );
+
 // ── Catalog facets cron ─────────────────────────────────────────────────────
 // Rebuilds available_genders / available_colors every 6 hours.
 // Heavy computation (O(n) over all products) — must never run inline on web requests.

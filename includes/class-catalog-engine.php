@@ -1196,9 +1196,13 @@ class KaliCart_Bridge_Catalog_Engine {
      * WooCommerce cost formulas (e.g. "10 + 2*[qty]") kept as string — never silently truncated.
      */
     private static function normalize_cost( $cost ) {
-        // Round to 2 decimal places to avoid IEEE 754 float artifacts in JSON output
-        // (e.g. 4.9 serialized as 4.9000000000000003552...). Formulas kept as string.
-        return is_numeric( $cost ) ? round( (float) $cost, 2 ) : (string) $cost;
+        // Use sprintf('%.2f') + (float) cast to produce a float with exactly 2 decimal digits.
+        // round() alone is insufficient when PHP serialize_precision is set to a high value
+        // (e.g. 17) on some hosts, causing json_encode to emit the full IEEE 754 representation
+        // (e.g. 4.9000000000000003552...). sprintf forces the value into a 2-decimal string
+        // before re-casting, which json_encode then serializes cleanly on any serialize_precision.
+        // Formulas (non-numeric strings like "10 + 2*[qty]") are kept as string.
+        return is_numeric( $cost ) ? (float) sprintf( '%.2f', (float) $cost ) : (string) $cost;
     }
 
     public static function compute_quarantine_flags( WC_Product $p, array $categories, array $images ): array {
