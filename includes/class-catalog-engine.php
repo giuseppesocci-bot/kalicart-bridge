@@ -69,6 +69,7 @@ class KaliCart_Bridge_Catalog_Engine {
             'max_price' => null,
             'gender'    => '',
             'color'     => '',
+            'size'      => '',
             'modified_after' => '',
         ];
         $args = wp_parse_args( $args, $defaults );
@@ -76,6 +77,7 @@ class KaliCart_Bridge_Catalog_Engine {
         // Determine if PHP post-filters are active. When yes, WP_Query must collect all
         // matching candidates (posts_per_page=-1) so slicing is done on the full filtered set.
         $has_php_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] )
+                              || ! empty( $args['size'] )
                               || $args['on_sale'] === true
                               || $args['min_price'] !== null || $args['max_price'] !== null;
 
@@ -191,6 +193,20 @@ class KaliCart_Bridge_Catalog_Engine {
                 }
             }
 
+            // Post-filter size: soft filter — returns products where at least one attribute value
+            // matches the requested size string (case-insensitive). Applied after search.
+            if ( ! empty( $args['size'] ) ) {
+                $size_needle = strtolower( trim( $args['size'] ) );
+                $has_size = false;
+                foreach ( $normalized['sizes']['values'] ?? [] as $sv ) {
+                    if ( strtolower( trim( $sv ) ) === $size_needle ) {
+                        $has_size = true;
+                        break;
+                    }
+                }
+                if ( ! $has_size ) continue;
+            }
+
             // Post-filter on_sale: wc_get_product_ids_on_sale() does not apply the Bridge
             // 1% discount threshold — exclude products where compute_price() set on_sale=false.
             if ( $args['on_sale'] === true && ! ( $normalized['price']['on_sale'] ?? false ) ) {
@@ -217,6 +233,7 @@ class KaliCart_Bridge_Catalog_Engine {
         // (WP_Query was run with posts_per_page=-1 when post-filters are active — see below).
         // Slice to the requested page/per_page here.
         $has_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] )
+                          || ! empty( $args['size'] )
                           || $args['on_sale'] === true
                           || ( $args['min_price'] !== null || $args['max_price'] !== null );
 
@@ -304,6 +321,21 @@ class KaliCart_Bridge_Catalog_Engine {
                     implode( ', ', $attr_names ),
                     $id
                 );
+
+                // variation_summary: lightweight signal for agents to decide if detail call is needed.
+                // Uses get_variation_prices() which is already called by compute_price() — cache hit, no extra query.
+                // in_stock_variations_count is a proxy (variants with a price): exact per-variant stock is in detail.
+                $vp = $p->get_variation_prices( true );
+                $vp_prices = array_filter( $vp['price'] ?? [], fn( $v ) => $v !== '' && (float) $v > 0 );
+                $total_variations       = count( $p->get_children() );
+                $in_stock_variations    = count( $vp_prices );
+                $cheapest_price         = ! empty( $vp_prices ) ? (float) min( $vp_prices ) : null;
+                $variation_summary = [
+                    'total_variations'       => $total_variations,
+                    'in_stock_variations_count' => $in_stock_variations,
+                    'cheapest_available_price'  => $cheapest_price,
+                    'note' => 'in_stock_variations_count is a proxy (variants with a price). Exact per-variant stock and cheapest_available_variant require product detail.',
+                ];
             }
         }
 
@@ -344,6 +376,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 'stock_confidence'   => $stock['confidence'] ?? null,
                 'bridge_version'     => KALICART_BRIDGE_VERSION,
             ],
+            'variation_summary'  => $variation_summary ?? null,
             'variations'         => $variations,
             'variants'           => $variants,
             'updated_at'         => $p->get_date_modified() ? $p->get_date_modified()->date( 'c' ) : null,
@@ -575,12 +608,15 @@ class KaliCart_Bridge_Catalog_Engine {
                 'price'               => $price_data,
                 'in_stock'            => $var_in_stock,
                 'availability_status' => $var_in_stock ? 'in_stock' : ( $variation->get_stock_status() === 'onbackorder' ? 'backorder' : 'out_of_stock' ),
-                'stock'               => [
+                'stock'               => array_filter( [
                     'in_stock'         => $var_in_stock,
                     'quantity'         => $var_qty,
                     'quantity_tracked' => $var_manage,
                     'confidence'       => $var_manage ? 'numeric_stock_quantity' : 'availability_status_only',
-                ],
+                    'agent_note'       => ( $var_manage && $var_qty === 1 )
+                                            ? 'Last unit available. Race condition possible — complete checkout immediately.'
+                                            : null,
+                ], fn( $v ) => $v !== null ),
                 'sku'                 => $variation->get_sku() ?: null,
                 'barcodes'            => self::get_barcodes( $variation ),
                 'purchasable'         => $variation->is_purchasable(),
@@ -613,7 +649,9 @@ class KaliCart_Bridge_Catalog_Engine {
             $quantity   = null; // suppress aggregate count — misleading for variable products
         } elseif ( $manage_stock && $quantity !== null ) {
             $confidence = 'numeric_stock_quantity';
-            $agent_note = null;
+            // Race condition warning: a single unit may be claimed by concurrent agents.
+            // Complete checkout immediately — do not present as safely available without verifying.
+            $agent_note = $quantity === 1 ? 'Last unit available. Race condition possible — complete checkout immediately.' : null;
         } else {
             $confidence = 'availability_status_only';
             $agent_note = 'Merchant does not expose numeric stock quantity. Treat as available for purchase, not as confirmed inventory count.';
@@ -855,21 +893,26 @@ class KaliCart_Bridge_Catalog_Engine {
             // current: lowest active price — canonical readable field for all product types
             $current_range = $min_sale ?? $min_regular;
 
+            $discount_amount_range = ( $on_sale && $min_regular !== null && $min_sale !== null )
+                ? round( $min_regular - $min_sale, 2 )
+                : null;
+
             return [
-                'type'         => 'range',
-                'currency'     => $currency,
-                'encoding'     => 'decimal_major_units',
-                'price_type'   => 'STATIC',
-                'vat_included' => $vat_included,
-                'tax_enabled'  => $tax_enabled,
-                'current'      => $current_range,
-                'min_regular'  => $min_regular,
-                'max_regular'  => $max_regular,
-                'min_sale'     => $min_sale,
-                'max_sale'     => $max_sale,
-                'on_sale'      => $on_sale,
-                'discount_pct' => $discount_pct,
-                'display'      => $display,
+                'type'            => 'range',
+                'currency'        => $currency,
+                'encoding'        => 'decimal_major_units',
+                'price_type'      => 'STATIC',
+                'vat_included'    => $vat_included,
+                'tax_enabled'     => $tax_enabled,
+                'current'         => $current_range,
+                'min_regular'     => $min_regular,
+                'max_regular'     => $max_regular,
+                'min_sale'        => $min_sale,
+                'max_sale'        => $max_sale,
+                'on_sale'         => $on_sale,
+                'discount_pct'    => $discount_pct,
+                'discount_amount' => $discount_amount_range,
+                'display'         => $display,
             ];
         }
 
@@ -890,19 +933,24 @@ class KaliCart_Bridge_Catalog_Engine {
         $vat_included = wc_prices_include_tax();
         $tax_enabled  = wc_tax_enabled();
 
+        $discount_amount_fixed = ( $on_sale && $regular !== null && $sale !== null )
+            ? round( $regular - $sale, 2 )
+            : null;
+
         return [
-            'type'         => 'fixed',
-            'currency'     => $currency,
-            'encoding'     => 'decimal_major_units',
-            'price_type'   => 'STATIC',
-            'vat_included' => $vat_included,
-            'tax_enabled'  => $tax_enabled,
-            'regular'      => $regular,
-            'sale'         => $sale,
-            'current'      => $current,
-            'on_sale'      => $on_sale,
-            'discount_pct' => $discount_pct,
-            'display'      => $current !== null ? str_replace( "\xc2\xa0", ' ', html_entity_decode( wp_strip_all_tags( wc_price( $current ) ), ENT_QUOTES ) ) : null,
+            'type'            => 'fixed',
+            'currency'        => $currency,
+            'encoding'        => 'decimal_major_units',
+            'price_type'      => 'STATIC',
+            'vat_included'    => $vat_included,
+            'tax_enabled'     => $tax_enabled,
+            'regular'         => $regular,
+            'sale'            => $sale,
+            'current'         => $current,
+            'on_sale'         => $on_sale,
+            'discount_pct'    => $discount_pct,
+            'discount_amount' => $discount_amount_fixed,
+            'display'         => $current !== null ? str_replace( "\xc2\xa0", ' ', html_entity_decode( wp_strip_all_tags( wc_price( $current ) ), ENT_QUOTES ) ) : null,
         ];
     }
 
@@ -1083,10 +1131,16 @@ class KaliCart_Bridge_Catalog_Engine {
     // ── Sizes ────────────────────────────────────────────────────────────────
 
     public static function extract_sizes( array $attributes ): array {
-        $size_attr_keys = [ 'pa_size', 'pa_taglia', 'pa_größe', 'pa_taille', 'pa_talla', 'pa_misura' ];
+        // Match by key (taxonomy) or by normalized name (custom attributes without pa_ prefix).
+        // This handles both WooCommerce taxonomy attributes (pa_taglia) and custom attributes (size, Size).
+        $size_attr_keys  = [ 'pa_size', 'pa_taglia', 'pa_größe', 'pa_taille', 'pa_talla', 'pa_misura' ];
+        $size_attr_names = [ 'size', 'taglia', 'größe', 'taille', 'talla', 'misura', 'maat', 'storlek' ];
 
         foreach ( $attributes as $attr ) {
-            if ( in_array( $attr['key'], $size_attr_keys, true ) && ! empty( $attr['values'] ) ) {
+            $key_match  = in_array( $attr['key'], $size_attr_keys, true );
+            $name_match = in_array( strtolower( $attr['name'] ?? '' ), $size_attr_names, true );
+
+            if ( ( $key_match || $name_match ) && ! empty( $attr['values'] ) ) {
                 $type   = self::detect_size_type( $attr['values'] );
                 return [
                     'type'   => $type,
@@ -1105,7 +1159,15 @@ class KaliCart_Bridge_Catalog_Engine {
         $numeric_hits  = count( array_intersect( $normalized, self::SIZE_TYPE_NUMERIC ) );
         $shoes_hits    = count( array_intersect( $normalized, self::SIZE_TYPE_SHOES ) );
 
-        if ( $shoes_hits >= $clothing_hits && $shoes_hits >= $numeric_hits ) return 'shoes';
+        $total = count( $values );
+        $known_hits = $clothing_hits + $numeric_hits + $shoes_hits;
+
+        // If the majority of values do not match any known size vocabulary,
+        // classify as alphanumeric — the agent reads the values and decides.
+        // This covers cup sizes (36C), hardware codes (M8), and any unknown format.
+        if ( $known_hits < $total / 2 ) return 'alphanumeric';
+
+        if ( $shoes_hits > $clothing_hits && $shoes_hits > $numeric_hits ) return 'shoes';
         if ( $clothing_hits >= $numeric_hits ) return 'clothing';
         return 'numeric';
     }
@@ -1134,7 +1196,9 @@ class KaliCart_Bridge_Catalog_Engine {
      * WooCommerce cost formulas (e.g. "10 + 2*[qty]") kept as string — never silently truncated.
      */
     private static function normalize_cost( $cost ) {
-        return is_numeric( $cost ) ? (float) $cost : (string) $cost;
+        // Round to 2 decimal places to avoid IEEE 754 float artifacts in JSON output
+        // (e.g. 4.9 serialized as 4.9000000000000003552...). Formulas kept as string.
+        return is_numeric( $cost ) ? round( (float) $cost, 2 ) : (string) $cost;
     }
 
     public static function compute_quarantine_flags( WC_Product $p, array $categories, array $images ): array {

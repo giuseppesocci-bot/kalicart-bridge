@@ -750,12 +750,31 @@ class KaliCart_Bridge_API {
         global $wpdb;
         $price_range = $wpdb->get_row( "SELECT MIN(CAST(meta_value AS DECIMAL(10,2))) as min_price, MAX(CAST(meta_value AS DECIMAL(10,2))) as max_price FROM {$wpdb->postmeta} WHERE meta_key='_price' AND meta_value != '' AND meta_value != '0'" );  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient in catalog_meta()
 
+        // deal_statistics: pre-computed signals so agents know if it's worth filtering on_sale
+        $on_sale_ids    = wc_get_product_ids_on_sale();
+        $on_sale_total  = count( $on_sale_ids );
+        global $wpdb;
+        $discount_row = $on_sale_total > 0
+            ? $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient in catalog_meta()
+                "SELECT MAX( CAST( (SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = pm.post_id AND meta_key = '_regular_price' LIMIT 1) AS DECIMAL(10,2)) - CAST(meta_value AS DECIMAL(10,2))) as highest_discount_amount,
+                        MIN( CAST(meta_value AS DECIMAL(10,2))) as lowest_sale_price
+                 FROM {$wpdb->postmeta} pm
+                 WHERE meta_key = '_sale_price' AND meta_value != '' AND CAST(meta_value AS DECIMAL(10,2)) > 0"
+              )
+            : null;
+        $deal_statistics = [
+            'on_sale_total'       => $on_sale_total,
+            'lowest_sale_price'   => $discount_row ? (float) $discount_row->lowest_sale_price : null,
+            'note'                => 'on_sale_total = products with an active WooCommerce sale price. Use ?on_sale=true in search to filter.',
+        ];
+
         $meta = [
             'total_products'    => self::published_product_count(),
             'currency'          => get_woocommerce_currency(),
             'categories'        => $categories,
             'available_genders' => $available_genders,
             'available_colors'  => $available_colors,
+            'deal_statistics'   => $deal_statistics,
             'merchant_shipping_policy' => KaliCart_Bridge_Catalog_Engine::merchant_shipping_policy(),
             'coupon_policy' => [
                 'source'                   => 'live_woocommerce_coupons',
@@ -778,7 +797,12 @@ class KaliCart_Bridge_API {
                     'families' => [ 'red', 'blue', 'green', 'black', 'white', 'grey', 'brown', 'yellow', 'orange', 'pink', 'purple', 'multi' ],
                     'it_aliases' => [ 'rosso' => 'red', 'blu' => 'blue', 'verde' => 'green', 'nero' => 'black', 'bianco' => 'white', 'grigio' => 'grey', 'marrone' => 'brown', 'giallo' => 'yellow', 'arancione' => 'orange', 'rosa' => 'pink', 'viola' => 'purple' ],
                 ],
-                'orderby'  => [ 'date', 'price', 'title', 'popularity' ],
+                'orderby'  => [
+                    'values'      => [ 'date', 'price', 'title', 'popularity' ],
+                    'default'     => 'date',
+                    'default_order' => 'DESC',
+                    'note'        => 'price sorts by WooCommerce _price meta. For variable products, the parent _price may differ from variant prices; use price.current in response for authoritative value.',
+                ],
                 'boolean'  => [
                     'in_stock' => 'true returns in-stock products only',
                     'on_sale'  => 'true returns products with an active WooCommerce sale price only. Coupon-only savings not included.',
@@ -821,6 +845,7 @@ class KaliCart_Bridge_API {
             'max_price' => $req->get_param( 'max_price' ) !== null ? (float) $req->get_param( 'max_price' ) : null,
             'gender'    => sanitize_text_field( $req->get_param( 'gender' ) ?? '' ),
             'color'     => sanitize_text_field( $req->get_param( 'color' ) ?? '' ),
+            'size'      => sanitize_text_field( $req->get_param( 'size' ) ?? '' ),
             'modified_after' => self::sanitize_iso8601( $req->get_param( 'modified_after' ) ),
         ];
     }

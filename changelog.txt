@@ -1,5 +1,19 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-24 - version 1.0.106
+
+* Catalog search - variable products in list and search context now include a variation_summary field with total_variations, in_stock_variations_count (proxy: variants with a price) and cheapest_available_price. Uses get_variation_prices() which is already cached by WooCommerce — no extra query. Agents can use this to decide whether a detail call is needed without fetching it
+* Catalog search - price object now includes discount_amount (absolute value: regular minus current, rounded to 2 decimals) for all products with on_sale=true. Previously only discount_pct was available and agents had to compute the absolute saving themselves
+* Catalog search - new size soft post-filter (?size=M, ?size=1, ?size=42). Returns products where at least one variant attribute value matches the requested size string (case-insensitive exact match). Applied after search with the same pagination contract as gender and color filters. Does not guarantee the size is in stock — verify via product detail. Works with both taxonomy attributes (pa_taglia) and custom attributes (Size, Taglia)
+* Catalog search - sizes extraction now matches by attribute name in addition to key, so custom attributes not prefixed with pa_ (e.g. key=size name=Size) are correctly identified as size attributes. Previously only taxonomy keys like pa_taglia were recognized
+* Catalog search - sizes.type now returns alphanumeric when the majority of size values do not match any known vocabulary (clothing, numeric, shoes). Covers cup sizes (36C, 38D), hardware codes (M8, DN50), and any format the Bridge does not recognise. Previously these were misclassified as shoes due to overlap with numeric shoe size ranges
+* Catalog search - stock.agent_note now carries a race condition warning when quantity equals 1: Last unit available. Race condition possible — complete checkout immediately. Applied to both product-level stock and per-variant stock in the detail endpoint
+* Catalog meta - deal_statistics field added: on_sale_total (count of products with an active WooCommerce sale price) and lowest_sale_price. Computed at meta generation time and cached with the rest of the meta response. Agents can use this to decide whether filtering on_sale=true is worthwhile before running the search
+* Catalog meta - accepted_filters.orderby is now a structured object with values, default, default_order and a note explaining that price sorts by WooCommerce _price meta and that variable product parent price may differ from variant prices
+* Discovery - shipping cost fields now serialized with round() to 2 decimal places, eliminating IEEE 754 float artifacts (e.g. 4.9000000000000003552...) in the JSON wire format
+* Discovery - size filter documentation updated across discovery, accepted_filters and query construction guidance to reflect the new soft post-filter behaviour
+
+
 2026-06-24 - version 1.0.105
 
 * Catalog search - price.current is now always present on variable products (type=range). Previously only min_regular, max_sale etc. were exposed; agents reading price.current on a variable product received a missing field. The field is now computed as min_sale ?? min_regular and returned alongside the range fields
