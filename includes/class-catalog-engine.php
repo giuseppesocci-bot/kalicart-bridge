@@ -65,12 +65,14 @@ class KaliCart_Bridge_Catalog_Engine {
             'orderby'   => 'date',
             'order'     => 'DESC',
             'in_stock'  => null,
+            'on_sale'   => null,
             'min_price' => null,
             'max_price' => null,
             'gender'    => '',
             'color'     => '',
             'size'      => '',
             'modified_after' => '',
+            'fields'    => 'full',
         ];
         $args = wp_parse_args( $args, $defaults );
 
@@ -176,9 +178,20 @@ class KaliCart_Bridge_Catalog_Engine {
         $query    = new WP_Query( $query_args );
         $products = [];
 
+        // fields=summary: slim projection for agent triage. With no PHP post-filter the
+        // summary context short-circuits the heavy per-product work entirely. With a
+        // post-filter active the full normalize is required to evaluate it (gender/colors/
+        // sizes/on_sale), so survivors are re-emitted through the summary context below.
+        $want_summary = ( $args['fields'] ?? 'full' ) === 'summary';
+
         foreach ( $query->posts as $post ) {
             $wc_product = wc_get_product( $post->ID );
             if ( ! $wc_product ) continue;
+
+            if ( $want_summary && ! $has_php_postfilter ) {
+                $products[] = self::normalize_product( $wc_product, 'summary' );
+                continue;
+            }
 
             $normalized = self::normalize_product( $wc_product );
 
@@ -226,7 +239,9 @@ class KaliCart_Bridge_Catalog_Engine {
                 }
             }
 
-            $products[] = $normalized;
+            $products[] = $want_summary
+                ? self::normalize_product( $wc_product, 'summary' )
+                : $normalized;
         }
 
         // B3 + PAGINATION: with post-filters active, $products is the full filtered set
@@ -267,6 +282,33 @@ class KaliCart_Bridge_Catalog_Engine {
      * Normalize a single WC_Product into agent-ready array.
      */
     public static function normalize_product( WC_Product $p, string $context = 'list' ): array {
+        // Summary projection: slim listing for agent triage. Returns ONLY the fields an
+        // agent needs to shortlist candidates; open /catalog/product/{id} for the few that
+        // matter. Short-circuits BEFORE the heavy per-product work (attribute terms, images,
+        // gender/color inference, quarantine, purchase_readiness, shipping, variants).
+        if ( 'summary' === $context ) {
+            $price      = self::compute_price( $p );
+            $cat_terms  = get_the_terms( $p->get_id(), 'product_cat' );
+            $categories = ( $cat_terms && ! is_wp_error( $cat_terms ) )
+                ? array_values( wp_list_pluck( $cat_terms, 'slug' ) )
+                : [];
+
+            return [
+                'id'         => $p->get_id(),
+                'sku'        => $p->get_sku() ?: null,
+                'name'       => $p->get_name(),
+                'url'        => get_permalink( $p->get_id() ),
+                'price'      => [
+                    'current' => $price['current'] ?? null,
+                    'display' => $price['display'] ?? null,
+                ],
+                'stock'      => [ 'in_stock' => $p->is_in_stock() ],
+                'categories' => $categories,
+                'type'       => $p->get_type(),
+                'updated_at' => $p->get_date_modified() ? $p->get_date_modified()->date( 'c' ) : null,
+            ];
+        }
+
         // ── Compute once, reuse everywhere ───────────────────────────────────
         $id                 = $p->get_id();
         $type               = $p->get_type();

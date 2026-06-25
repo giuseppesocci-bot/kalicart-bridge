@@ -350,6 +350,7 @@ class KaliCart_Bridge_API {
                     'page'       => 'Page number (default 1).',
                     'orderby'    => 'Sort: date (default), price, title, popularity.',
                     'order'      => 'ASC or DESC (default DESC).',
+                    'fields'     => 'Response verbosity. summary = slim per-item projection (id, sku, name, url, price.current/display, stock.in_stock, categories, type, updated_at) for low-cost triage at scale - open /catalog/product/{id} for full detail (description, images, full attributes, variants). full (default) = complete record. per_page 1-100 applies to both.',
                 ],
 
                 'introspection' => [
@@ -519,6 +520,7 @@ class KaliCart_Bridge_API {
             [ 'name' => 'order',     'in' => 'query', 'description' => 'Sort direction.', 'schema' => [ 'type' => 'string', 'enum' => [ 'ASC', 'DESC' ], 'default' => 'DESC' ] ],
             [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100). Parameter name is per_page; do not use limit.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
             [ 'name' => 'page',      'in' => 'query', 'description' => 'Page number.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'default' => 1 ] ],
+            [ 'name' => 'fields',    'in' => 'query', 'description' => 'Response verbosity. summary returns a slim per-item projection (id, sku, name, url, price.current/display, stock.in_stock, categories, type, updated_at) for low-cost triage; open /catalog/product/{id} for full detail. full (default) returns the complete record.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'full' ] ],
         ];
 
         $q_param = [ 'name' => 'q', 'in' => 'query', 'description' => 'Full-text search query. Parameter name is exactly q; do not use query. Use only on /catalog/search, never on /catalog/products.', 'schema' => [ 'type' => 'string' ] ];
@@ -847,6 +849,7 @@ class KaliCart_Bridge_API {
             'color'     => sanitize_text_field( $req->get_param( 'color' ) ?? '' ),
             'size'      => sanitize_text_field( $req->get_param( 'size' ) ?? '' ),
             'modified_after' => self::sanitize_iso8601( $req->get_param( 'modified_after' ) ),
+            'fields'    => $req->get_param( 'fields' ) === 'summary' ? 'summary' : 'full',
         ];
     }
 
@@ -882,6 +885,7 @@ class KaliCart_Bridge_API {
             // Incremental sync: federated indexers pass an ISO-8601 timestamp to fetch
             // only products modified since their last sync (post_modified_gmt). Read-only.
             'modified_after' => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
+            'fields'    => [ 'default' => 'full', 'sanitize_callback' => 'sanitize_text_field' ],
         ];
         if ( $with_q ) {
             $args['q'] = [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ];

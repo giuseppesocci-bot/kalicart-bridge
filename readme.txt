@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, mcp, rest api, chatgpt
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.106
+Stable tag: 1.0.107
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -130,6 +130,10 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.107 =
+* Catalog search - new `fields` query parameter on `/catalog/products` and `/catalog/search`. `fields=summary` returns a slim per-item projection — `id`, `sku`, `name`, `url`, `price.current`, `price.display`, `stock.in_stock`, `categories`, `type` and `updated_at` — so an agent can triage a large catalog cheaply and open `/catalog/product/{id}` in full only for the candidates worth pursuing. `fields=full` remains the default, so existing consumers are unaffected. On a full page the summary payload is roughly an order of magnitude smaller than full, and on browse and search without post-filters the response is also assembled with far fewer database queries because the heavy per-product work (attribute terms, images, gender/colour inference, shipping, variants) is skipped
+* Core - query_products() now declares a default for the on_sale argument, avoiding an Undefined array key notice when the catalog engine is called directly without it. The public REST API always supplied the argument, so live endpoints were never affected
 
 = 1.0.106 =
 * Catalog search - variable products in list and search context now include a variation_summary field with total_variations, in_stock_variations_count (proxy: variants with a price) and cheapest_available_price. Uses get_variation_prices() which is already cached by WooCommerce — no extra query. Agents can use this to decide whether a detail call is needed without fetching it
