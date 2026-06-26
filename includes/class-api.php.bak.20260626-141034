@@ -208,8 +208,7 @@ class KaliCart_Bridge_API {
                 'KaliCart Bridge: machine-readable WooCommerce catalog for ' . $site_name . '. ' .
                 'Read-only. No API key required. No LLM. No external service. ' .
                 'Products are normalized with merchant-native WooCommerce taxonomy. ' .
-                'Use public_catalog.* endpoints for product discovery. ' .
-                'For large catalogs, request fields=summary for low-cost triage, then fetch full detail per candidate.',
+                'Use public_catalog.* endpoints for product discovery.',
 
             'kalicart_agent_catalog' => [
                 'version'               => 'bridge-1.0',
@@ -435,17 +434,16 @@ class KaliCart_Bridge_API {
                 '2) Use public_catalog.search_url_template with bare product spine in q. Put every attribute in its own filter.',
                 '3) If 0 results: follow query_construction.zero_results_recovery (barer q, then category browse).',
                 '4) Use q, never query. Use per_page, never limit. Use /catalog/search for text search and /catalog/products only for browse/listing.',
-                '5) For browse, listing, or scanning a large catalog, request fields=summary first: it returns a slim per-item projection (about an order of magnitude smaller than the default full) for low-cost triage at scale. Then GET /catalog/product/{id} (or fields=full) only for the candidates worth pursuing. full is the default, so you must opt into summary explicitly.',
-                '6) Never stack brand, color, gender or price inside q. size is not a search filter — read it from product variations after candidate selection.',
-                '7) Read price.current for the actual catalog price. Check stock.in_stock before presenting offers.',
-                '8) If active_coupons is present, present coupons as conditional checkout savings only; never replace price.current.',
-                '9) Use merchant_shipping_policy/product shipping hints for reasoning, but exact shipping is verified by WooCommerce checkout.',
-                '10) This catalog is live WooCommerce — no sync delay. Always current.',
-                '11) Taxonomy is merchant-native: use /catalog/categories to enumerate valid category paths, not assumed global taxonomy.',
-                '12) Check stock.confidence before reporting availability. If null quantity, report status only.',
-                '13) For variable products, read purchase_readiness.blocking_fields before quoting price or proposing checkout.',
-                '14) All totals are preliminary until verified at cart/checkout. Label estimates as such.',
-                '15) Verify semantic fit before proposing checkout — category match is not sufficient.',
+                '5) Never stack brand, color, gender or price inside q. size is not a search filter — read it from product variations after candidate selection.',
+                '6) Read price.current for the actual catalog price. Check stock.in_stock before presenting offers.',
+                '7) If active_coupons is present, present coupons as conditional checkout savings only; never replace price.current.',
+                '8) Use merchant_shipping_policy/product shipping hints for reasoning, but exact shipping is verified by WooCommerce checkout.',
+                '9) This catalog is live WooCommerce — no sync delay. Always current.',
+                '10) Taxonomy is merchant-native: use /catalog/categories to enumerate valid category paths, not assumed global taxonomy.',
+                '11) Check stock.confidence before reporting availability. If null quantity, report status only.',
+                '12) For variable products, read purchase_readiness.blocking_fields before quoting price or proposing checkout.',
+                '13) All totals are preliminary until verified at cart/checkout. Label estimates as such.',
+                '14) Verify semantic fit before proposing checkout — category match is not sufficient.',
             ] ),
 
             'placement_guidance' => 'The <link rel="kalicart-agent"> in <head> and the body anchor badge both carry this discovery URL. Head covers head-reading agents; body anchor covers DOM/content-parsing agents. Both are in raw HTML — not injected via JavaScript.',

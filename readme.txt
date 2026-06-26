@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, mcp, rest api, chatgpt
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.107
+Stable tag: 1.0.108
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -130,6 +130,9 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.108 =
+* Discovery - agent_instructions now explicitly prescribes the fields=summary triage strategy for browse and listing over large catalogs: request the slim per-item projection (roughly an order of magnitude smaller than the default full record) for cheap triage at scale, then fetch /catalog/product/{id} (or fields=full) only for the candidates worth pursuing. The projection shipped in 1.0.107 but was only documented under search_filters, so agents following the numbered instruction flow never reached it; it is now part of the instruction sequence and is also surfaced in human_readable_summary. No change to API behavior: full remains the default.
 
 = 1.0.107 =
 * Catalog search - new `fields` query parameter on `/catalog/products` and `/catalog/search`. `fields=summary` returns a slim per-item projection — `id`, `sku`, `name`, `url`, `price.current`, `price.display`, `stock.in_stock`, `categories`, `type` and `updated_at` — so an agent can triage a large catalog cheaply and open `/catalog/product/{id}` in full only for the candidates worth pursuing. `fields=full` remains the default, so existing consumers are unaffected. On a full page the summary payload is roughly an order of magnitude smaller than full, and on browse and search without post-filters the response is also assembled with far fewer database queries because the heavy per-product work (attribute terms, images, gender/colour inference, shipping, variants) is skipped
