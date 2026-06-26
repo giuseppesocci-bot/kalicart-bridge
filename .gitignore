@@ -1,0 +1,7 @@
+# Editor / rollback backups — mai nel repo
+*.bak
+*.bak.*
+*~
+*.orig
+*.rej
+.DS_Store
