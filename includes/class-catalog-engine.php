@@ -301,10 +301,13 @@ class KaliCart_Bridge_Catalog_Engine {
                 'price'      => [
                     'current' => $price['current'] ?? null,
                     'display' => $price['display'] ?? null,
+                    'regular' => $price['regular'] ?? $price['min_regular'] ?? null,
+                    'on_sale' => (bool) ( $price['on_sale'] ?? false ),
                 ],
                 'stock'      => [ 'in_stock' => $p->is_in_stock() ],
                 'categories' => $categories,
                 'type'       => $p->get_type(),
+                'selection_required' => $p->is_type( 'variable' ),
                 'updated_at' => $p->get_date_modified() ? $p->get_date_modified()->date( 'c' ) : null,
             ];
         }

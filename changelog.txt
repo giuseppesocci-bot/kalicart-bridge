@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-06-27 - version 1.0.109
+
+* Catalog triage - search and filtered product browsing now default to the compact summary projection when fields is omitted; MCP search and list tools always return summaries and default to 10 results, while unfiltered REST enumeration remains full for federated index compatibility
+* Product verification - /catalog/product/{id} now returns compact purchase-relevant evidence by default (price, stock, variants, shipping and coupons); append fields=full only when descriptions, images or complete metadata are required
+* Agent guidance - summary responses declare which facts are already complete and direct verification to the final selected product only; price_min and price_max mistakes now return a corrected summary URL instead of being ignored
+
+
 2026-06-26 - version 1.0.108
 
 * Discovery - agent_instructions now explicitly prescribes the fields=summary triage strategy for browse and listing over large catalogs: request the slim per-item projection (roughly an order of magnitude smaller than the default full record) for cheap triage at scale, then fetch /catalog/product/{id} (or fields=full) only for the candidates worth pursuing. The projection shipped in 1.0.107 but was only documented under search_filters, so agents following the numbered instruction flow never reached it; it is now part of the instruction sequence and is also surfaced in human_readable_summary. No change to API behavior: full remains the default.

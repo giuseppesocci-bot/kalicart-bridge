@@ -224,6 +224,7 @@ class KaliCart_Bridge_MCP {
 			case 'get_product':
 				$req = new WP_REST_Request( 'GET' );
 				$req->set_param( 'id', isset( $args['id'] ) ? absint( $args['id'] ) : 0 );
+				$req->set_param( 'fields', 'verification' );
 				return self::unwrap( KaliCart_Bridge_API::catalog_product( $req ) );
 
 			case 'list_categories':
@@ -244,6 +245,10 @@ class KaliCart_Bridge_MCP {
 				$req->set_param( $key, $args[ $key ] );
 			}
 		}
+		if ( ! array_key_exists( 'per_page', $args ) ) {
+			$req->set_param( 'per_page', 10 );
+		}
+		$req->set_param( 'fields', 'summary' );
 		return self::unwrap( call_user_func( array( 'KaliCart_Bridge_API', $callback ), $req ) );
 	}
 
@@ -294,7 +299,7 @@ class KaliCart_Bridge_MCP {
 				'type'        => 'integer',
 				'minimum'     => 1,
 				'maximum'     => 100,
-				'default'     => 20,
+				'default'     => 10,
 				'description' => 'Results per page (1–100).',
 			),
 			'page'      => array(
@@ -329,7 +334,7 @@ class KaliCart_Bridge_MCP {
 			array(
 				'name'        => 'search_products',
 				'title'       => 'Search products',
-				'description' => 'Search the catalog by a bare product noun plus structured filters. Provide at least one of: q, category, gender, color, on_sale, in_stock. Returns matching products with price, stock and shipping hints.',
+				'description' => 'Search the catalog by a bare product noun plus structured filters. Returns compact summary records for candidate ranking; use get_product only for the final selected product.',
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => (object) $search_props,
@@ -338,7 +343,7 @@ class KaliCart_Bridge_MCP {
 			array(
 				'name'        => 'list_products',
 				'title'       => 'List products',
-				'description' => 'List catalog products (paginated), optionally filtered. Same filters as search_products but without a free-text query.',
+				'description' => 'List compact summary records (paginated), optionally filtered. Same filters as search_products but without a free-text query; use get_product only after selection.',
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => (object) $filter_props,
@@ -346,8 +351,8 @@ class KaliCart_Bridge_MCP {
 			),
 			array(
 				'name'        => 'get_product',
-				'title'       => 'Get product',
-				'description' => 'Fetch a single product by numeric ID, including attributes and the full variations[] list for variable products.',
+				'title'       => 'Verify selected product',
+				'description' => 'After ranking summaries, call once for the final selected product. Returns compact price, stock, variants, shipping and coupon evidence.',
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => (object) array(
@@ -404,4 +409,3 @@ class KaliCart_Bridge_MCP {
 		);
 	}
 }
-

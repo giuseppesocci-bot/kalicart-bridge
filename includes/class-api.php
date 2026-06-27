@@ -150,6 +150,11 @@ class KaliCart_Bridge_API {
                     'validate_callback' => fn( $v ) => is_numeric( $v ),
                     'sanitize_callback' => 'absint',
                 ],
+                'fields' => [
+                    'default'           => 'verification',
+                    'validate_callback' => fn( $v ) => in_array( $v, [ 'verification', 'summary', 'full' ], true ),
+                    'sanitize_callback' => 'sanitize_key',
+                ],
             ],
         ] );
 
@@ -208,8 +213,18 @@ class KaliCart_Bridge_API {
                 'KaliCart Bridge: machine-readable WooCommerce catalog for ' . $site_name . '. ' .
                 'Read-only. No API key required. No LLM. No external service. ' .
                 'Products are normalized with merchant-native WooCommerce taxonomy. ' .
-                'Use public_catalog.* endpoints for product discovery. ' .
-                'For large catalogs, request fields=summary for low-cost triage, then fetch full detail per candidate.',
+                'Use agent_quick_start for product discovery and verification.',
+
+            'agent_quick_start' => [
+                'shopping_search_url_template' => $base . '/search?q={q}&per_page=10&fields=summary',
+                'filtered_search_endpoint'     => $base . '/search?fields=summary',
+                'verify_selected_url_template' => $base . '/product/{id}',
+                'rules' => [
+                    'Use search for every shopper product request. Do not enumerate /catalog/products.',
+                    'If the requested facts are already present in the summary response, answer without fetching product detail.',
+                    'Rank and compare candidates from summary data only. Fetch product detail for the final selected product only, unless the user explicitly requests a detail-level comparison of multiple products.',
+                ],
+            ],
 
             'kalicart_agent_catalog' => [
                 'version'               => 'bridge-1.0',
@@ -298,10 +313,12 @@ class KaliCart_Bridge_API {
             ],
 
             'public_catalog' => [
-                'search_url_template'   => $base . '/search?q={q}',
+                'search_url_template'   => $base . '/search?q={q}&fields=summary',
                 'search_url_note'       => 'Replace {q} with the bare product spine only. All other attributes go in separate query parameters.',
-                'products_url'          => $base . '/products',
+                'products_url'          => $base . '/products?fields=summary',
                 'product_url_template'  => $base . '/product/{id}',
+                'product_full_url_template' => $base . '/product/{id}?fields=full',
+                'product_verification_url_template' => $base . '/product/{id}',
                 'categories_url'        => $base . '/categories',
                 'meta_url'              => $base . '/meta',
                 'shipping_policy'       => 'Included in discovery and meta as merchant_shipping_policy. Product responses include product-level shipping hints.',
@@ -313,19 +330,19 @@ class KaliCart_Bridge_API {
 
                 'request_contract' => [
                     'search_endpoint' => [
-                        'url'                    => $base . '/search',
+                        'url'                    => $base . '/search?fields=summary',
                         'text_parameter'         => 'q',
                         'result_count_parameter' => 'per_page',
                         'invalid_aliases'        => [ 'query' => 'q', 'limit' => 'per_page' ],
-                        'copy_paste_example'     => $base . '/search?q=Nike&per_page=10',
+                        'copy_paste_example'     => $base . '/search?q=Nike&per_page=10&fields=summary',
                     ],
                     'products_endpoint' => [
-                        'url'                    => $base . '/products',
+                        'url'                    => $base . '/products?fields=summary',
                         'role'                   => 'browse/list products with filters; not full-text search',
                         'does_not_accept'        => [ 'q', 'query', 'limit' ],
-                        'use_for_text_search'    => $base . '/search?q={q}',
+                        'use_for_text_search'    => $base . '/search?q={q}&fields=summary',
                         'result_count_parameter' => 'per_page',
-                        'copy_paste_example'     => $base . '/products?per_page=10',
+                        'copy_paste_example'     => $base . '/products?per_page=10&fields=summary',
                     ],
                     'runtime_guidance' => 'If an agent uses query instead of q, limit instead of per_page, or sends q to /catalog/products, the API returns a 400 response with the corrected endpoint and suggested_url.',
                 ],
@@ -351,7 +368,7 @@ class KaliCart_Bridge_API {
                     'page'       => 'Page number (default 1).',
                     'orderby'    => 'Sort: date (default), price, title, popularity.',
                     'order'      => 'ASC or DESC (default DESC).',
-                    'fields'     => 'Response verbosity. summary = slim per-item projection (id, sku, name, url, price.current/display, stock.in_stock, categories, type, updated_at) for low-cost triage at scale - open /catalog/product/{id} for full detail (description, images, full attributes, variants). full (default) = complete record. per_page 1-100 applies to both.',
+                    'fields'     => 'List/search verbosity. summary = slim per-item projection for low-cost triage; full = complete records. Single-product /catalog/product/{id} defaults to compact verification data; append ?fields=full only when description or images are required. per_page 1-100 applies to list/search.',
                 ],
 
                 'introspection' => [
@@ -414,9 +431,9 @@ class KaliCart_Bridge_API {
 
             'variation_discovery' => [
                 'required_for_variable_products' => true,
-                'source'     => 'product detail endpoint: /catalog/product/{id} exposes attributes and available variations',
+                'source'     => 'product verification endpoint: /catalog/product/{id} exposes purchasable attributes and available variations by default',
                 'agent_rule' => 'Do not quote exact final price until a variation is selected. Price may differ per variant. Use purchase_readiness.blocking_fields to know which attributes are required.',
-                'list_context_note' => 'In list and search responses, variants is an empty array for variable products (performance). Fetch /catalog/product/{id} for the full variants list. variants is always an array, never null.',
+                'list_context_note' => 'In list and search responses, variants is an empty array for variable products (performance). Fetch /catalog/product/{id} for the compact verification record and variants list. variants is always an array, never null.',
             ],
 
             'semantic_fit_guidance' => 'Before proposing checkout, verify that the selected product satisfies the user functional need — not only category or keyword similarity. A product in the right category may still be wrong for the use case.',
@@ -435,7 +452,7 @@ class KaliCart_Bridge_API {
                 '2) Use public_catalog.search_url_template with bare product spine in q. Put every attribute in its own filter.',
                 '3) If 0 results: follow query_construction.zero_results_recovery (barer q, then category browse).',
                 '4) Use q, never query. Use per_page, never limit. Use /catalog/search for text search and /catalog/products only for browse/listing.',
-                '5) For browse, listing, or scanning a large catalog, request fields=summary first: it returns a slim per-item projection (about an order of magnitude smaller than the default full) for low-cost triage at scale. Then GET /catalog/product/{id} (or fields=full) only for the candidates worth pursuing. full is the default, so you must opt into summary explicitly.',
+                '5) Use fields=summary for triage and rank all candidates from summary data. Fetch /catalog/product/{id} only for the final selected product, unless the user explicitly requests a detail-level comparison. It returns compact verification data by default; append ?fields=full only when description or images are required.',
                 '6) Never stack brand, color, gender or price inside q. size is not a search filter — read it from product variations after candidate selection.',
                 '7) Read price.current for the actual catalog price. Check stock.in_stock before presenting offers.',
                 '8) If active_coupons is present, present coupons as conditional checkout savings only; never replace price.current.',
@@ -472,9 +489,11 @@ class KaliCart_Bridge_API {
             'endpoints' => [
                 'discovery'   => $discovery,
                 'mcp'         => rest_url( KALICART_BRIDGE_API_NS . '/mcp' ),
-                'search'      => $base . '/search',
-                'products'    => $base . '/products',
+                'search'      => $base . '/search?fields=summary',
+                'products'    => $base . '/products?fields=summary',
                 'product'     => $base . '/product/{id}',
+                'product_full'=> $base . '/product/{id}?fields=full',
+                'product_verification' => $base . '/product/{id}',
                 'categories'  => $base . '/categories',
                 'meta'        => $base . '/meta',
                 'openapi'     => rest_url( KALICART_BRIDGE_API_NS . '/openapi' ),
@@ -569,8 +588,11 @@ class KaliCart_Bridge_API {
                 ] ],
                 '/catalog/product/{id}' => [ 'get' => [
                     'operationId' => 'getProduct',
-                    'summary'     => 'Full detail for a single published product (with variations).',
-                    'parameters'  => [ [ 'name' => 'id', 'in' => 'path', 'required' => true, 'description' => 'WooCommerce product ID.', 'schema' => [ 'type' => 'integer' ] ] ],
+                    'summary'     => 'Compact verification data for one product by default; full descriptive detail is explicit.',
+                    'parameters'  => [
+                        [ 'name' => 'id', 'in' => 'path', 'required' => true, 'description' => 'WooCommerce product ID.', 'schema' => [ 'type' => 'integer' ] ],
+                        [ 'name' => 'fields', 'in' => 'query', 'description' => 'verification (default; summary is accepted as an alias) returns purchase-relevant facts and variations; full adds descriptions, images and complete metadata.', 'schema' => [ 'type' => 'string', 'enum' => [ 'verification', 'summary', 'full' ], 'default' => 'verification' ] ],
+                    ],
                     'responses'   => [ '200' => [ 'description' => 'Product detail.', 'content' => [ 'application/json' => [ 'schema' => [ '$ref' => '#/components/schemas/Product' ] ] ] ], '404' => [ 'description' => 'Product not found.' ] ],
                 ] ],
                 '/catalog/categories' => [ 'get' => [
@@ -621,6 +643,9 @@ class KaliCart_Bridge_API {
         }
 
         $args = self::extract_query_args( $req );
+        if ( ! self::query_param_present( $req, 'fields' ) ) {
+            $args['fields'] = 'summary';
+        }
         $q    = sanitize_text_field( $req->get_param( 'q' ) ?? '' );
 
         if ( empty( $q ) && empty( $args['category'] ) && empty( $args['gender'] ) && empty( $args['color'] ) && $args['on_sale'] !== true && $args['in_stock'] !== true ) {
@@ -641,7 +666,9 @@ class KaliCart_Bridge_API {
             'on_sale'  => $args['on_sale'] ?? null,
         ], fn( $v ) => $v !== null && $v !== '' );
 
-        if ( (int) ( $result['total'] ?? 0 ) === 0 ) {
+        if ( (int) ( $result['total'] ?? 0 ) > 0 && $args['fields'] === 'summary' ) {
+            $result['result_guidance'] = self::summary_triage_guidance();
+        } elseif ( (int) ( $result['total'] ?? 0 ) === 0 ) {
             $result['result_guidance'] = self::zero_results_guidance( $q, $args );
         }
 
@@ -658,7 +685,13 @@ class KaliCart_Bridge_API {
         }
 
         $args   = self::extract_query_args( $req );
+        if ( ! self::query_param_present( $req, 'fields' ) && self::products_request_has_commerce_filters( $req ) ) {
+            $args['fields'] = 'summary';
+        }
         $result = KaliCart_Bridge_Catalog_Engine::query_products( $args );
+        if ( (int) ( $result['total'] ?? 0 ) > 0 && $args['fields'] === 'summary' ) {
+            $result['result_guidance'] = self::summary_triage_guidance();
+        }
         return self::ok( $result );
     }
 
@@ -666,6 +699,19 @@ class KaliCart_Bridge_API {
 
     public static function catalog_product( WP_REST_Request $req ): WP_REST_Response {
         self::force_default_language();
+        $full = self::catalog_product_full_response( $req );
+        if ( $full->get_status() !== 200 ) {
+            return $full;
+        }
+
+        if ( $req->get_param( 'fields' ) === 'full' ) {
+            return $full;
+        }
+
+        return self::ok( self::verification_product_projection( $full->get_data() ) );
+    }
+
+    private static function catalog_product_full_response( WP_REST_Request $req ): WP_REST_Response {
         $requested_id = absint( $req->get_param( 'id' ) );
 
         // Multilingual contract: the canonical catalog exists only in the site
@@ -907,6 +953,15 @@ class KaliCart_Bridge_API {
         return array_key_exists( $name, $req->get_query_params() );
     }
 
+    private static function products_request_has_commerce_filters( WP_REST_Request $req ): bool {
+        foreach ( [ 'category', 'gender', 'color', 'size', 'min_price', 'max_price', 'in_stock', 'on_sale', 'orderby', 'order' ] as $name ) {
+            if ( self::query_param_present( $req, $name ) ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static function catalog_param_alias_error( WP_REST_Request $req, string $endpoint ): ?WP_REST_Response {
         $invalid = [];
 
@@ -915,6 +970,12 @@ class KaliCart_Bridge_API {
         }
         if ( self::query_param_present( $req, 'limit' ) ) {
             $invalid['limit'] = 'per_page';
+        }
+        if ( self::query_param_present( $req, 'price_min' ) ) {
+            $invalid['price_min'] = 'min_price';
+        }
+        if ( self::query_param_present( $req, 'price_max' ) ) {
+            $invalid['price_max'] = 'max_price';
         }
         if ( $endpoint === 'products' && self::query_param_present( $req, 'q' ) ) {
             $invalid['q'] = '/catalog/search?q=...';
@@ -929,21 +990,23 @@ class KaliCart_Bridge_API {
             : $endpoint;
 
         $message = $target === 'search'
-            ? 'Invalid catalog search parameters. Use q for search text and per_page for result count.'
-            : 'Invalid catalog listing parameters. Use per_page for result count.';
+            ? 'Invalid catalog search parameters. Use the parameter_corrections map and suggested_url.'
+            : 'Invalid catalog listing parameters. Use the parameter_corrections map and suggested_url.';
 
         return self::error( $message, 400, [
             'error_code'            => 'KALICART_INVALID_CATALOG_PARAMETERS',
             'invalid_parameters'    => array_keys( $invalid ),
             'parameter_corrections' => $invalid,
-            'correct_endpoint'      => rest_url( KALICART_BRIDGE_API_NS . '/catalog/' . $target ),
+            'correct_endpoint'      => add_query_arg( 'fields', 'summary', rest_url( KALICART_BRIDGE_API_NS . '/catalog/' . $target ) ),
             'suggested_url'         => self::suggested_catalog_url( $req, $target ),
-            'agent_guidance'        => 'Use /catalog/search?q={bare product noun}&per_page={1-100} for text search. Use /catalog/products?per_page={1-100} for browsing/listing. Do not use query or limit.',
+            'agent_guidance'        => 'Use q, per_page, min_price and max_price. Do not use query, limit, price_min or price_max. Follow suggested_url exactly.',
         ] );
     }
 
     private static function suggested_catalog_url( WP_REST_Request $req, string $target ): string {
-        $params = [];
+        $params = [
+            'fields' => self::query_param_present( $req, 'fields' ) && $req->get_param( 'fields' ) === 'full' ? 'full' : 'summary',
+        ];
 
         if ( $target === 'search' ) {
             $q = $req->get_param( 'q' );
@@ -961,6 +1024,15 @@ class KaliCart_Bridge_API {
                 $value = $req->get_param( $key );
                 if ( $value !== null && $value !== '' ) {
                     $params[ $key ] = sanitize_text_field( (string) $value );
+                }
+            }
+        }
+
+        foreach ( [ 'price_min' => 'min_price', 'price_max' => 'max_price' ] as $alias => $canonical ) {
+            if ( ! isset( $params[ $canonical ] ) && self::query_param_present( $req, $alias ) ) {
+                $value = $req->get_param( $alias );
+                if ( $value !== null && $value !== '' ) {
+                    $params[ $canonical ] = sanitize_text_field( (string) $value );
                 }
             }
         }
@@ -993,6 +1065,111 @@ class KaliCart_Bridge_API {
                 'in_stock'  => $args['in_stock'],
                 'on_sale'   => $args['on_sale'] ?? null,
             ], fn( $v ) => $v !== null && $v !== '' ),
+        ];
+    }
+
+    private static function summary_triage_guidance(): array {
+        return [
+            'code'          => 'SUMMARY_TRIAGE',
+            'response_mode' => 'summary',
+            'next_step'     => 'rank_from_summary_then_verify_one_selected_product',
+            'fact_coverage' => [
+                'complete_for' => [ 'product_identity', 'catalog_price', 'sale_status', 'availability_status', 'product_url', 'category', 'selection_required' ],
+                'detail_required_for' => [ 'exact_variants_or_sizes', 'stock_precision_beyond_status', 'shipping', 'coupons', 'purchase_readiness', 'description', 'images' ],
+            ],
+            'detail_fetch_policy' => [
+                'default_max_products'       => 1,
+                'rank_candidates_from_summary_only' => true,
+                'selected_product_only'      => true,
+                'non_selected_product_detail'=> 'do_not_fetch',
+                'fetch_after_selection'      => true,
+                'skip_when_summary_suffices' => true,
+                'multiple_products_only_when'=> 'user_explicitly_requests_detail_level_comparison; finding_or_ranking_multiple_candidates_does_not_qualify',
+                'verification_url_template'  => rest_url( KALICART_BRIDGE_API_NS . '/catalog/product/{id}' ),
+                'full_detail_only_when'      => 'description_or_images_required',
+            ],
+        ];
+    }
+
+    private static function verification_product_projection( array $product ): array {
+        $compact_price = static function( array $price ): array {
+            return array_filter( [
+                'currency'        => $price['currency'] ?? null,
+                'current'         => $price['current'] ?? null,
+                'regular'         => $price['regular'] ?? $price['min_regular'] ?? null,
+                'display'         => $price['display'] ?? null,
+                'on_sale'         => $price['on_sale'] ?? false,
+                'discount_pct'    => $price['discount_pct'] ?? null,
+                'discount_amount' => $price['discount_amount'] ?? null,
+            ], fn( $value ) => $value !== null );
+        };
+
+        $compact_stock = static function( array $stock ): array {
+            return array_filter( [
+                'in_stock'         => $stock['in_stock'] ?? null,
+                'quantity'         => $stock['quantity'] ?? null,
+                'quantity_tracked' => $stock['quantity_tracked'] ?? null,
+                'confidence'       => $stock['confidence'] ?? null,
+                'agent_note'       => $stock['agent_note'] ?? null,
+            ], fn( $value ) => $value !== null );
+        };
+
+        $variants = array_map( static function( array $variant ) use ( $compact_price, $compact_stock ): array {
+            $variant_stock = $variant['stock'] ?? [
+                'in_stock' => $variant['in_stock'] ?? null,
+            ];
+            return [
+                'variation_id' => $variant['variation_id'] ?? null,
+                'attributes'   => $variant['attributes'] ?? [],
+                'price'        => $compact_price( $variant['price'] ?? [] ),
+                'stock'        => $compact_stock( $variant_stock ),
+                'sku'          => $variant['sku'] ?? null,
+                'purchasable'  => $variant['purchasable'] ?? null,
+            ];
+        }, $product['variants'] ?? [] );
+
+        $coupons = array_map( static function( array $coupon ): array {
+            return array_filter( [
+                'code'                        => $coupon['code'] ?? null,
+                'discount_type'               => $coupon['discount_type'] ?? null,
+                'amount'                      => $coupon['amount'] ?? null,
+                'currency'                    => $coupon['currency'] ?? null,
+                'estimated_saving_on_product' => $coupon['estimated_saving_on_product'] ?? null,
+                'free_shipping'               => $coupon['free_shipping'] ?? null,
+                'combinable_with_sale'        => $coupon['combinable_with_sale'] ?? null,
+                'verification_required'       => $coupon['verification_required'] ?? true,
+            ], fn( $value ) => $value !== null );
+        }, $product['active_coupons'] ?? [] );
+
+        $shipping = $product['shipping'] ?? [];
+        return [
+            'response_mode'      => 'verification',
+            'verification_scope' => [
+                'role'                    => 'final_selected_product',
+                'additional_product_fetch'=> 'only_for_explicit_detail_level_comparison',
+            ],
+            'id'                 => $product['id'] ?? null,
+            'sku'                => $product['sku'] ?? null,
+            'type'               => $product['type'] ?? null,
+            'name'               => $product['name'] ?? null,
+            'url'                => $product['url'] ?? null,
+            'checkout_url'       => $product['checkout_url'] ?? null,
+            'price'              => $compact_price( $product['price'] ?? [] ),
+            'stock'              => $compact_stock( $product['stock'] ?? [] ),
+            'shipping'           => [
+                'shipping_required'                       => $shipping['shipping_required'] ?? null,
+                'free_shipping_available'                  => $shipping['free_shipping_available'] ?? null,
+                'free_shipping_thresholds'                 => $shipping['free_shipping_thresholds'] ?? [],
+                'free_shipping_eligible_by_product_price'  => $shipping['free_shipping_eligible_by_product_price'] ?? null,
+                'amount_to_nearest_free_shipping_threshold'=> $shipping['amount_to_nearest_free_shipping_threshold'] ?? null,
+                'merchant_policy_url'                      => rest_url( KALICART_BRIDGE_API_NS . '/catalog/meta' ),
+                'authority'                                => $shipping['authority'] ?? 'woocommerce_checkout',
+            ],
+            'active_coupons'     => $coupons,
+            'purchase_readiness' => $product['purchase_readiness'] ?? null,
+            'variants'           => $variants,
+            'updated_at'         => $product['updated_at'] ?? null,
+            'authority_note'     => 'Catalog verification data. Final shipping, coupon acceptance and payable total remain WooCommerce checkout authority.',
         ];
     }
 
