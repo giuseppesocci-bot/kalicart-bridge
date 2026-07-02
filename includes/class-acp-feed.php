@@ -612,14 +612,14 @@ class KaliCart_Bridge_ACP_Feed {
 		echo '<div class="kali-section-title">' . esc_html__( 'Agent Commerce', 'kalicart-bridge' ) . '</div>';
 		echo '<p>' . esc_html__( 'Your live agent-readable catalog and the optional ChatGPT product feed are separate outputs of the same WooCommerce data.', 'kalicart-bridge' ) . '</p>';
 
-		echo '<div class="card" style="max-width:960px">';
+		echo '<div class="kali-acp-card">';
 		echo '<h2>' . esc_html__( 'Agent-readable catalog', 'kalicart-bridge' ) . '</h2>';
 		echo '<p><strong style="color:#008a20">' . esc_html__( 'Active', 'kalicart-bridge' ) . '</strong> &mdash; ' . esc_html__( 'Your products remain available through KaliCart search, REST API, MCP and UCP surfaces.', 'kalicart-bridge' ) . '</p>';
 		echo '<p>' . esc_html__( 'Missing brand or primary image does not invalidate the agent-readable catalog. Agents can still search, inspect and verify those products from WooCommerce live data.', 'kalicart-bridge' ) . '</p>';
 		echo '<p><a href="' . esc_url( rest_url( KALICART_BRIDGE_API_NS . '/discovery' ) ) . '" target="_blank" rel="noopener">' . esc_html__( 'Open discovery document', 'kalicart-bridge' ) . '</a></p>';
 		echo '</div>';
 
-		echo '<div class="card" style="max-width:960px">';
+		echo '<div class="kali-acp-card">';
 		echo '<h2>' . esc_html__( 'ChatGPT Product Feed (OpenAI)', 'kalicart-bridge' ) . '</h2>';
 		echo '<p>' . esc_html__( 'This optional export follows OpenAI’s direct product feed specification. Application and approval are required; after approval, OpenAI provides the delivery channel. Checkout stays on your storefront.', 'kalicart-bridge' ) . '</p>';
 		echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'ChatGPT feed only:', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Every status and setting in this section refers only to the optional file delivered to OpenAI. It does not enable, disable or limit KaliCart search, REST API, MCP, UCP or the federated catalog.', 'kalicart-bridge' ) . '</p></div>';
@@ -641,7 +641,7 @@ class KaliCart_Bridge_ACP_Feed {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Missing primary product image.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'A primary product image is required by OpenAI’s direct product feed specification. Affected feed rows remain available in the agent-readable catalog but are excluded from the ChatGPT product feed.', 'kalicart-bridge' ) . '</p></div>';
 		}
 
-		echo '<table class="widefat striped" style="max-width:960px"><thead><tr><th>' . esc_html__( 'Check', 'kalicart-bridge' ) . '</th><th>' . esc_html__( 'Status', 'kalicart-bridge' ) . '</th><th>' . esc_html__( 'Meaning', 'kalicart-bridge' ) . '</th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Check', 'kalicart-bridge' ) . '</th><th>' . esc_html__( 'Status', 'kalicart-bridge' ) . '</th><th>' . esc_html__( 'Meaning', 'kalicart-bridge' ) . '</th></tr></thead><tbody>';
 		self::readiness_row( 'Return policy', self::readiness_label( $return_ready ), $return_ready ? 'Configured in the Settings tab: ' . (string) $opts['return_policy_url'] : 'Configure it once in the Settings tab; feed generation is blocked when missing.' );
 		self::readiness_row( 'Target countries', self::readiness_label( $countries_ready ), $countries_ready ? implode( ', ', $countries ) : 'Use ISO 3166-1 alpha-2 country codes.' );
 		self::readiness_row( 'Product brand', $brand_status, $brand_detail );
@@ -656,7 +656,7 @@ class KaliCart_Bridge_ACP_Feed {
 			if ( ! empty( $stats['invalid_examples'] ) ) {
 				echo '<p style="color:#b32d2e"><small>' . esc_html( implode( ' | ', $stats['invalid_examples'] ) ) . '</small></p>';
 			}
-			echo '<p><a class="button" href="' . esc_url( self::feed_url() ) . '" download>' . esc_html__( 'Download JSONL', 'kalicart-bridge' ) . '</a> <a class="button" href="' . esc_url( self::feed_url() . '.gz' ) . '" download>' . esc_html__( 'Download JSONL.GZ', 'kalicart-bridge' ) . '</a></p>';
+			echo '<p><a class="kali-btn kali-btn--secondary" href="' . esc_url( self::feed_url() ) . '" download>' . esc_html__( 'Download JSONL', 'kalicart-bridge' ) . '</a> <a class="kali-btn kali-btn--secondary" href="' . esc_url( self::feed_url() . '.gz' ) . '" download>' . esc_html__( 'Download JSONL.GZ', 'kalicart-bridge' ) . '</a></p>';
 		}
 		echo '</div>';
 
@@ -669,9 +669,9 @@ class KaliCart_Bridge_ACP_Feed {
 			$live_counts[ $kb_gap ] = (int) $kb_q->found_posts;
 		}
 		if ( $live_counts['brand'] || $live_counts['image'] ) {
-			echo '<div class="card" style="max-width:960px"><h2>' . esc_html__( 'Products excluded from the ChatGPT feed', 'kalicart-bridge' ) . '</h2>';
+			echo '<div class="kali-acp-card"><h2>' . esc_html__( 'Products excluded from the ChatGPT feed', 'kalicart-bridge' ) . '</h2>';
 			echo '<p>' . esc_html__( 'Live counts on your current catalog. These products remain fully available to AI agents through the catalog API, search, MCP and UCP surfaces; they are only excluded from the ChatGPT product feed because a field required by the OpenAI feed specification is missing.', 'kalicart-bridge' ) . '</p>';
-			echo '<table class="widefat striped" style="max-width:940px"><tbody>';
+			echo '<table class="widefat striped"><tbody>';
 			$kb_rows = [
 				'brand' => [ __( 'Missing brand', 'kalicart-bridge' ), __( 'Assign a brand (WooCommerce Brands taxonomy or a brand attribute). Use the Products list for bulk editing.', 'kalicart-bridge' ) ],
 				'image' => [ __( 'Missing primary image', 'kalicart-bridge' ), __( 'Set a featured image in the product editor.', 'kalicart-bridge' ) ],
@@ -684,24 +684,23 @@ class KaliCart_Bridge_ACP_Feed {
 				echo '<tr><th scope="row" style="width:220px">' . esc_html( $kb_row[0] ) . '</th>';
 				echo '<td style="width:120px"><strong>' . (int) $live_counts[ $kb_gap ] . '</strong> ' . esc_html__( 'products', 'kalicart-bridge' ) . '</td>';
 				echo '<td>' . esc_html( $kb_row[1] ) . '</td>';
-				echo '<td style="width:300px"><a class="button" href="' . esc_url( self::products_list_url( $kb_gap ) ) . '">' . esc_html__( 'Open in Products list', 'kalicart-bridge' ) . '</a> <a class="button" href="' . esc_url( $kb_csv ) . '">' . esc_html__( 'Export CSV', 'kalicart-bridge' ) . '</a></td></tr>';
+				echo '<td style="width:300px"><a class="kali-btn kali-btn--secondary" href="' . esc_url( self::products_list_url( $kb_gap ) ) . '">' . esc_html__( 'Open in Products list', 'kalicart-bridge' ) . '</a> <a class="kali-btn kali-btn--secondary" href="' . esc_url( $kb_csv ) . '">' . esc_html__( 'Export CSV', 'kalicart-bridge' ) . '</a></td></tr>';
 			}
 			echo '</tbody></table></div>';
 		}
 
-		echo '<div class="card" style="max-width:960px"><h2>' . esc_html__( 'ChatGPT feed generation settings', 'kalicart-bridge' ) . '</h2>';
+		echo '<div class="kali-acp-card"><h2>' . esc_html__( 'ChatGPT feed generation settings', 'kalicart-bridge' ) . '</h2>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin.php?page=kalicart-bridge&tab=agent-commerce' ) ) . '">';
 		wp_nonce_field( 'kb_acp_save', 'kb_acp_nonce' );
+		echo '<div class="kali-toggle-group" style="margin-bottom:14px"><label class="kali-toggle-row"><div class="kali-toggle-info"><strong>' . esc_html__( 'Generate the ChatGPT feed daily', 'kalicart-bridge' ) . '</strong><span>' . esc_html__( 'Refreshes the local validated file only. Automatic delivery can be configured after OpenAI approves the merchant and supplies credentials.', 'kalicart-bridge' ) . '</span></div><div class="kali-toggle"><input type="checkbox" name="enabled" ' . checked( $opts['enabled'], true, false ) . '><span class="kali-toggle__slider"></span></div></label></div>';
 		echo '<table class="form-table">';
-		echo '<tr><th>' . esc_html__( 'Generate the ChatGPT feed daily', 'kalicart-bridge' ) . '</th><td><input type="checkbox" name="enabled" ' . checked( $opts['enabled'], true, false ) . '><p class="description">' . esc_html__( 'Refreshes the local validated file only. Automatic delivery can be configured after OpenAI approves the merchant and supplies credentials.', 'kalicart-bridge' ) . '</p></td></tr>';
 		echo '<tr><th>' . esc_html__( 'Brand fallback (optional)', 'kalicart-bridge' ) . '</th><td><input type="text" class="regular-text" name="brand_fallback" value="' . esc_attr( $opts['brand_fallback'] ) . '" placeholder="' . esc_attr__( 'Your merchant-owned brand', 'kalicart-bridge' ) . '"><p class="description">' . esc_html__( 'Leave empty unless every otherwise brandless product is genuinely sold under this merchant-owned brand. By entering a value, the merchant declares it accurate and accepts responsibility for applying it to every missing-brand feed row. Multi-brand retailers should leave this empty.', 'kalicart-bridge' ) . '</p></td></tr>';
 		echo '<tr><th>' . esc_html__( 'Target countries', 'kalicart-bridge' ) . '</th><td><input type="text" class="regular-text" name="target_countries" value="' . esc_attr( $opts['target_countries'] ) . '"><p class="description">' . esc_html__( 'Comma-separated ISO 3166-1 alpha-2 codes. Defaults to WooCommerce selling locations.', 'kalicart-bridge' ) . '</p></td></tr>';
 		echo '</table>';
-		submit_button( esc_html__( 'Save settings', 'kalicart-bridge' ) );
-		echo '<button class="button button-secondary" name="regenerate" value="1">' . esc_html__( 'Save and generate/validate now', 'kalicart-bridge' ) . '</button>';
+		echo '<p style="margin-top:16px"><button type="submit" class="kali-btn kali-btn--primary">' . esc_html__( 'Save settings', 'kalicart-bridge' ) . '</button> <button type="submit" class="kali-btn kali-btn--secondary" name="regenerate" value="1">' . esc_html__( 'Save and generate/validate now', 'kalicart-bridge' ) . '</button></p>';
 		echo '</form></div>';
 
-		echo '<div class="card" style="max-width:960px"><h2>' . esc_html__( 'What to do with this file (OpenAI guidelines)', 'kalicart-bridge' ) . '</h2>';
+		echo '<div class="kali-acp-card"><h2>' . esc_html__( 'What to do with this file (OpenAI guidelines)', 'kalicart-bridge' ) . '</h2>';
 		echo '<p>' . esc_html__( 'The file is a complete snapshot of your feed-eligible products, regenerated in full every time: products removed from your catalog disappear from the next snapshot automatically. OpenAI recommends refreshing it at least daily and always keeping the same filename.', 'kalicart-bridge' ) . '</p>';
 		echo '<ol>';
 		echo '<li><strong>' . esc_html__( 'Generate and validate here.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Every row is checked against the OpenAI Product Feed specification before it enters the file.', 'kalicart-bridge' ) . '</li>';

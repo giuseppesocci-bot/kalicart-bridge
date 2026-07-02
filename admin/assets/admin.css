@@ -849,3 +849,21 @@
 #returnPolicyTestLink a {
   text-decoration: none;
 }
+
+/* ── Agent Commerce tab ── */
+.kali-acp-card {
+  background: var(--kb-surface);
+  border: 1px solid var(--kb-border2);
+  border-radius: var(--kb-radius-sm);
+  padding: 18px 22px;
+  margin-bottom: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.kali-acp-card h2 { margin-top: 0; }
+.notice, div.error, div.updated { margin-bottom: 10px; }
+.widefat.striped {
+  margin-top: 30px;
+  margin-bottom: 20px;
+  max-width: 100%;
+}
