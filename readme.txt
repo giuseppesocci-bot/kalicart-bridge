@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.111
+Stable tag: 1.0.112
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -148,6 +148,13 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.112 =
+* Agent Commerce - the ChatGPT feed now lives in a dedicated Agent Commerce tab inside the plugin dashboard, with a readiness checklist (return policy, countries, brand, images, schema validation, daily refresh, delivery status), live data-gap counts with one-click access to the pre-filtered Products list and a full CSV export, and a step-by-step guide to OpenAI's application and delivery workflow
+* ChatGPT feed - missing brand is no longer blocking: rows enter the file without the brand field (never an empty or fabricated value) and are counted and flagged, with an explicit notice that OpenAI may reject them and that the merchant submits them under their own responsibility; products without a primary image remain excluded as the specification requires
+* Catalog - the merchant-declared brand (WooCommerce Brands taxonomy, Perfect Brands or brand attributes) is now exposed across every surface: product detail, search summaries, full records, OpenAPI schemas and the ChatGPT feed, from a single resolver; HTML entities in brand names are decoded everywhere
+* Interface - the new tab fully adopts the plugin design system (cards, buttons, toggle, status pills, flex-row lists instead of tables)
+* Translations - the entire Agent Commerce experience is fully translated in all shipped locales: Italian, French, German and Spanish
 
 = 1.0.111 =
 * ChatGPT product discovery - new OpenAI-compatible product feed generator (ACP file-upload specification): per-row schema validator as a hard gate (every emitted row is conformant), atomic snapshot swap that preserves the last valid feed on any failure, global configuration gate (return policy, countries), honest exclusion counts for products missing image or brand, stable filename ready for the delivery channel OpenAI assigns after merchant approval
