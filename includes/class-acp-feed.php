@@ -38,6 +38,8 @@ class KaliCart_Bridge_ACP_Feed {
 	public static function init(): void {
 		add_action( self::CRON_HOOK, [ __CLASS__, 'generate' ] );
 		add_action( 'init', [ __CLASS__, 'maybe_schedule' ] );
+		add_action( 'pre_get_posts', [ __CLASS__, 'filter_products_list' ] );
+		add_action( 'admin_post_kalicart_acp_export_exclusions', [ __CLASS__, 'export_exclusions_csv' ] );
 	}
 
 	// ── options ─────────────────────────────────────────────────────────────
@@ -134,7 +136,7 @@ class KaliCart_Bridge_ACP_Feed {
 	private static function generate_inner(): array {
 		$opts  = self::get_options();
 		$stats = [
-			'rows' => 0, 'products' => 0, 'excluded_no_image' => 0, 'excluded_no_brand' => 0, 'fallback_brand_rows' => 0, 'no_image_ids' => [], 'no_brand_ids' => [],
+			'rows' => 0, 'products' => 0, 'excluded_no_image' => 0, 'excluded_no_brand' => 0, 'fallback_brand_rows' => 0,
 			'excluded_invalid' => 0, 'invalid_examples' => [], 'generated_at' => gmdate( 'c' ),
 		];
 
@@ -207,8 +209,6 @@ class KaliCart_Bridge_ACP_Feed {
 			$paged++;
 		} while ( $more );
 		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- streaming export.
-		$stats['no_image_ids'] = array_keys( $stats['no_image_ids'] );
-		$stats['no_brand_ids'] = array_keys( $stats['no_brand_ids'] );
 
 		if ( 0 === $stats['rows'] ) {
 			wp_delete_file( $tmp );
@@ -282,9 +282,6 @@ class KaliCart_Bridge_ACP_Feed {
 		$image = wp_get_attachment_image_url( $p->get_image_id() ?: $display->get_image_id(), 'full' );
 		if ( ! $image ) {
 			$stats['excluded_no_image']++;
-			if ( count( $stats['no_image_ids'] ) < 200 ) {
-				$stats['no_image_ids'][ $display->get_id() ] = 1; // keyed = dedup by parent product
-			}
 			return null; // required by spec: exclude + count
 		}
 		$brand = self::resolve_brand( $display );
@@ -292,9 +289,6 @@ class KaliCart_Bridge_ACP_Feed {
 			$brand = trim( (string) $opts['brand_fallback'] ); // explicit opt-in only
 			if ( '' === $brand ) {
 				$stats['excluded_no_brand']++;
-				if ( count( $stats['no_brand_ids'] ) < 200 ) {
-					$stats['no_brand_ids'][ $display->get_id() ] = 1; // keyed = dedup by parent product
-				}
 				return null; // required by spec: exclude + count, never fabricate
 			}
 			$stats['fallback_brand_rows']++;
@@ -494,24 +488,75 @@ class KaliCart_Bridge_ACP_Feed {
 		echo '<tr><th scope="row">' . esc_html( $label ) . '</th><td>' . wp_kses_post( $status ) . '</td><td>' . esc_html( $detail ) . '</td></tr>';
 	}
 
-	/** Actionable list of products excluded from the feed, with edit links. */
-	private static function render_excluded_products( array $ids, string $title, string $reason ): void {
-		if ( ! $ids ) {
+	/**
+	 * Query fragments for feed-blocking data gaps, evaluated LIVE on current
+	 * data (never a stored snapshot): scales to any catalog size and is
+	 * always fresh. Semantics mirror the generator exactly: 'brand' = no
+	 * term in any brand taxonomy resolve_brand() reads; 'image' = no
+	 * featured image on the (parent) product.
+	 */
+	private static function missing_data_query_args( string $what ): array {
+		if ( 'image' === $what ) {
+			return [ 'meta_query' => [ [ 'key' => '_thumbnail_id', 'compare' => 'NOT EXISTS' ] ] ];
+		}
+		$tax_query = [ 'relation' => 'AND' ];
+		foreach ( [ 'product_brand', 'pwb-brand', 'pa_brand', 'pa_marca' ] as $tax ) {
+			if ( taxonomy_exists( $tax ) ) {
+				$tax_query[] = [ 'taxonomy' => $tax, 'operator' => 'NOT EXISTS' ];
+			}
+		}
+		return [ 'tax_query' => $tax_query ];
+	}
+
+	/** Native Products list, pre-filtered: bulk edit, search and sorting for free. */
+	public static function filter_products_list( WP_Query $query ): void {
+		if ( ! is_admin() || ! $query->is_main_query() || 'product' !== $query->get( 'post_type' ) ) {
 			return;
 		}
-		echo '<h3 style="margin-bottom:4px">' . esc_html( $title ) . ' <span style="font-weight:normal;color:#646970">(' . count( $ids ) . ' ' . esc_html__( 'products', 'kalicart-bridge' ) . ')</span></h3>';
-		echo '<p class="description" style="margin-top:0">' . esc_html( $reason ) . '</p>';
-		echo '<ul style="columns:2;max-width:900px;margin-top:6px">';
-		foreach ( array_slice( $ids, 0, 30 ) as $pid ) {
-			$edit = get_edit_post_link( (int) $pid, 'raw' );
-			$name = get_the_title( (int) $pid ) ?: ( 'Product #' . (int) $pid );
-			echo '<li><a href="' . esc_url( (string) $edit ) . '">' . esc_html( $name ) . '</a></li>';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only list filter.
+		$what = sanitize_key( wp_unslash( $_GET['kalicart_missing'] ?? '' ) );
+		if ( ! in_array( $what, [ 'brand', 'image' ], true ) ) {
+			return;
 		}
-		echo '</ul>';
-		if ( count( $ids ) > 30 ) {
-			/* translators: %d: number of additional products */
-			echo '<p class="description">' . esc_html( sprintf( __( '+ %d more. Fix the listed ones, regenerate, and the next batch appears here.', 'kalicart-bridge' ), count( $ids ) - 30 ) ) . '</p>';
+		foreach ( self::missing_data_query_args( $what ) as $key => $value ) {
+			$query->set( $key, $value );
 		}
+	}
+
+	private static function products_list_url( string $what ): string {
+		return admin_url( 'edit.php?post_type=product&kalicart_missing=' . $what );
+	}
+
+	/** Full CSV export of feed-blocking gaps - the agency-scale workflow. */
+	public static function export_exclusions_csv(): void {
+		if ( ! current_user_can( 'manage_woocommerce' ) || ! check_admin_referer( 'kb_acp_export' ) ) {
+			wp_die( esc_html__( 'Not allowed.', 'kalicart-bridge' ) );
+		}
+		$what = sanitize_key( wp_unslash( $_GET['what'] ?? 'brand' ) );
+		$what = in_array( $what, [ 'brand', 'image' ], true ) ? $what : 'brand';
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=kalicart-missing-' . $what . '.csv' );
+		echo "product_id,sku,name,edit_url\n";
+		$paged = 1;
+		do {
+			$q = new WP_Query( array_merge( [
+				'post_type'      => 'product',
+				'post_status'    => 'publish',
+				'posts_per_page' => 200,
+				'paged'          => $paged,
+				'fields'         => 'ids',
+			], self::missing_data_query_args( $what ) ) );
+			foreach ( $q->posts as $pid ) {
+				$product = wc_get_product( $pid );
+				$name    = str_replace( '"', '""', $product ? $product->get_name() : '' );
+				$sku     = str_replace( '"', '""', $product ? (string) $product->get_sku() : '' );
+				echo (int) $pid . ',"' . $sku . '","' . $name . '","' . esc_url_raw( (string) get_edit_post_link( (int) $pid, 'raw' ) ) . '"' . "\n";
+			}
+			$more = $paged < (int) $q->max_num_pages;
+			$paged++;
+		} while ( $more );
+		exit;
 	}
 
 	public static function render_panel(): void {
@@ -615,20 +660,33 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 		echo '</div>';
 
-		if ( $generated && ( ! empty( $stats['no_image_ids'] ) || ! empty( $stats['no_brand_ids'] ) ) ) {
+		$live_counts = [];
+		foreach ( [ 'brand', 'image' ] as $kb_gap ) {
+			$kb_q = new WP_Query( array_merge(
+				[ 'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => 1, 'fields' => 'ids' ],
+				self::missing_data_query_args( $kb_gap )
+			) );
+			$live_counts[ $kb_gap ] = (int) $kb_q->found_posts;
+		}
+		if ( $live_counts['brand'] || $live_counts['image'] ) {
 			echo '<div class="card" style="max-width:960px"><h2>' . esc_html__( 'Products excluded from the ChatGPT feed', 'kalicart-bridge' ) . '</h2>';
-			echo '<p>' . esc_html__( 'These products remain fully available to AI agents through the catalog API, search, MCP and UCP surfaces. They are excluded only from the ChatGPT product feed because a field required by the OpenAI feed specification is missing. Fix the data below and regenerate.', 'kalicart-bridge' ) . '</p>';
-			self::render_excluded_products(
-				array_map( 'intval', (array) ( $stats['no_brand_ids'] ?? [] ) ),
-				__( 'Missing brand', 'kalicart-bridge' ),
-				__( 'Assign a brand (WooCommerce Brands taxonomy or a brand attribute) in the product editor.', 'kalicart-bridge' )
-			);
-			self::render_excluded_products(
-				array_map( 'intval', (array) ( $stats['no_image_ids'] ?? [] ) ),
-				__( 'Missing primary image', 'kalicart-bridge' ),
-				__( 'Set a featured image in the product editor.', 'kalicart-bridge' )
-			);
-			echo '</div>';
+			echo '<p>' . esc_html__( 'Live counts on your current catalog. These products remain fully available to AI agents through the catalog API, search, MCP and UCP surfaces; they are only excluded from the ChatGPT product feed because a field required by the OpenAI feed specification is missing.', 'kalicart-bridge' ) . '</p>';
+			echo '<table class="widefat striped" style="max-width:940px"><tbody>';
+			$kb_rows = [
+				'brand' => [ __( 'Missing brand', 'kalicart-bridge' ), __( 'Assign a brand (WooCommerce Brands taxonomy or a brand attribute). Use the Products list for bulk editing.', 'kalicart-bridge' ) ],
+				'image' => [ __( 'Missing primary image', 'kalicart-bridge' ), __( 'Set a featured image in the product editor.', 'kalicart-bridge' ) ],
+			];
+			foreach ( $kb_rows as $kb_gap => $kb_row ) {
+				if ( ! $live_counts[ $kb_gap ] ) {
+					continue;
+				}
+				$kb_csv = wp_nonce_url( admin_url( 'admin-post.php?action=kalicart_acp_export_exclusions&what=' . $kb_gap ), 'kb_acp_export' );
+				echo '<tr><th scope="row" style="width:220px">' . esc_html( $kb_row[0] ) . '</th>';
+				echo '<td style="width:120px"><strong>' . (int) $live_counts[ $kb_gap ] . '</strong> ' . esc_html__( 'products', 'kalicart-bridge' ) . '</td>';
+				echo '<td>' . esc_html( $kb_row[1] ) . '</td>';
+				echo '<td style="width:300px"><a class="button" href="' . esc_url( self::products_list_url( $kb_gap ) ) . '">' . esc_html__( 'Open in Products list', 'kalicart-bridge' ) . '</a> <a class="button" href="' . esc_url( $kb_csv ) . '">' . esc_html__( 'Export CSV', 'kalicart-bridge' ) . '</a></td></tr>';
+			}
+			echo '</tbody></table></div>';
 		}
 
 		echo '<div class="card" style="max-width:960px"><h2>' . esc_html__( 'ChatGPT feed generation settings', 'kalicart-bridge' ) . '</h2>';
