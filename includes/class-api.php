@@ -452,7 +452,7 @@ class KaliCart_Bridge_API {
                 '2) Use public_catalog.search_url_template with bare product spine in q. Put every attribute in its own filter.',
                 '3) If 0 results: follow query_construction.zero_results_recovery (barer q, then category browse).',
                 '4) Use q, never query. Use per_page, never limit. Use /catalog/search for text search and /catalog/products only for browse/listing.',
-                '5) Use fields=summary for triage and rank all candidates from summary data. Fetch /catalog/product/{id} only for the final selected product, unless the user explicitly requests a detail-level comparison. It returns compact verification data by default; append ?fields=full only when description or images are required.',
+                '5) Use fields=summary for triage on both /catalog/search and /catalog/products, and rank all candidates from summary data. Fetch /catalog/product/{id} only for the final selected product, unless the user explicitly requests a detail-level comparison. It returns compact verification data by default; append ?fields=full only when description or images are required.',
                 '6) Never stack brand, color, gender or price inside q. size is not a search filter — read it from product variations after candidate selection.',
                 '7) Read price.current for the actual catalog price. Check stock.in_stock before presenting offers.',
                 '8) If active_coupons is present, present coupons as conditional checkout savings only; never replace price.current.',
@@ -541,8 +541,11 @@ class KaliCart_Bridge_API {
             [ 'name' => 'order',     'in' => 'query', 'description' => 'Sort direction.', 'schema' => [ 'type' => 'string', 'enum' => [ 'ASC', 'DESC' ], 'default' => 'DESC' ] ],
             [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100). Parameter name is per_page; do not use limit.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
             [ 'name' => 'page',      'in' => 'query', 'description' => 'Page number.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'default' => 1 ] ],
-            [ 'name' => 'fields',    'in' => 'query', 'description' => 'Response verbosity. summary returns a slim per-item projection (id, sku, name, url, price.current/display, stock.in_stock, categories, type, updated_at) for low-cost triage; open /catalog/product/{id} for full detail. full (default) returns the complete record.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'full' ] ],
         ];
+
+        $fields_param_search = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is summary: a slim per-item projection (id, sku, name, url, price.current/display, stock.in_stock, categories, type, updated_at) for low-cost triage; open /catalog/product/{id} for full detail. Pass fields=full for complete records.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'summary' ] ];
+
+        $fields_param_products = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is full (complete records); when any filter parameter (category, gender, color, size, min_price, max_price, in_stock, on_sale, orderby, order) is present and fields is omitted, the response switches to summary for low-cost triage. Pass fields explicitly to override.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'full' ] ];
 
         $q_param = [ 'name' => 'q', 'in' => 'query', 'description' => 'Full-text search query. Parameter name is exactly q; do not use query. Use only on /catalog/search, never on /catalog/products.', 'schema' => [ 'type' => 'string' ] ];
 
@@ -552,7 +555,7 @@ class KaliCart_Bridge_API {
                 'type'       => 'object',
                 'properties' => [
                     'success'  => [ 'type' => 'boolean' ],
-                    'products' => [ 'type' => 'array', 'items' => [ '$ref' => '#/components/schemas/Product' ] ],
+                    'products' => [ 'type' => 'array', 'items' => [ 'oneOf' => [ [ '$ref' => '#/components/schemas/Product' ], [ '$ref' => '#/components/schemas/ProductSummary' ] ] ] ],
                     'total'    => [ 'type' => 'integer' ],
                     'page'     => [ 'type' => 'integer' ],
                     'per_page' => [ 'type' => 'integer' ],
@@ -577,13 +580,13 @@ class KaliCart_Bridge_API {
                 '/catalog/search' => [ 'get' => [
                     'operationId' => 'searchCatalog',
                     'summary'     => 'Full-text + filter product search. Requires at least one of: q, category, gender, color, on_sale, in_stock.',
-                    'parameters'  => array_merge( [ $q_param ], $filter_params ),
+                    'parameters'  => array_merge( [ $q_param ], $filter_params, [ $fields_param_search ] ),
                     'responses'   => [ '200' => $list_response, '400' => [ 'description' => 'No search criterion supplied.' ] ],
                 ] ],
                 '/catalog/products' => [ 'get' => [
                     'operationId' => 'listProducts',
                     'summary'     => 'Paginated product listing with optional filters. This endpoint does not accept q/query; use /catalog/search?q=... for text search.',
-                    'parameters'  => $filter_params,
+                    'parameters'  => array_merge( $filter_params, [ $fields_param_products ] ),
                     'responses'   => [ '200' => $list_response, '400' => [ 'description' => 'Invalid search-style parameter supplied to listing endpoint.' ] ],
                 ] ],
                 '/catalog/product/{id}' => [ 'get' => [
@@ -618,6 +621,23 @@ class KaliCart_Bridge_API {
                         'price'      => [ 'type' => 'object', 'additionalProperties' => true ],
                         'stock'      => [ 'type' => 'object', 'additionalProperties' => true ],
                         'categories' => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
+                    ],
+                ],
+                'ProductSummary' => [
+                    'type'                 => 'object',
+                    'description'          => 'Slim per-item projection returned when fields=summary applies (default on /catalog/search; automatic on /catalog/products when filter parameters are present). Open /catalog/product/{id} for the full record.',
+                    'additionalProperties' => false,
+                    'properties'           => [
+                        'id'                 => [ 'type' => 'integer' ],
+                        'sku'                => [ 'type' => [ 'string', 'null' ] ],
+                        'name'               => [ 'type' => 'string' ],
+                        'url'                => [ 'type' => 'string', 'format' => 'uri' ],
+                        'price'              => [ 'type' => 'object', 'additionalProperties' => true ],
+                        'stock'              => [ 'type' => 'object', 'additionalProperties' => true ],
+                        'categories'         => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
+                        'type'               => [ 'type' => 'string' ],
+                        'selection_required' => [ 'type' => 'boolean' ],
+                        'updated_at'         => [ 'type' => 'string', 'format' => 'date-time' ],
                     ],
                 ],
             ] ],

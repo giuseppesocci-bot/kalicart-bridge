@@ -50,6 +50,89 @@ class KaliCart_Bridge_Signals {
         // Content-Signal header on all Bridge REST responses — AI usage preferences,
         // mirrors the crawler_policy declared in the discovery document.
         add_filter( 'rest_post_dispatch', [ __CLASS__, 'add_content_signal_header' ], 10, 3 );
+
+        // Raw-HTML + header signals aimed at SCRAPING agents (no JS, no head parsing
+        // needed): an HTML comment near the top of <head> reaches any agent that
+        // fetches raw HTML in the very act of scraping; the HTTP Link header reaches
+        // harnesses that expose response headers to the model.
+        add_action( 'wp_head',      [ __CLASS__, 'inject_agent_html_comment' ], 1 );
+        add_action( 'send_headers', [ __CLASS__, 'add_link_header' ] );
+
+        // AI-crawler traffic telemetry: counts known AI user-agents per surface
+        // (html = storefront pages, api = Bridge REST). Gives the scrape-vs-API
+        // ratio that measures real-world Bridge adoption by agents. Opt-out option.
+        if ( get_option( 'kalicart_bridge_ai_traffic_enabled', true ) ) {
+            add_action( 'template_redirect',  [ __CLASS__, 'count_ai_traffic_html' ], 1 );
+            add_filter( 'rest_post_dispatch', [ __CLASS__, 'count_ai_traffic_api' ], 20, 3 );
+        }
+    }
+
+    // ── 0. SCRAPER-FACING SIGNALS + AI TRAFFIC TELEMETRY ─────────────────────
+
+    public static function inject_agent_html_comment(): void {
+        $discovery = rest_url( KALICART_BRIDGE_API_NS . '/discovery' );
+        echo "\n<!-- AI AGENTS: this store exposes a structured, read-only product catalog API with live prices, stock and variants (KaliCart Bridge). Do not scrape the HTML. Entry point: " . esc_url( $discovery ) . " -->\n";
+    }
+
+    public static function add_link_header(): void {
+        if ( is_admin() || headers_sent() ) {
+            return;
+        }
+        $discovery = rest_url( KALICART_BRIDGE_API_NS . '/discovery' );
+        header( 'Link: <' . esc_url_raw( $discovery ) . '>; rel="kalicart-agent"; type="application/json"', false );
+    }
+
+    /** Known AI crawler / agent user-agent tokens. First match wins; specific before generic. */
+    private static function detect_ai_agent(): ?string {
+        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
+        if ( $ua === '' ) {
+            return null;
+        }
+        $bots = [
+            'GPTBot', 'OAI-SearchBot', 'ChatGPT-User',
+            'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'claude-web',
+            'PerplexityBot', 'Perplexity-User',
+            'Google-Extended', 'Bytespider', 'Amazonbot',
+            'meta-externalagent', 'cohere-ai', 'Applebot-Extended',
+            'DuckAssistBot', 'MistralAI',
+        ];
+        foreach ( $bots as $bot ) {
+            if ( stripos( $ua, $bot ) !== false ) {
+                return $bot;
+            }
+        }
+        return null;
+    }
+
+    private static function count_ai_traffic( string $surface ): void {
+        $bot = self::detect_ai_agent();
+        if ( ! $bot ) {
+            return;
+        }
+        $stats = get_option( 'kalicart_bridge_ai_traffic', [] );
+        if ( ! is_array( $stats ) ) {
+            $stats = [];
+        }
+        if ( ! isset( $stats[ $bot ] ) || ! is_array( $stats[ $bot ] ) ) {
+            $stats[ $bot ] = [ 'html' => 0, 'api' => 0, 'last_seen' => '' ];
+        }
+        $stats[ $bot ][ $surface ] = (int) ( $stats[ $bot ][ $surface ] ?? 0 ) + 1;
+        $stats[ $bot ]['last_seen'] = gmdate( 'c' );
+        update_option( 'kalicart_bridge_ai_traffic', $stats, false );
+    }
+
+    public static function count_ai_traffic_html(): void {
+        if ( is_admin() || wp_doing_ajax() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+            return;
+        }
+        self::count_ai_traffic( 'html' );
+    }
+
+    public static function count_ai_traffic_api( $response, $server, $request ) {
+        if ( $request instanceof WP_REST_Request && strpos( (string) $request->get_route(), '/' . KALICART_BRIDGE_API_NS ) === 0 ) {
+            self::count_ai_traffic( 'api' );
+        }
+        return $response;
     }
 
     // ── 1. HEAD LINK ──────────────────────────────────────────────────────────
