@@ -1,6 +1,6 @@
-=== KaliCart Bridge – AI Agent Catalog for WooCommerce ===
+=== KaliCart Bridge – Product Feed for ChatGPT & AI Agents ===
 Contributors: carthub
-Tags: woocommerce, ai, mcp, rest api, chatgpt
+Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
 Stable tag: 1.0.110
@@ -9,9 +9,11 @@ WC requires at least: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Makes your WooCommerce catalog computable and readable by AI agents and MCP clients like ChatGPT, Claude and Gemini. No API key.
+Validated OpenAI-compatible product feed for ChatGPT product discovery (ACP), plus catalog API, MCP server and UCP discovery for AI agents.
 
 == Description ==
+
+AI agents are becoming a real shopping channel. Shopify merchants are integrated into ChatGPT automatically through Shopify Catalog — WooCommerce does not currently provide an equivalent native integration. KaliCart Bridge provides that missing export layer today: it generates a validated, OpenAI-compatible product feed for ChatGPT product discovery (Agentic Commerce Protocol), exposes your catalog via UCP discovery, a structured REST API and an MCP server for every other AI agent, and shows you which agents already visit your store. Direct-feed access requires merchant application and approval — OpenAI provides the delivery channel. Checkout always stays on your storefront: you remain merchant of record, in line with OpenAI's shift to merchant-owned checkout.
 
 KaliCart Bridge makes your WooCommerce product catalog computable: it exposes a structured, normalized REST API and an MCP server that AI shopping agents and assistants — such as ChatGPT, Claude, Gemini, Perplexity and any MCP-capable client — can read and act on directly. No LLM runs on your server; the plugin only turns your existing catalog into clean, computable data.
 
@@ -62,6 +64,14 @@ When enabled in WP Admin → KaliCart → Settings, agents can create checkout s
 
 The same read-only catalog is also exposed as an MCP server at `/wp-json/kalicart/v1/mcp` (JSON-RPC 2.0 over HTTP POST). MCP-capable agents and assistants connect to it and call the catalog as tools: `search_products`, `list_products`, `get_product`, `list_categories`, `get_meta`. It is read-only and needs no authentication, exactly like the public REST endpoints — it adds a second transport, not new data. No LLM, no external calls. Checkout and payment are never exposed over MCP.
 
+== ChatGPT Product Discovery Feed ==
+
+1. **Configure and generate.** Set your return policy URL and target countries (derived from your WooCommerce selling locations); optionally set a brand fallback for own-label stores. The plugin validates every row against the OpenAI Product Feed specification: incomplete store configuration blocks generation entirely, products without image or brand are excluded and counted, and a failed run never destroys the last valid feed.
+2. **Apply at chatgpt.com/merchants.** Application and approval are required and decided by OpenAI.
+3. **Deliver after approval.** Upload the generated file (stable filename, `jsonl.gz` supported) on the delivery channel OpenAI assigns. The plugin regenerates a full daily snapshot via WP-Cron.
+
+No acceptance or visibility is guaranteed by the plugin: approval, delivery access and final ranking are determined by OpenAI.
+
 == Installation ==
 
 1. Upload the plugin files to `/wp-content/plugins/kalicart-bridge/`
@@ -73,6 +83,14 @@ The same read-only catalog is also exposed as an MCP server at `/wp-json/kalicar
 Full operational documentation is always available at `https://bridge.kalicart.com/docs/`.
 
 == Frequently Asked Questions ==
+
+= Does the ChatGPT feed work outside the U.S.? =
+
+The feed format is region-neutral. Merchant eligibility and shopping-surface availability are determined by OpenAI and may vary by market.
+
+= Does the plugin handle checkout? =
+
+No, by design. The feed is discovery-only (`is_eligible_checkout=false`): customers buy on your storefront and you remain merchant of record. This matches OpenAI's own shift toward merchant-owned checkout.
 
 = Does this share my data with KaliCart or any third party? =
 
@@ -130,6 +148,10 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.111 =
+* ChatGPT product discovery - new OpenAI-compatible product feed generator (ACP file-upload specification): per-row schema validator as a hard gate (every emitted row is conformant), atomic snapshot swap that preserves the last valid feed on any failure, global configuration gate (return policy, countries), honest exclusion counts for products missing image or brand, stable filename ready for the delivery channel OpenAI assigns after merchant approval
+* Feed admin - new ChatGPT Shopping page with readiness statistics, exclusion counts, feed downloads and settings: opt-in brand fallback for own-label stores, return policy URL (defaults to your Refund and Returns page), target countries derived from WooCommerce selling locations
 
 = 1.0.110 =
 * Scraper-facing discovery - an HTML comment at the top of every page and an HTTP Link header (rel="kalicart-agent") now point AI agents to the structured catalog in the very surfaces they scrape; validated in blind agent tests (3/3 autonomous discovery vs 0/1 without these signals)
