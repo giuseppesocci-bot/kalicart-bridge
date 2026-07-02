@@ -58,9 +58,13 @@ class KaliCart_Bridge_Signals {
         add_action( 'wp_head',      [ __CLASS__, 'inject_agent_html_comment' ], 1 );
         add_action( 'send_headers', [ __CLASS__, 'add_link_header' ] );
 
-        // AI-crawler traffic telemetry: counts known AI user-agents per surface
-        // (html = storefront pages, api = Bridge REST). Gives the scrape-vs-API
-        // ratio that measures real-world Bridge adoption by agents. Opt-out option.
+        // Agent traffic telemetry v2: per-surface daily counters (html = storefront
+        // pages, api = Bridge REST) with client classification (branded_agent /
+        // anonymous_programmatic / generic_client / browser / other), per-bot
+        // breakdown for branded agents, and route+status dimensions on the api
+        // surface. Excludes server-internal traffic and known health checkers.
+        // Gives the scrape-vs-API ratio that measures real-world Bridge adoption.
+        // Opt-out option.
         if ( get_option( 'kalicart_bridge_ai_traffic_enabled', true ) ) {
             add_action( 'template_redirect',  [ __CLASS__, 'count_ai_traffic_html' ], 1 );
             add_filter( 'rest_post_dispatch', [ __CLASS__, 'count_ai_traffic_api' ], 20, 3 );
@@ -82,12 +86,8 @@ class KaliCart_Bridge_Signals {
         header( 'Link: <' . esc_url_raw( $discovery ) . '>; rel="kalicart-agent"; type="application/json"', false );
     }
 
-    /** Known AI crawler / agent user-agent tokens. First match wins; specific before generic. */
-    private static function detect_ai_agent(): ?string {
-        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
-        if ( $ua === '' ) {
-            return null;
-        }
+    /** Known branded AI crawler / agent user-agent tokens. First match wins. */
+    private static function branded_ai_agent( string $ua ): ?string {
         $bots = [
             'GPTBot', 'OAI-SearchBot', 'ChatGPT-User',
             'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'claude-web',
@@ -104,20 +104,111 @@ class KaliCart_Bridge_Signals {
         return null;
     }
 
-    private static function count_ai_traffic( string $surface ): void {
-        $bot = self::detect_ai_agent();
-        if ( ! $bot ) {
+    /**
+     * Client classification. Empty UA is anonymous_programmatic, NOT a bot:
+     * custom agent harnesses often send no User-Agent at all, and they are
+     * counted in the aggregate without being falsely attributed to a named
+     * agent. Order matters: branded first (many branded UAs contain Mozilla),
+     * then generic HTTP clients, then real browsers.
+     * @return array{0:string,1:?string} [class, branded bot name or null]
+     */
+    private static function classify_client( string $ua ): array {
+        if ( $ua === '' ) {
+            return [ 'anonymous_programmatic', null ];
+        }
+        $bot = self::branded_ai_agent( $ua );
+        if ( $bot ) {
+            return [ 'branded_agent', $bot ];
+        }
+        foreach ( [ 'curl', 'wget', 'python', 'aiohttp', 'httpx', 'requests', 'node-fetch', 'axios', 'undici', 'go-http-client', 'okhttp', 'java/', 'libwww', 'perl', 'ruby', 'guzzle' ] as $tok ) {
+            if ( stripos( $ua, $tok ) !== false ) {
+                return [ 'generic_client', null ];
+            }
+        }
+        if ( stripos( $ua, 'mozilla' ) !== false ) {
+            return [ 'browser', null ];
+        }
+        return [ 'other', null ];
+    }
+
+    /**
+     * Resolved public IP of this site's own host, cached 1h. Requests whose
+     * client IP equals it originate from the very server that runs the site
+     * (self-calls, local tooling) and are internal by definition. Works behind
+     * varnish/proxies where SERVER_ADDR is always 127.0.0.1.
+     */
+    private static function site_public_ip(): string {
+        $ip = get_transient( 'kalicart_bridge_site_ip' );
+        if ( is_string( $ip ) && $ip !== '' ) {
+            return $ip === '0' ? '' : $ip;
+        }
+        $host = (string) parse_url( home_url(), PHP_URL_HOST );
+        $ip   = $host !== '' ? (string) gethostbyname( $host ) : '';
+        if ( $ip === $host ) {
+            $ip = '';
+        }
+        set_transient( 'kalicart_bridge_site_ip', $ip !== '' ? $ip : '0', HOUR_IN_SECONDS );
+        return $ip;
+    }
+
+    /**
+     * Traffic that must NOT be counted: server-internal calls (federation sync,
+     * loopback cron — WordPress UA) and known health checkers. Client IP is the
+     * first X-Forwarded-For entry when present (varnish/CDN in front), else
+     * REMOTE_ADDR. Extensible via the kalicart_bridge_ai_traffic_excluded filter.
+     */
+    private static function is_excluded_traffic( string $ua ): bool {
+        $xff = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? (string) $_SERVER['HTTP_X_FORWARDED_FOR'] : '';
+        $ip  = $xff !== '' ? trim( explode( ',', $xff )[0] ) : (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
+        $server_ips = array_filter( [ (string) ( $_SERVER['SERVER_ADDR'] ?? '' ), self::site_public_ip(), '127.0.0.1', '::1' ] );
+        $excluded = ( $ip !== '' && in_array( $ip, $server_ips, true ) );
+        if ( ! $excluded && $ua !== '' ) {
+            foreach ( [ 'WordPress', 'KalicartGlobalBot', 'KaliCart-Scanner', 'UptimeRobot', 'Pingdom', 'StatusCake', 'Site24x7', 'HetrixTools', 'Better Uptime', 'monitoring' ] as $tok ) {
+                if ( stripos( $ua, $tok ) !== false ) {
+                    $excluded = true;
+                    break;
+                }
+            }
+        }
+        return (bool) apply_filters( 'kalicart_bridge_ai_traffic_excluded', $excluded, $ua, $ip );
+    }
+
+    /**
+     * Daily bucket counters, option kalicart_bridge_ai_traffic:
+     * { "YYYY-MM-DD": { surface: { total, class{}, bot{}, route{}, status{} } } }
+     * total is UA-independent; route/status only on the api surface (bounded
+     * cardinality: numeric path segments collapsed to {id}). 31-day retention.
+     */
+    private static function count_ai_traffic( string $surface, array $extra = [] ): void {
+        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
+        if ( self::is_excluded_traffic( $ua ) ) {
             return;
         }
+        [ $class, $bot ] = self::classify_client( $ua );
+        $day   = gmdate( 'Y-m-d' );
         $stats = get_option( 'kalicart_bridge_ai_traffic', [] );
         if ( ! is_array( $stats ) ) {
             $stats = [];
         }
-        if ( ! isset( $stats[ $bot ] ) || ! is_array( $stats[ $bot ] ) ) {
-            $stats[ $bot ] = [ 'html' => 0, 'api' => 0, 'last_seen' => '' ];
+        if ( count( $stats ) > 31 ) {
+            ksort( $stats );
+            $stats = array_slice( $stats, -31, null, true );
         }
-        $stats[ $bot ][ $surface ] = (int) ( $stats[ $bot ][ $surface ] ?? 0 ) + 1;
-        $stats[ $bot ]['last_seen'] = gmdate( 'c' );
+        $bucket = ( isset( $stats[ $day ][ $surface ] ) && is_array( $stats[ $day ][ $surface ] ) )
+            ? $stats[ $day ][ $surface ]
+            : [ 'total' => 0, 'class' => [], 'bot' => [] ];
+        $bucket['total']            = (int) ( $bucket['total'] ?? 0 ) + 1;
+        $bucket['class'][ $class ]  = (int) ( $bucket['class'][ $class ] ?? 0 ) + 1;
+        if ( $bot ) {
+            $bucket['bot'][ $bot ] = (int) ( $bucket['bot'][ $bot ] ?? 0 ) + 1;
+        }
+        foreach ( $extra as $dim => $val ) {
+            if ( $val === null || $val === '' ) {
+                continue;
+            }
+            $bucket[ $dim ][ (string) $val ] = (int) ( $bucket[ $dim ][ (string) $val ] ?? 0 ) + 1;
+        }
+        $stats[ $day ][ $surface ] = $bucket;
         update_option( 'kalicart_bridge_ai_traffic', $stats, false );
     }
 
@@ -130,7 +221,10 @@ class KaliCart_Bridge_Signals {
 
     public static function count_ai_traffic_api( $response, $server, $request ) {
         if ( $request instanceof WP_REST_Request && strpos( (string) $request->get_route(), '/' . KALICART_BRIDGE_API_NS ) === 0 ) {
-            self::count_ai_traffic( 'api' );
+            $route = substr( (string) $request->get_route(), strlen( '/' . KALICART_BRIDGE_API_NS ) );
+            $route = preg_replace( '#/\d+#', '/{id}', $route );
+            $status = ( $response instanceof WP_REST_Response ) ? $response->get_status() : null;
+            self::count_ai_traffic( 'api', [ 'route' => $route, 'status' => $status ] );
         }
         return $response;
     }
