@@ -31,8 +31,14 @@
         const panel = $( 'kali-tab-' + btn.dataset.tab );
         if ( panel ) panel.style.display = 'block';
         if ( btn.dataset.tab === 'settings' ) updateReturnPolicyBlock();
+        const url = new URL( window.location.href );
+        url.searchParams.set( 'tab', btn.dataset.tab );
+        window.history.replaceState( {}, '', url );
       } );
     } );
+
+    const requested = new URLSearchParams( window.location.search ).get( 'tab' );
+    if ( requested && $( 'kali-tab-' + requested ) ) switchTab( requested );
   }
 
   function switchTab( name ) {
@@ -112,9 +118,10 @@
     const loading = $( 'kali-loading' );
     const panel   = $( 'kali-tab-overview' );
     if ( ! loading || ! panel ) return;
-    loading.style.display = yes ? 'block' : 'none';
-    if ( ! yes && $$( '.kali-tab--active' )[0]?.dataset.tab === 'overview' ) panel.style.display = 'block';
-    if ( yes ) panel.style.display = 'none';
+    const overviewActive = $$( '.kali-tab--active' )[0]?.dataset.tab === 'overview';
+    loading.style.display = yes && overviewActive ? 'block' : 'none';
+    if ( ! yes && overviewActive ) panel.style.display = 'block';
+    if ( yes && overviewActive ) panel.style.display = 'none';
   }
 
   function showError( msg ) {

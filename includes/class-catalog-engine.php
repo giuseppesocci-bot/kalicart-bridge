@@ -916,7 +916,9 @@ class KaliCart_Bridge_Catalog_Engine {
             if ( taxonomy_exists( $tax ) ) {
                 $terms = wp_get_post_terms( $p->get_id(), $tax, [ 'fields' => 'names' ] );
                 if ( ! is_wp_error( $terms ) && $terms ) {
-                    return (string) $terms[0];
+                    // WordPress may store/display ampersands as HTML entities in term names.
+                    // Agent and feed surfaces require the merchant-declared plain-text value.
+                    return html_entity_decode( (string) $terms[0], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
                 }
             }
         }

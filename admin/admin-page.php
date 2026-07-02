@@ -1,4 +1,14 @@
-<?php defined( 'ABSPATH' ) || exit; ?>
+<?php
+defined( 'ABSPATH' ) || exit;
+
+// Keep the selected tab stable across refreshes and form submissions.
+$kalicart_bridge_allowed_tabs = [ 'overview', 'quarantine', 'endpoints', 'agent-commerce', 'settings', 'coupons' ];
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only UI selection; no state change.
+$kalicart_bridge_active_tab   = sanitize_key( wp_unslash( $_GET['tab'] ?? 'overview' ) );
+if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, true ) ) {
+  $kalicart_bridge_active_tab = 'overview';
+}
+?>
 <div class="kali-wrap">
 
   <!-- HEADER -->
@@ -59,16 +69,17 @@
   <!-- TABS -->
   <div class="kali-tabsrow">
     <div class="kali-tabs">
-      <button class="kali-tab kali-tab--active" data-tab="overview"><?php esc_html_e( 'Overview', 'kalicart-bridge' ); ?></button>
-      <button class="kali-tab" data-tab="quarantine"><?php esc_html_e( 'Quarantine', 'kalicart-bridge' ); ?></button>
-      <button class="kali-tab" data-tab="endpoints"><?php esc_html_e( 'Endpoints', 'kalicart-bridge' ); ?></button>
-      <button class="kali-tab" data-tab="settings"><?php esc_html_e( 'Settings', 'kalicart-bridge' ); ?></button>
-      <button class="kali-tab" data-tab="coupons"><?php esc_html_e( 'Coupons', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab<?php echo 'overview' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="overview"><?php esc_html_e( 'Overview', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab<?php echo 'quarantine' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="quarantine"><?php esc_html_e( 'Quarantine', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab<?php echo 'endpoints' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="endpoints"><?php esc_html_e( 'Endpoints', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab<?php echo 'agent-commerce' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="agent-commerce"><?php esc_html_e( 'Agent Commerce', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab<?php echo 'settings' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="settings"><?php esc_html_e( 'Settings', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab<?php echo 'coupons' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="coupons"><?php esc_html_e( 'Coupons', 'kalicart-bridge' ); ?></button>
     </div>
   </div>
 
   <!-- LOADING -->
-  <div id="kali-loading" class="kali-loading">
+  <div id="kali-loading" class="kali-loading"<?php echo 'overview' === $kalicart_bridge_active_tab ? '' : ' style="display:none"'; ?>>
     <div class="kali-spinner"></div>
     <p><?php esc_html_e( 'Analysing catalog…', 'kalicart-bridge' ); ?></p>
   </div>
@@ -174,7 +185,7 @@
   </div>
 
   <!-- TAB: QUARANTINE -->
-  <div id="kali-tab-quarantine" class="kali-panel" style="display:none">
+  <div id="kali-tab-quarantine" class="kali-panel" style="display:<?php echo 'quarantine' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
     <div class="kali-section-title">
       <?php esc_html_e( 'Quarantined products', 'kalicart-bridge' ); ?>
       <span class="kali-badge kali-badge--red" id="quarantineCount">&ndash;</span>
@@ -184,7 +195,7 @@
   </div>
 
   <!-- TAB: ENDPOINTS -->
-  <div id="kali-tab-endpoints" class="kali-panel" style="display:none">
+  <div id="kali-tab-endpoints" class="kali-panel" style="display:<?php echo 'endpoints' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
     <div class="kali-section-title"><?php esc_html_e( 'API Endpoints', 'kalicart-bridge' ); ?></div>
     <p class="kali-hint"><?php echo wp_kses_post( sprintf( /* translators: %s: the /health endpoint path, shown as code */ __( 'Read-only REST surfaces. No authentication required except %s.', 'kalicart-bridge' ), '<code>/health</code>' ) ); ?></p>
     <div class="kali-endpoint-head">
@@ -202,8 +213,13 @@
     <div id="endpointList" class="kali-endpoint-list"></div>
   </div>
 
+  <!-- TAB: AGENT COMMERCE -->
+  <div id="kali-tab-agent-commerce" class="kali-panel" style="display:<?php echo 'agent-commerce' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
+    <?php KaliCart_Bridge_ACP_Feed::render_panel(); ?>
+  </div>
+
   <!-- TAB: SETTINGS -->
-  <div id="kali-tab-settings" class="kali-panel" style="display:none">
+  <div id="kali-tab-settings" class="kali-panel" style="display:<?php echo 'settings' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
 
     <?php
     // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- local vars in included template, not actual globals
@@ -353,7 +369,7 @@
   </div>
 
   <!-- TAB: COUPONS -->
-  <div id="kali-tab-coupons" class="kali-panel" style="display:none">
+  <div id="kali-tab-coupons" class="kali-panel" style="display:<?php echo 'coupons' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
 
     <div class="kali-section-title"><?php esc_html_e( 'Agent coupon exposure', 'kalicart-bridge' ); ?></div>
     <p style="margin:0 0 16px;font-size:13px;color:var(--kb-muted,#555);line-height:1.6;max-width:680px;">
