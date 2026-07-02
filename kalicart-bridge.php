@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       KaliCart Bridge – AI Agent Catalog for WooCommerce
+ * Plugin Name:       KaliCart Bridge – Product Feed for ChatGPT & AI Agents
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
  * Version:           1.0.111
