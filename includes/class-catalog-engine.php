@@ -297,6 +297,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 'id'         => $p->get_id(),
                 'sku'        => $p->get_sku() ?: null,
                 'name'       => $p->get_name(),
+                'brand'      => self::resolve_brand( $p ),
                 'url'        => get_permalink( $p->get_id() ),
                 'price'      => [
                     'current' => $price['current'] ?? null,
@@ -389,6 +390,7 @@ class KaliCart_Bridge_Catalog_Engine {
             'sku'             => $p->get_sku() ?: null,
             'type'            => $type,
             'name'            => $p->get_name(),
+            'brand'           => self::resolve_brand( $p ),
             'slug'            => $p->get_slug(),
             'url'             => get_permalink( $id ),
             'status'          => $p->get_status(),
@@ -903,6 +905,23 @@ class KaliCart_Bridge_Catalog_Engine {
     }
 
     // ── Price ────────────────────────────────────────────────────────────────
+
+    /**
+     * Merchant-declared brand, from the standard Woo brand taxonomies.
+     * MIRROR PRINCIPLE: exposes the brand only if the merchant set it;
+     * never inferred, never fabricated. Null when absent.
+     */
+    public static function resolve_brand( WC_Product $p ): ?string {
+        foreach ( [ 'product_brand', 'pwb-brand', 'pa_brand', 'pa_marca' ] as $tax ) {
+            if ( taxonomy_exists( $tax ) ) {
+                $terms = wp_get_post_terms( $p->get_id(), $tax, [ 'fields' => 'names' ] );
+                if ( ! is_wp_error( $terms ) && $terms ) {
+                    return (string) $terms[0];
+                }
+            }
+        }
+        return null;
+    }
 
     private static function compute_price( WC_Product $p ): array {
         $currency = get_woocommerce_currency();

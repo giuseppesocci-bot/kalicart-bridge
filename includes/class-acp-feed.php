@@ -366,15 +366,8 @@ class KaliCart_Bridge_ACP_Feed {
 	}
 
 	private static function resolve_brand( WC_Product $p ): string {
-		foreach ( [ 'product_brand', 'pwb-brand', 'pa_brand', 'pa_marca' ] as $tax ) {
-			if ( taxonomy_exists( $tax ) ) {
-				$terms = wp_get_post_terms( $p->get_id(), $tax, [ 'fields' => 'names' ] );
-				if ( ! is_wp_error( $terms ) && $terms ) {
-					return (string) $terms[0];
-				}
-			}
-		}
-		return '';
+		// single source of truth: the engine's merchant-declared brand resolver
+		return (string) KaliCart_Bridge_Catalog_Engine::resolve_brand( $p );
 	}
 
 	private static function availability( WC_Product $p ): string {

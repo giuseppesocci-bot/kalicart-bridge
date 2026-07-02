@@ -617,6 +617,7 @@ class KaliCart_Bridge_API {
                     'properties'           => [
                         'id'         => [ 'type' => 'integer' ],
                         'name'       => [ 'type' => 'string' ],
+                        'brand'      => [ 'type' => [ 'string', 'null' ], 'description' => 'Merchant-declared brand (Woo brand taxonomies); null when the merchant has not set one.' ],
                         'url'        => [ 'type' => 'string', 'format' => 'uri' ],
                         'price'      => [ 'type' => 'object', 'additionalProperties' => true ],
                         'stock'      => [ 'type' => 'object', 'additionalProperties' => true ],
@@ -631,6 +632,7 @@ class KaliCart_Bridge_API {
                         'id'                 => [ 'type' => 'integer' ],
                         'sku'                => [ 'type' => [ 'string', 'null' ] ],
                         'name'               => [ 'type' => 'string' ],
+                        'brand'              => [ 'type' => [ 'string', 'null' ], 'description' => 'Merchant-declared brand (Woo brand taxonomies); null when the merchant has not set one.' ],
                         'url'                => [ 'type' => 'string', 'format' => 'uri' ],
                         'price'              => [ 'type' => 'object', 'additionalProperties' => true ],
                         'stock'              => [ 'type' => 'object', 'additionalProperties' => true ],
@@ -1172,6 +1174,7 @@ class KaliCart_Bridge_API {
             'sku'                => $product['sku'] ?? null,
             'type'               => $product['type'] ?? null,
             'name'               => $product['name'] ?? null,
+            'brand'              => $product['brand'] ?? null,
             'url'                => $product['url'] ?? null,
             'checkout_url'       => $product['checkout_url'] ?? null,
             'price'              => $compact_price( $product['price'] ?? [] ),
