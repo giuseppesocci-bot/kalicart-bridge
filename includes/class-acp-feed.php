@@ -560,6 +560,7 @@ class KaliCart_Bridge_ACP_Feed {
 				$product = wc_get_product( $pid );
 				$name    = str_replace( '"', '""', $product ? $product->get_name() : '' );
 				$sku     = str_replace( '"', '""', $product ? (string) $product->get_sku() : '' );
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- text/csv stream, not HTML: values are CSV-escaped (doubled quotes); esc_html would corrupt the data (e.g. & -> &amp;).
 				echo (int) $pid . ',"' . $sku . '","' . $name . '","' . esc_url_raw( (string) get_edit_post_link( (int) $pid, 'raw' ) ) . '"' . "\n";
 			}
 			$more = $paged < (int) $q->max_num_pages;
