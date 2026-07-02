@@ -174,6 +174,19 @@ class KaliCart_Bridge_Signals {
     }
 
     /**
+     * Public entry for MCP JSON-RPC events (called by KaliCart_Bridge_MCP).
+     * Surface 'mcp' with dims: client (self-declared clientInfo from
+     * initialize), method, tool, outcome. Same exclusions and option gate
+     * as the html/api surfaces.
+     */
+    public static function count_mcp_event( array $dims ): void {
+        if ( ! get_option( 'kalicart_bridge_ai_traffic_enabled', true ) ) {
+            return;
+        }
+        self::count_ai_traffic( 'mcp', $dims );
+    }
+
+    /**
      * Daily bucket counters, option kalicart_bridge_ai_traffic:
      * { "YYYY-MM-DD": { surface: { total, class{}, bot{}, route{}, status{} } } }
      * total is UA-independent; route/status only on the api surface (bounded
@@ -206,7 +219,12 @@ class KaliCart_Bridge_Signals {
             if ( $val === null || $val === '' ) {
                 continue;
             }
-            $bucket[ $dim ][ (string) $val ] = (int) ( $bucket[ $dim ][ (string) $val ] ?? 0 ) + 1;
+            $val = (string) $val;
+            if ( isset( $bucket[ $dim ] ) && is_array( $bucket[ $dim ] )
+                && ! isset( $bucket[ $dim ][ $val ] ) && count( $bucket[ $dim ] ) >= 50 ) {
+                $val = '(other)'; // per-dimension cardinality cap
+            }
+            $bucket[ $dim ][ $val ] = (int) ( $bucket[ $dim ][ $val ] ?? 0 ) + 1;
         }
         $stats[ $day ][ $surface ] = $bucket;
         update_option( 'kalicart_bridge_ai_traffic', $stats, false );

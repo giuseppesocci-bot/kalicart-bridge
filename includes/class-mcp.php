@@ -52,6 +52,22 @@ class KaliCart_Bridge_MCP {
 				),
 			)
 		);
+
+		// RFC 9728 Protected Resource Metadata, at the path MCP clients actually
+		// probe (<mcp-url>/.well-known/...). This server is keyless by design:
+		// serving the metadata with an EMPTY authorization_servers list tells
+		// compliant clients explicitly that no OAuth flow is required, instead
+		// of leaving them to interpret a 404 (observed: real MCP clients probing
+		// this path before connecting).
+		register_rest_route(
+			KALICART_BRIDGE_API_NS,
+			'/mcp/.well-known/oauth-protected-resource',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'oauth_protected_resource_metadata' ),
+				'permission_callback' => '__return_true',
+			)
+		);
 	}
 
 	// ── HTTP entry ──────────────────────────────────────────────────────────────
@@ -93,6 +109,42 @@ class KaliCart_Bridge_MCP {
 		return $resp;
 	}
 
+	// ── /.well-known/oauth-protected-resource (RFC 9728, keyless) ────────────────
+
+	public static function oauth_protected_resource_metadata(): WP_REST_Response {
+		$resp = new WP_REST_Response(
+			array(
+				'resource'                 => rest_url( KALICART_BRIDGE_API_NS . '/mcp' ),
+				'authorization_servers'    => array(),
+				'bearer_methods_supported' => array(),
+				'resource_name'            => 'KaliCart Bridge MCP — ' . get_bloginfo( 'name' ),
+				'resource_documentation'   => rest_url( KALICART_BRIDGE_API_NS . '/discovery' ),
+			),
+			200
+		);
+		$resp->header( 'Cache-Control', 'public, max-age=3600' );
+		return $resp;
+	}
+
+	// ── telemetry (chi usa il server MCP e con che risultati) ────────────────────
+
+	/** clientInfo from initialize — the client's own declared identity. */
+	private static function client_label( array $params ): string {
+		$ci   = ( isset( $params['clientInfo'] ) && is_array( $params['clientInfo'] ) ) ? $params['clientInfo'] : array();
+		$name = isset( $ci['name'] ) ? sanitize_text_field( (string) $ci['name'] ) : '';
+		$ver  = isset( $ci['version'] ) ? sanitize_text_field( (string) $ci['version'] ) : '';
+		if ( '' === $name ) {
+			return '(undeclared)';
+		}
+		return substr( '' !== $ver ? $name . '/' . $ver : $name, 0, 60 );
+	}
+
+	private static function track( array $dims ): void {
+		if ( class_exists( 'KaliCart_Bridge_Signals' ) && method_exists( 'KaliCart_Bridge_Signals', 'count_mcp_event' ) ) {
+			KaliCart_Bridge_Signals::count_mcp_event( $dims );
+		}
+	}
+
 	// ── JSON-RPC dispatch ─────────────────────────────────────────────────────────
 
 	/**
@@ -111,10 +163,12 @@ class KaliCart_Bridge_MCP {
 
 		switch ( $method ) {
 			case 'initialize':
+				self::track( array( 'method' => 'initialize', 'client' => self::client_label( $params ) ) );
 				$result = self::r_initialize( $params );
 				break;
 
 			case 'tools/list':
+				self::track( array( 'method' => 'tools/list' ) );
 				$result = array( 'tools' => self::tool_definitions() );
 				break;
 
@@ -123,14 +177,17 @@ class KaliCart_Bridge_MCP {
 				return self::r_tools_call( $id, $params );
 
 			case 'ping':
+				self::track( array( 'method' => 'ping' ) );
 				$result = (object) array();
 				break;
 
 			default:
 				// Any notifications/* (initialized, cancelled, progress…) — acknowledge silently.
 				if ( $is_notification || 0 === strpos( $method, 'notifications/' ) ) {
+					self::track( array( 'method' => 'notification' ) );
 					return null;
 				}
+				self::track( array( 'method' => 'unknown' ) );
 				return self::rpc_error( $id, -32601, 'Method not found: ' . $method );
 		}
 
@@ -177,16 +234,19 @@ class KaliCart_Bridge_MCP {
 		$args = ( isset( $params['arguments'] ) && is_array( $params['arguments'] ) ) ? $params['arguments'] : array();
 
 		if ( ! in_array( $name, self::TOOLS, true ) ) {
+			self::track( array( 'method' => 'tools/call', 'tool' => '(invalid)', 'outcome' => 'error' ) );
 			return self::rpc_error( $id, -32602, 'Unknown tool: ' . $name );
 		}
 
 		try {
 			$data = self::run_tool( $name, $args );
 		} catch ( \Throwable $e ) {
+			self::track( array( 'method' => 'tools/call', 'tool' => $name, 'outcome' => 'error' ) );
 			return self::tool_result( $id, array( 'error' => 'Tool execution failed: ' . $e->getMessage() ), true );
 		}
 
 		$is_error = ( isset( $data['success'] ) && false === $data['success'] );
+		self::track( array( 'method' => 'tools/call', 'tool' => $name, 'outcome' => $is_error ? 'error' : 'ok' ) );
 		return self::tool_result( $id, $data, $is_error );
 	}
 
