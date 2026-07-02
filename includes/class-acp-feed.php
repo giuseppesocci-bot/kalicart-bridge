@@ -134,7 +134,7 @@ class KaliCart_Bridge_ACP_Feed {
 	private static function generate_inner(): array {
 		$opts  = self::get_options();
 		$stats = [
-			'rows' => 0, 'products' => 0, 'excluded_no_image' => 0, 'excluded_no_brand' => 0, 'fallback_brand_rows' => 0,
+			'rows' => 0, 'products' => 0, 'excluded_no_image' => 0, 'excluded_no_brand' => 0, 'fallback_brand_rows' => 0, 'no_image_ids' => [], 'no_brand_ids' => [],
 			'excluded_invalid' => 0, 'invalid_examples' => [], 'generated_at' => gmdate( 'c' ),
 		];
 
@@ -207,6 +207,8 @@ class KaliCart_Bridge_ACP_Feed {
 			$paged++;
 		} while ( $more );
 		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- streaming export.
+		$stats['no_image_ids'] = array_keys( $stats['no_image_ids'] );
+		$stats['no_brand_ids'] = array_keys( $stats['no_brand_ids'] );
 
 		if ( 0 === $stats['rows'] ) {
 			wp_delete_file( $tmp );
@@ -280,6 +282,9 @@ class KaliCart_Bridge_ACP_Feed {
 		$image = wp_get_attachment_image_url( $p->get_image_id() ?: $display->get_image_id(), 'full' );
 		if ( ! $image ) {
 			$stats['excluded_no_image']++;
+			if ( count( $stats['no_image_ids'] ) < 200 ) {
+				$stats['no_image_ids'][ $display->get_id() ] = 1; // keyed = dedup by parent product
+			}
 			return null; // required by spec: exclude + count
 		}
 		$brand = self::resolve_brand( $display );
@@ -287,6 +292,9 @@ class KaliCart_Bridge_ACP_Feed {
 			$brand = trim( (string) $opts['brand_fallback'] ); // explicit opt-in only
 			if ( '' === $brand ) {
 				$stats['excluded_no_brand']++;
+				if ( count( $stats['no_brand_ids'] ) < 200 ) {
+					$stats['no_brand_ids'][ $display->get_id() ] = 1; // keyed = dedup by parent product
+				}
 				return null; // required by spec: exclude + count, never fabricate
 			}
 			$stats['fallback_brand_rows']++;
@@ -486,6 +494,26 @@ class KaliCart_Bridge_ACP_Feed {
 		echo '<tr><th scope="row">' . esc_html( $label ) . '</th><td>' . wp_kses_post( $status ) . '</td><td>' . esc_html( $detail ) . '</td></tr>';
 	}
 
+	/** Actionable list of products excluded from the feed, with edit links. */
+	private static function render_excluded_products( array $ids, string $title, string $reason ): void {
+		if ( ! $ids ) {
+			return;
+		}
+		echo '<h3 style="margin-bottom:4px">' . esc_html( $title ) . ' <span style="font-weight:normal;color:#646970">(' . count( $ids ) . ' ' . esc_html__( 'products', 'kalicart-bridge' ) . ')</span></h3>';
+		echo '<p class="description" style="margin-top:0">' . esc_html( $reason ) . '</p>';
+		echo '<ul style="columns:2;max-width:900px;margin-top:6px">';
+		foreach ( array_slice( $ids, 0, 30 ) as $pid ) {
+			$edit = get_edit_post_link( (int) $pid, 'raw' );
+			$name = get_the_title( (int) $pid ) ?: ( 'Product #' . (int) $pid );
+			echo '<li><a href="' . esc_url( (string) $edit ) . '">' . esc_html( $name ) . '</a></li>';
+		}
+		echo '</ul>';
+		if ( count( $ids ) > 30 ) {
+			/* translators: %d: number of additional products */
+			echo '<p class="description">' . esc_html( sprintf( __( '+ %d more. Fix the listed ones, regenerate, and the next batch appears here.', 'kalicart-bridge' ), count( $ids ) - 30 ) ) . '</p>';
+		}
+	}
+
 	public static function render_panel(): void {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'kalicart-bridge' ) );
@@ -587,6 +615,22 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 		echo '</div>';
 
+		if ( $generated && ( ! empty( $stats['no_image_ids'] ) || ! empty( $stats['no_brand_ids'] ) ) ) {
+			echo '<div class="card" style="max-width:960px"><h2>' . esc_html__( 'Products excluded from the ChatGPT feed', 'kalicart-bridge' ) . '</h2>';
+			echo '<p>' . esc_html__( 'These products remain fully available to AI agents through the catalog API, search, MCP and UCP surfaces. They are excluded only from the ChatGPT product feed because a field required by the OpenAI feed specification is missing. Fix the data below and regenerate.', 'kalicart-bridge' ) . '</p>';
+			self::render_excluded_products(
+				array_map( 'intval', (array) ( $stats['no_brand_ids'] ?? [] ) ),
+				__( 'Missing brand', 'kalicart-bridge' ),
+				__( 'Assign a brand (WooCommerce Brands taxonomy or a brand attribute) in the product editor.', 'kalicart-bridge' )
+			);
+			self::render_excluded_products(
+				array_map( 'intval', (array) ( $stats['no_image_ids'] ?? [] ) ),
+				__( 'Missing primary image', 'kalicart-bridge' ),
+				__( 'Set a featured image in the product editor.', 'kalicart-bridge' )
+			);
+			echo '</div>';
+		}
+
 		echo '<div class="card" style="max-width:960px"><h2>' . esc_html__( 'ChatGPT feed generation settings', 'kalicart-bridge' ) . '</h2>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin.php?page=kalicart-bridge&tab=agent-commerce' ) ) . '">';
 		wp_nonce_field( 'kb_acp_save', 'kb_acp_nonce' );
@@ -599,9 +643,22 @@ class KaliCart_Bridge_ACP_Feed {
 		echo '<button class="button button-secondary" name="regenerate" value="1">' . esc_html__( 'Save and generate/validate now', 'kalicart-bridge' ) . '</button>';
 		echo '</form></div>';
 
-		echo '<div class="card" style="max-width:960px"><h2>' . esc_html__( 'Delivery', 'kalicart-bridge' ) . '</h2>';
-		echo '<ol><li>' . esc_html__( 'Configure and generate a validated snapshot.', 'kalicart-bridge' ) . '</li><li>' . esc_html__( 'Apply for direct-feed access at chatgpt.com/merchants.', 'kalicart-bridge' ) . '</li><li>' . esc_html__( 'After approval, upload the stable JSONL.GZ file through the delivery channel OpenAI assigns.', 'kalicart-bridge' ) . '</li></ol>';
-		echo '<p>' . esc_html__( 'The feed format is region-neutral. Merchant eligibility and shopping-surface availability are determined by OpenAI and may vary by market.', 'kalicart-bridge' ) . '</p>';
+		echo '<div class="card" style="max-width:960px"><h2>' . esc_html__( 'What to do with this file (OpenAI guidelines)', 'kalicart-bridge' ) . '</h2>';
+		echo '<p>' . esc_html__( 'The file is a complete snapshot of your feed-eligible products, regenerated in full every time: products removed from your catalog disappear from the next snapshot automatically. OpenAI recommends refreshing it at least daily and always keeping the same filename.', 'kalicart-bridge' ) . '</p>';
+		echo '<ol>';
+		echo '<li><strong>' . esc_html__( 'Generate and validate here.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Every row is checked against the OpenAI Product Feed specification before it enters the file.', 'kalicart-bridge' ) . '</li>';
+		echo '<li><strong>' . esc_html__( 'Apply for direct-feed access.', 'kalicart-bridge' ) . '</strong> ' . sprintf(
+			/* translators: %s: link to chatgpt.com/merchants */
+			esc_html__( 'Submit your store at %s with your business contact. Approval is decided entirely by OpenAI; being on the waitlist costs nothing.', 'kalicart-bridge' ),
+			'<a href="https://chatgpt.com/merchants" target="_blank" rel="noopener">chatgpt.com/merchants</a>'
+		) . '</li>';
+		echo '<li><strong>' . esc_html__( 'Deliver after approval.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'OpenAI assigns your delivery channel and credentials (SFTP push or API). Upload the JSONL.GZ file there on every refresh. OpenAI does not fetch any URL from your site: the download buttons above are for you, not for them.', 'kalicart-bridge' ) . '</li>';
+		echo '</ol>';
+		echo '<p>' . esc_html__( 'The feed format is region-neutral. Merchant eligibility and shopping-surface availability are determined by OpenAI and may vary by market.', 'kalicart-bridge' ) . ' ' . sprintf(
+			/* translators: %s: link to OpenAI commerce documentation */
+			esc_html__( 'Official documentation: %s.', 'kalicart-bridge' ),
+			'<a href="https://developers.openai.com/commerce" target="_blank" rel="noopener">developers.openai.com/commerce</a>'
+		) . '</p>';
 		echo '</div>';
 	}
 }
