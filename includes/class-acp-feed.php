@@ -7,21 +7,28 @@ defined( 'ABSPATH' ) || exit;
  * OpenAI Product Feed generator (Agentic Commerce Protocol, discovery tier).
  * Spec: https://developers.openai.com/commerce/specs/file-upload/products
  *
- * Generates a JSON Lines feed (one product/variant per line) that a merchant
- * submits to OpenAI to appear in ChatGPT Shopping search results.
- * DISCOVERY ONLY by design: is_eligible_search=true, is_eligible_checkout=false.
- * Checkout stays on the merchant storefront - the Bridge read-only philosophy,
- * which also matches OpenAI's shift toward merchant-owned checkout.
- *
- * The feed file is a dedicated export for ONE consumer (OpenAI's indexer).
- * It is deliberately NOT advertised in discovery/robots/sitemap: the generic
- * agent surface remains the paginated catalog API (no monoliths, lesson
- * 2026-06-25). The file URL carries a random token.
+ * Contract (reviewed 2026-07-02, external review incorporated):
+ * - DISCOVERY ONLY: is_eligible_search=true, is_eligible_checkout=false.
+ *   Checkout stays on the merchant storefront (Bridge read-only philosophy).
+ * - Delivery is PUSH on a channel OpenAI assigns after merchant approval
+ *   (application at chatgpt.com/merchants). The plugin generates and
+ *   validates the file; it never claims a "submit this URL" flow.
+ * - Row policy: missing GLOBAL config (return policy, countries) = full
+ *   generation block; product missing image or brand = excluded + counted;
+ *   every emitted row = schema-conformant (per-row validator, hard gate).
+ * - Atomic: build+validate a temp file, stream-gzip it, replace the last
+ *   good snapshot ONLY if everything passes. A failure never destroys the
+ *   previous valid feed. Transient lock against concurrent runs.
+ * - item_id = wc-{product_id} / wc-{variation_id}: stable, unique, <=100
+ *   chars by construction. No SKU-based ids, no dedup needed.
+ * - Stable filename (acp-products.jsonl[.gz]) inside a tokenized directory:
+ *   ready for SFTP upload, not guessable, not advertised in discovery/robots.
  */
 class KaliCart_Bridge_ACP_Feed {
 
-	const OPTION = 'kalicart_bridge_acp_feed';
+	const OPTION    = 'kalicart_bridge_acp_feed';
 	const CRON_HOOK = 'kalicart_bridge_acp_feed_generate';
+	const LOCK      = 'kalicart_bridge_acp_feed_lock';
 
 	public static function init(): void {
 		add_action( 'admin_menu', [ __CLASS__, 'register_menu' ], 20 );
@@ -33,11 +40,11 @@ class KaliCart_Bridge_ACP_Feed {
 
 	public static function get_options(): array {
 		$defaults = [
-			'enabled'            => false,
-			'brand_fallback'     => get_bloginfo( 'name' ),
-			'return_policy_url'  => self::default_return_policy_url(),
-			'target_countries'   => self::default_store_country(),
-			'token'              => '',
+			'enabled'           => false,
+			'brand_fallback'    => '', // opt-in only: empty = products without brand are excluded
+			'return_policy_url' => self::default_return_policy_url(),
+			'target_countries'  => implode( ',', self::default_target_countries() ),
+			'token'             => '',
 		];
 		$opts = get_option( self::OPTION, [] );
 		if ( ! is_array( $opts ) ) {
@@ -59,9 +66,23 @@ class KaliCart_Bridge_ACP_Feed {
 		return '';
 	}
 
-	private static function default_store_country(): string {
+	private static function store_country(): string {
 		$c = (string) get_option( 'woocommerce_default_country', '' );
 		return strtoupper( explode( ':', $c )[0] ?? '' );
+	}
+
+	/** Derived from WooCommerce selling locations, as declared. */
+	private static function default_target_countries(): array {
+		$mode = get_option( 'woocommerce_allowed_countries', 'all' );
+		if ( 'specific' === $mode ) {
+			$list = (array) get_option( 'woocommerce_specific_allowed_countries', [] );
+			$list = array_values( array_filter( array_map( 'strtoupper', $list ) ) );
+			if ( $list ) {
+				return $list;
+			}
+		}
+		$base = self::store_country();
+		return $base ? [ $base ] : [];
 	}
 
 	public static function maybe_schedule(): void {
@@ -74,14 +95,14 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 	}
 
-	// ── generation ──────────────────────────────────────────────────────────
+	// ── paths ───────────────────────────────────────────────────────────────
 
-	/** Feed directory inside uploads, with an index guard. */
-	private static function feed_dir(): string {
+	private static function feed_dir( array $opts ): string {
 		$up  = wp_upload_dir();
-		$dir = trailingslashit( $up['basedir'] ) . 'kalicart-bridge';
+		$dir = trailingslashit( $up['basedir'] ) . 'kalicart-bridge/' . $opts['token'];
 		if ( ! is_dir( $dir ) ) {
 			wp_mkdir_p( $dir );
+			@file_put_contents( trailingslashit( $up['basedir'] ) . 'kalicart-bridge/index.html', '' );
 			@file_put_contents( $dir . '/index.html', '' );
 		}
 		return $dir;
@@ -90,25 +111,66 @@ class KaliCart_Bridge_ACP_Feed {
 	public static function feed_url(): string {
 		$opts = self::get_options();
 		$up   = wp_upload_dir();
-		return trailingslashit( $up['baseurl'] ) . 'kalicart-bridge/acp-products-' . $opts['token'] . '.jsonl';
+		return trailingslashit( $up['baseurl'] ) . 'kalicart-bridge/' . $opts['token'] . '/acp-products.jsonl';
 	}
 
-	/**
-	 * Build the full feed. Batched, memory-safe. Returns stats.
-	 */
+	// ── generation (atomic, locked, gated) ──────────────────────────────────
+
 	public static function generate(): array {
-		$opts    = self::get_options();
-		$dir     = self::feed_dir();
-		$path    = $dir . '/acp-products-' . $opts['token'] . '.jsonl';
-		$tmp     = $path . '.tmp';
-		$fh      = fopen( $tmp, 'w' );
-		$stats   = [ 'rows' => 0, 'products' => 0, 'skipped' => 0, 'missing_brand' => 0, 'missing_image' => 0, 'generated_at' => gmdate( 'c' ) ];
+		if ( get_transient( self::LOCK ) ) {
+			return [ 'error' => 'locked', 'detail' => 'Another generation is in progress.' ];
+		}
+		set_transient( self::LOCK, 1, 15 * MINUTE_IN_SECONDS );
+		$stats = self::generate_inner();
+		delete_transient( self::LOCK );
+
+		$opts_stored               = get_option( self::OPTION, [] );
+		$opts_stored               = is_array( $opts_stored ) ? $opts_stored : [];
+		$opts_stored['last_stats'] = $stats;
+		update_option( self::OPTION, $opts_stored, false );
+		return $stats;
+	}
+
+	private static function generate_inner(): array {
+		$opts  = self::get_options();
+		$stats = [
+			'rows' => 0, 'products' => 0, 'excluded_no_image' => 0, 'excluded_no_brand' => 0,
+			'excluded_invalid' => 0, 'invalid_examples' => [], 'generated_at' => gmdate( 'c' ),
+		];
+
+		// GLOBAL config gate: incomplete required store config = full block.
+		$countries = array_values( array_filter( array_map( 'trim', explode( ',', strtoupper( (string) $opts['target_countries'] ) ) ) ) );
+		$config_errors = [];
+		if ( '' === (string) $opts['return_policy_url'] ) {
+			$config_errors[] = 'return_policy_url is required (set it in this page or publish the Woo Refund/Returns page)';
+		}
+		if ( '' === self::store_country() ) {
+			$config_errors[] = 'WooCommerce store base country is not set';
+		}
+		foreach ( $countries as $c ) {
+			if ( ! preg_match( '/^[A-Z]{2}$/', $c ) ) {
+				$config_errors[] = 'invalid target country code: ' . $c;
+			}
+		}
+		if ( ! $countries ) {
+			$config_errors[] = 'target_countries is empty';
+		}
+		if ( $config_errors ) {
+			$stats['error'] = 'config_incomplete';
+			$stats['config_errors'] = $config_errors;
+			return $stats; // last good snapshot untouched
+		}
+
+		$dir  = self::feed_dir( $opts );
+		$path = $dir . '/acp-products.jsonl';
+		$tmp  = $path . '.tmp';
+		$fh   = fopen( $tmp, 'w' );
 		if ( ! $fh ) {
+			$stats['error'] = 'cannot_write';
 			return $stats;
 		}
 
-		$paged    = 1;
-		$seen_ids = [];
+		$paged = 1;
 		do {
 			$q = new WP_Query( [
 				'post_type'      => 'product',
@@ -116,61 +178,74 @@ class KaliCart_Bridge_ACP_Feed {
 				'posts_per_page' => 100,
 				'paged'          => $paged,
 				'fields'         => 'ids',
-				'no_found_rows'  => false,
 			] );
 			foreach ( $q->posts as $pid ) {
 				$product = wc_get_product( $pid );
 				if ( ! $product || ! $product->is_visible() || 'grouped' === $product->get_type() ) {
-					$stats['skipped']++;
 					continue;
 				}
-				$rows = self::rows_for_product( $product, $opts, $stats );
+				$rows      = self::rows_for_product( $product, $opts, $countries, $stats );
+				$row_count = 0;
 				foreach ( $rows as $row ) {
-					if ( isset( $seen_ids[ $row['item_id'] ] ) ) {
-						// item_id MUST be unique per variant (spec). Duplicate SKUs across
-						// variants get a deterministic suffix instead of being dropped.
-						$row['item_id'] .= '-' . substr( md5( $row['url'] . wp_json_encode( $row['variant_dict'] ?? '' ) ), 0, 6 );
-						$stats['deduped_ids'] = (int) ( $stats['deduped_ids'] ?? 0 ) + 1;
+					$errors = self::validate_row( $row );
+					if ( $errors ) {
+						$stats['excluded_invalid']++;
+						if ( count( $stats['invalid_examples'] ) < 5 ) {
+							$stats['invalid_examples'][] = $row['item_id'] . ': ' . implode( '; ', $errors );
+						}
+						continue; // every emitted row must be conformant
 					}
-					$seen_ids[ $row['item_id'] ] = true;
 					fwrite( $fh, wp_json_encode( $row, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . "\n" );
 					$stats['rows']++;
+					$row_count++;
 				}
-				if ( $rows ) {
+				if ( $row_count ) {
 					$stats['products']++;
 				}
 			}
 			$more = $paged < (int) $q->max_num_pages;
 			$paged++;
 		} while ( $more );
-
 		fclose( $fh );
-		rename( $tmp, $path );
 
-		// gzip copy for large catalogs
-		$gz = gzopen( $path . '.gz', 'w9' );
-		if ( $gz ) {
-			gzwrite( $gz, file_get_contents( $path ) );
-			gzclose( $gz );
+		if ( 0 === $stats['rows'] ) {
+			@unlink( $tmp );
+			$stats['error'] = 'empty_feed';
+			return $stats; // never replace a good snapshot with an empty one
 		}
 
-		$opts_stored               = get_option( self::OPTION, [] );
-		$opts_stored['last_stats'] = $stats;
-		update_option( self::OPTION, is_array( $opts_stored ) ? $opts_stored : [ 'last_stats' => $stats ], false );
+		// streamed gzip from the validated temp file (no full-file memory load)
+		$gz_tmp = $tmp . '.gz';
+		$in     = fopen( $tmp, 'rb' );
+		$gz     = gzopen( $gz_tmp, 'w9' );
+		if ( ! $in || ! $gz ) {
+			@unlink( $tmp );
+			$stats['error'] = 'gzip_failed';
+			return $stats;
+		}
+		while ( ! feof( $in ) ) {
+			gzwrite( $gz, fread( $in, 512 * 1024 ) );
+		}
+		fclose( $in );
+		gzclose( $gz );
+
+		// atomic swap: only now the last good snapshot is replaced
+		rename( $tmp, $path );
+		rename( $gz_tmp, $path . '.gz' );
 		return $stats;
 	}
 
-	/** One row per simple/external product, one per variation for variable products. */
-	private static function rows_for_product( WC_Product $product, array $opts, array &$stats ): array {
+	// ── row building ────────────────────────────────────────────────────────
+
+	private static function rows_for_product( WC_Product $product, array $opts, array $countries, array &$stats ): array {
 		$rows = [];
 		if ( $product->is_type( 'variable' ) ) {
-			$parent_row = null;
 			foreach ( $product->get_children() as $vid ) {
 				$v = wc_get_product( $vid );
 				if ( ! $v || ! $v->is_purchasable() ) {
 					continue;
 				}
-				$row = self::base_row( $v, $opts, $stats, $product );
+				$row = self::base_row( $v, $opts, $countries, $stats, $product );
 				if ( $row ) {
 					$row['group_id']               = 'wc-' . $product->get_id();
 					$row['listing_has_variations'] = true;
@@ -179,8 +254,7 @@ class KaliCart_Bridge_ACP_Feed {
 						if ( '' === (string) $val ) {
 							continue;
 						}
-						$label          = wc_attribute_label( str_replace( 'attribute_', '', $attr ), $product );
-						$dict[ $label ] = (string) $val;
+						$dict[ wc_attribute_label( str_replace( 'attribute_', '', $attr ), $product ) ] = (string) $val;
 					}
 					if ( $dict ) {
 						$row['variant_dict'] = $dict;
@@ -189,83 +263,101 @@ class KaliCart_Bridge_ACP_Feed {
 				}
 			}
 			if ( ! $rows ) {
-				// variable without purchasable variations: fall back to the parent as one row
-				$row = self::base_row( $product, $opts, $stats );
+				$row = self::base_row( $product, $opts, $countries, $stats );
 				if ( $row ) {
 					$rows[] = $row;
 				}
 			}
 			return $rows;
 		}
-		$row = self::base_row( $product, $opts, $stats );
+		$row = self::base_row( $product, $opts, $countries, $stats );
 		return $row ? [ $row ] : [];
 	}
 
-	private static function base_row( WC_Product $p, array $opts, array &$stats, ?WC_Product $parent = null ): ?array {
-		$display    = $parent ?: $p;
-		$title      = self::clip( $display->get_name() . ( $parent ? ' - ' . wc_get_formatted_variation( $p, true, false, false ) : '' ), 150 );
-		$desc       = self::clip( self::plain( $display->get_description() ?: $display->get_short_description() ?: $display->get_name() ), 5000 );
-		$image      = wp_get_attachment_image_url( $p->get_image_id() ?: $display->get_image_id(), 'full' );
+	private static function base_row( WC_Product $p, array $opts, array $countries, array &$stats, ?WC_Product $parent = null ): ?array {
+		$display = $parent ?: $p;
+
+		$image = wp_get_attachment_image_url( $p->get_image_id() ?: $display->get_image_id(), 'full' );
 		if ( ! $image ) {
-			$stats['missing_image']++;
-			return null; // image_url is REQUIRED by spec
+			$stats['excluded_no_image']++;
+			return null; // required by spec: exclude + count
 		}
 		$brand = self::resolve_brand( $display );
 		if ( '' === $brand ) {
-			$brand = (string) $opts['brand_fallback'];
-			$stats['missing_brand']++;
+			$brand = trim( (string) $opts['brand_fallback'] ); // explicit opt-in only
+			if ( '' === $brand ) {
+				$stats['excluded_no_brand']++;
+				return null; // required by spec: exclude + count, never fabricate
+			}
 		}
 		$currency = get_woocommerce_currency();
 		$regular  = $p->get_regular_price();
-		$priceval = ( '' !== $regular ) ? $regular : $p->get_price();
+		$priceval = ( '' !== (string) $regular ) ? $regular : $p->get_price();
 		if ( '' === (string) $priceval ) {
-			return null; // price is REQUIRED
+			return null;
 		}
+
+		$title = $display->get_name() . ( $parent ? ' - ' . wc_get_formatted_variation( $p, true, false, false ) : '' );
+		$desc  = self::plain( $display->get_description() ?: $display->get_short_description() ?: $display->get_name() );
 
 		$row = [
 			'is_eligible_search'   => true,
 			'is_eligible_checkout' => false,
-			'item_id'              => ( $parent ? $p->get_sku( 'edit' ) : $p->get_sku() ) ?: 'wc-' . $p->get_id(),
-			'title'                => $title,
-			'description'          => $desc,
+			'item_id'              => 'wc-' . $p->get_id(),
+			'title'                => self::clip( $title, 150 ),
+			'description'          => self::clip( $desc, 5000 ),
 			'url'                  => $display->get_permalink(),
 			'brand'                => self::clip( $brand, 70 ),
 			'image_url'            => $image,
 			'price'                => wc_format_decimal( $priceval, 2 ) . ' ' . $currency,
 			'availability'         => self::availability( $p ),
-			'seller_name'          => get_bloginfo( 'name' ),
+			'condition'            => 'new',
+			'seller_name'          => self::clip( get_bloginfo( 'name' ), 70 ),
 			'seller_url'           => home_url( '/' ),
 			'return_policy'        => (string) $opts['return_policy_url'],
-			'target_countries'     => array_values( array_filter( array_map( 'trim', explode( ',', strtoupper( (string) $opts['target_countries'] ) ) ) ) ),
-			'store_country'        => self::default_store_country(),
+			'target_countries'     => $countries,
+			'store_country'        => self::store_country(),
 		];
 
 		if ( $p->is_on_sale() && '' !== (string) $p->get_sale_price() ) {
-			$row['sale_price'] = wc_format_decimal( $p->get_sale_price(), 2 ) . ' ' . $currency;
+			$sale = (float) $p->get_sale_price();
+			if ( $sale > 0 && $sale <= (float) $priceval ) {
+				$row['sale_price'] = wc_format_decimal( $sale, 2 ) . ' ' . $currency;
+			}
 		}
-		$gallery = array_slice( array_filter( array_map( fn( $id ) => wp_get_attachment_image_url( $id, 'full' ), $display->get_gallery_image_ids() ) ), 0, 10 );
+		$gallery = array_filter( array_map( fn( $id ) => wp_get_attachment_image_url( $id, 'full' ), $display->get_gallery_image_ids() ) );
 		if ( $gallery ) {
-			$row['additional_image_urls'] = $gallery;
+			// spec: comma-separated String, not an array
+			$row['additional_image_urls'] = implode( ',', array_slice( $gallery, 0, 10 ) );
 		}
-		if ( method_exists( $p, 'get_global_unique_id' ) && $p->get_global_unique_id() ) {
-			$row['gtin'] = $p->get_global_unique_id();
+		if ( method_exists( $p, 'get_global_unique_id' ) ) {
+			$gtin = preg_replace( '/\D/', '', (string) $p->get_global_unique_id() );
+			if ( preg_match( '/^\d{8,14}$/', $gtin ) ) {
+				$row['gtin'] = $gtin; // only if valid: 8-14 digits, no dashes/spaces
+			}
 		}
 		$cats = wp_get_post_terms( $display->get_id(), 'product_cat', [ 'fields' => 'names' ] );
 		if ( ! is_wp_error( $cats ) && $cats ) {
 			$row['product_category'] = implode( ' > ', $cats );
 		}
-		if ( $p->get_weight() ) {
-			$row['weight'] = $p->get_weight() . ' ' . get_option( 'woocommerce_weight_unit', 'kg' );
+		if ( '' !== (string) $p->get_weight() ) {
+			// spec: numeric weight + separate item_weight_unit
+			$row['weight']           = wc_format_decimal( $p->get_weight() );
+			$row['item_weight_unit'] = self::weight_unit();
 		}
 		if ( $p->is_virtual() || $p->is_downloadable() ) {
 			$row['is_digital'] = true;
 		}
 		if ( $display->get_review_count() > 0 ) {
 			$row['review_count'] = (int) $display->get_review_count();
-			$row['star_rating']  = (float) $display->get_average_rating();
+			$row['star_rating']  = number_format( (float) $display->get_average_rating(), 1, '.', '' ); // spec: String
 		}
-		$row['condition'] = 'new';
 		return $row;
+	}
+
+	private static function weight_unit(): string {
+		$u = get_option( 'woocommerce_weight_unit', 'kg' );
+		return 'lbs' === $u ? 'lb' : $u; // Woo 'lbs' -> spec 'lb'
 	}
 
 	private static function resolve_brand( WC_Product $p ): string {
@@ -298,7 +390,91 @@ class KaliCart_Bridge_ACP_Feed {
 	}
 
 	private static function clip( string $s, int $max ): string {
-		return mb_strlen( $s ) > $max ? mb_substr( $s, 0, $max - 1 ) . chr( 0xE2 ) . chr( 0x80 ) . chr( 0xA6 ) : $s;
+		return mb_strlen( $s ) > $max ? rtrim( mb_substr( $s, 0, $max ) ) : $s;
+	}
+
+	// ── per-row schema validator (hard gate) ────────────────────────────────
+
+	/** Returns a list of violations; empty array = conformant row. */
+	public static function validate_row( array $row ): array {
+		$e = [];
+		foreach ( [ 'item_id', 'title', 'description', 'url', 'brand', 'image_url', 'price', 'availability', 'seller_name', 'seller_url', 'return_policy', 'store_country' ] as $f ) {
+			if ( ! isset( $row[ $f ] ) || '' === (string) $row[ $f ] ) {
+				$e[] = "missing required $f";
+			}
+		}
+		if ( empty( $row['target_countries'] ) || ! is_array( $row['target_countries'] ) ) {
+			$e[] = 'missing required target_countries';
+		} else {
+			foreach ( $row['target_countries'] as $c ) {
+				if ( ! preg_match( '/^[A-Z]{2}$/', (string) $c ) ) {
+					$e[] = 'bad country code ' . $c;
+				}
+			}
+		}
+		if ( ! isset( $row['is_eligible_search'], $row['is_eligible_checkout'] ) || ! is_bool( $row['is_eligible_search'] ) || ! is_bool( $row['is_eligible_checkout'] ) ) {
+			$e[] = 'eligibility flags must be boolean';
+		}
+		foreach ( [ 'item_id' => 100, 'title' => 150, 'description' => 5000, 'brand' => 70, 'seller_name' => 70 ] as $f => $max ) {
+			if ( isset( $row[ $f ] ) && mb_strlen( (string) $row[ $f ] ) > $max ) {
+				$e[] = "$f exceeds $max chars";
+			}
+		}
+		foreach ( [ 'url', 'image_url', 'seller_url', 'return_policy' ] as $f ) {
+			if ( isset( $row[ $f ] ) && ( 0 !== strpos( (string) $row[ $f ], 'https://' ) || ! filter_var( $row[ $f ], FILTER_VALIDATE_URL ) ) ) {
+				$e[] = "$f must be a valid https URL";
+			}
+		}
+		if ( isset( $row['additional_image_urls'] ) ) {
+			if ( ! is_string( $row['additional_image_urls'] ) ) {
+				$e[] = 'additional_image_urls must be a comma-separated string';
+			} else {
+				foreach ( explode( ',', $row['additional_image_urls'] ) as $u ) {
+					if ( 0 !== strpos( trim( $u ), 'https://' ) ) {
+						$e[] = 'additional_image_urls contains a non-https URL';
+						break;
+					}
+				}
+			}
+		}
+		$price_re = '/^\d+(\.\d{1,2})? [A-Z]{3}$/';
+		if ( isset( $row['price'] ) && ! preg_match( $price_re, (string) $row['price'] ) ) {
+			$e[] = 'price format must be "N.NN CUR"';
+		}
+		if ( isset( $row['sale_price'] ) ) {
+			if ( ! preg_match( $price_re, (string) $row['sale_price'] ) ) {
+				$e[] = 'sale_price format must be "N.NN CUR"';
+			} elseif ( (float) $row['sale_price'] > (float) $row['price'] ) {
+				$e[] = 'sale_price greater than price';
+			}
+		}
+		if ( isset( $row['availability'] ) && ! in_array( $row['availability'], [ 'in_stock', 'out_of_stock', 'pre_order', 'backorder', 'unknown' ], true ) ) {
+			$e[] = 'availability not in enum';
+		}
+		if ( isset( $row['condition'] ) && ! in_array( $row['condition'], [ 'new', 'refurbished', 'used' ], true ) ) {
+			$e[] = 'condition not in enum';
+		}
+		if ( isset( $row['gtin'] ) && ! preg_match( '/^\d{8,14}$/', (string) $row['gtin'] ) ) {
+			$e[] = 'gtin must be 8-14 digits';
+		}
+		if ( isset( $row['store_country'] ) && ! preg_match( '/^[A-Z]{2}$/', (string) $row['store_country'] ) ) {
+			$e[] = 'store_country must be ISO 3166-1 alpha-2';
+		}
+		if ( isset( $row['star_rating'] ) ) {
+			if ( ! is_string( $row['star_rating'] ) || ! is_numeric( $row['star_rating'] ) || (float) $row['star_rating'] < 0 || (float) $row['star_rating'] > 5 ) {
+				$e[] = 'star_rating must be a numeric string 0-5';
+			}
+		}
+		if ( isset( $row['weight'] ) && empty( $row['item_weight_unit'] ) ) {
+			$e[] = 'item_weight_unit required when weight is set';
+		}
+		if ( isset( $row['item_weight_unit'] ) && ! in_array( $row['item_weight_unit'], [ 'kg', 'g', 'lb', 'oz' ], true ) ) {
+			$e[] = 'item_weight_unit not in enum';
+		}
+		if ( ! empty( $row['listing_has_variations'] ) && empty( $row['group_id'] ) ) {
+			$e[] = 'group_id required for variation rows';
+		}
+		return $e;
 	}
 
 	// ── admin ───────────────────────────────────────────────────────────────
@@ -331,24 +507,35 @@ class KaliCart_Bridge_ACP_Feed {
 		$opts  = self::get_options();
 		$stats = $opts['last_stats'] ?? null;
 		echo '<div class="wrap"><h1>ChatGPT Shopping - OpenAI Product Feed</h1>';
-		echo '<p>Generates an OpenAI Product Feed (Agentic Commerce Protocol, discovery tier) so this store can appear in ChatGPT Shopping results. Checkout stays on your storefront. Apply at <a href="https://chatgpt.com/merchants" target="_blank" rel="noopener">chatgpt.com/merchants</a> and submit the feed URL below.</p>';
+		echo '<p>Generates an OpenAI-compatible product feed for ChatGPT product discovery (Agentic Commerce Protocol, discovery tier - checkout stays on your storefront). <strong>Application and approval required:</strong> apply at <a href="https://chatgpt.com/merchants" target="_blank" rel="noopener">chatgpt.com/merchants</a>; after approval, OpenAI provides the delivery channel for the generated file.</p>';
 		if ( $stats ) {
-			echo '<p><strong>Last generation:</strong> ' . esc_html( $stats['generated_at'] ) . ' - ' . (int) $stats['rows'] . ' rows / ' . (int) $stats['products'] . ' products';
-			if ( $stats['missing_brand'] ) {
-				echo ' - <span style="color:#b45309">' . (int) $stats['missing_brand'] . ' without brand (fallback used)</span>';
+			if ( ! empty( $stats['error'] ) ) {
+				echo '<div class="notice notice-error"><p><strong>Last generation blocked (' . esc_html( $stats['error'] ) . '):</strong> ' . esc_html( implode( ' / ', $stats['config_errors'] ?? [ $stats['detail'] ?? '' ] ) ) . '. The previous valid feed, if any, was preserved.</p></div>';
+			} else {
+				echo '<p><strong>Last generation:</strong> ' . esc_html( $stats['generated_at'] ) . ' - ' . (int) $stats['rows'] . ' conformant rows / ' . (int) $stats['products'] . ' products';
+				if ( $stats['excluded_no_image'] ) {
+					echo ' - <span style="color:#b45309">' . (int) $stats['excluded_no_image'] . ' excluded: no image</span>';
+				}
+				if ( $stats['excluded_no_brand'] ) {
+					echo ' - <span style="color:#b45309">' . (int) $stats['excluded_no_brand'] . ' excluded: no brand</span>';
+				}
+				if ( $stats['excluded_invalid'] ) {
+					echo ' - <span style="color:#b91c1c">' . (int) $stats['excluded_invalid'] . ' excluded: schema violations</span>';
+				}
+				echo '</p>';
+				if ( ! empty( $stats['invalid_examples'] ) ) {
+					echo '<p style="color:#b91c1c"><small>' . esc_html( implode( ' | ', $stats['invalid_examples'] ) ) . '</small></p>';
+				}
+				echo '<p><a class="button" href="' . esc_url( self::feed_url() ) . '" download>Download generated feed</a> <a class="button" href="' . esc_url( self::feed_url() . '.gz' ) . '" download>Download .gz</a></p>';
 			}
-			if ( $stats['missing_image'] ) {
-				echo ' - <span style="color:#b91c1c">' . (int) $stats['missing_image'] . ' skipped: missing image (required by spec)</span>';
-			}
-			echo '</p><p><strong>Feed URL:</strong> <code>' . esc_html( self::feed_url() ) . '</code> (+ <code>.gz</code>)</p>';
 		}
 		echo '<form method="post">';
 		wp_nonce_field( 'kb_acp_save', 'kb_acp_nonce' );
 		echo '<table class="form-table">';
 		echo '<tr><th>Enable daily generation</th><td><input type="checkbox" name="enabled" ' . checked( $opts['enabled'], true, false ) . '></td></tr>';
-		echo '<tr><th>Brand fallback</th><td><input type="text" class="regular-text" name="brand_fallback" value="' . esc_attr( $opts['brand_fallback'] ) . '"><p class="description">Used when a product has no brand taxonomy/attribute. brand is required by the spec.</p></td></tr>';
-		echo '<tr><th>Return policy URL</th><td><input type="url" class="regular-text" name="return_policy_url" value="' . esc_attr( $opts['return_policy_url'] ) . '"><p class="description">Required by the spec. Defaults to your Refund and Returns page.</p></td></tr>';
-		echo '<tr><th>Target countries</th><td><input type="text" class="regular-text" name="target_countries" value="' . esc_attr( $opts['target_countries'] ) . '"><p class="description">Comma-separated ISO 3166-1 alpha-2 codes (e.g. US, IT, DE).</p></td></tr>';
+		echo '<tr><th>Brand fallback (opt-in)</th><td><input type="text" class="regular-text" name="brand_fallback" value="' . esc_attr( $opts['brand_fallback'] ) . '"><p class="description">Only for own-label stores: used when a product has no brand taxonomy/attribute. Leave empty to exclude brandless products (they are counted above). Never fabricates a brand silently.</p></td></tr>';
+		echo '<tr><th>Return policy URL</th><td><input type="url" class="regular-text" name="return_policy_url" value="' . esc_attr( $opts['return_policy_url'] ) . '"><p class="description">Required. Missing value blocks generation entirely. Defaults to your Refund and Returns page.</p></td></tr>';
+		echo '<tr><th>Target countries</th><td><input type="text" class="regular-text" name="target_countries" value="' . esc_attr( $opts['target_countries'] ) . '"><p class="description">Comma-separated ISO 3166-1 alpha-2 codes. Defaults to your WooCommerce selling locations.</p></td></tr>';
 		echo '</table>';
 		submit_button( 'Save' );
 		echo '<button class="button button-secondary" name="regenerate" value="1">Save &amp; regenerate now</button>';
