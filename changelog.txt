@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-07-02 - version 1.0.111
+
+* ChatGPT product discovery - new OpenAI-compatible product feed generator (ACP file-upload specification): per-row schema validator as a hard gate (every emitted row is conformant), atomic snapshot swap that preserves the last valid feed on any failure, global configuration gate (return policy, countries), honest exclusion counts for products missing image or brand, stable filename ready for the delivery channel OpenAI assigns after merchant approval
+* Feed admin - new ChatGPT Shopping page with readiness statistics, exclusion counts, feed downloads and settings: opt-in brand fallback for own-label stores, return policy URL (defaults to your Refund and Returns page), target countries derived from WooCommerce selling locations
+
+
 2026-07-02 - version 1.0.110
 
 * Scraper-facing discovery - an HTML comment at the top of every page and an HTTP Link header (rel="kalicart-agent") now point AI agents to the structured catalog in the very surfaces they scrape; validated in blind agent tests (3/3 autonomous discovery vs 0/1 without these signals)
