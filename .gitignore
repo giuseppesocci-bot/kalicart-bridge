@@ -5,3 +5,10 @@
 *.orig
 *.rej
 .DS_Store
+*.backup.*
+*.swp
+*.tmp
+*.log
+__pycache__/
+node_modules/
+*.zip
