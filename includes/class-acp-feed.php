@@ -21,6 +21,11 @@ defined( 'ABSPATH' ) || exit;
  *   previous valid feed. Transient lock against concurrent runs.
  * - item_id = wc-{product_id} / wc-{variation_id}: stable, unique, <=100
  *   chars by construction. No SKU-based ids, no dedup needed.
+ * - Direct filesystem streams (fopen/fwrite/fread/fclose) are used
+ *   DELIBERATELY: WP_Filesystem has no streaming API and would require
+ *   loading the whole catalog in memory (rejected in external review);
+ *   rename() is required because the atomic snapshot swap depends on
+ *   same-filesystem rename semantics. unlink is wp_delete_file everywhere.
  * - Stable filename (acp-products.jsonl[.gz]) inside a tokenized directory:
  *   ready for SFTP upload, not guessable, not advertised in discovery/robots.
  */
@@ -164,7 +169,7 @@ class KaliCart_Bridge_ACP_Feed {
 		$dir  = self::feed_dir( $opts );
 		$path = $dir . '/acp-products.jsonl';
 		$tmp  = $path . '.tmp';
-		$fh   = fopen( $tmp, 'w' );
+		$fh   = fopen( $tmp, 'w' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- streaming export, see class header.
 		if ( ! $fh ) {
 			$stats['error'] = 'cannot_write';
 			return $stats;
@@ -195,7 +200,7 @@ class KaliCart_Bridge_ACP_Feed {
 						}
 						continue; // every emitted row must be conformant
 					}
-					fwrite( $fh, wp_json_encode( $row, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . "\n" );
+					fwrite( $fh, wp_json_encode( $row, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . "\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- streaming export.
 					$stats['rows']++;
 					$row_count++;
 				}
@@ -206,32 +211,32 @@ class KaliCart_Bridge_ACP_Feed {
 			$more = $paged < (int) $q->max_num_pages;
 			$paged++;
 		} while ( $more );
-		fclose( $fh );
+		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- streaming export.
 
 		if ( 0 === $stats['rows'] ) {
-			@unlink( $tmp );
+			wp_delete_file( $tmp );
 			$stats['error'] = 'empty_feed';
 			return $stats; // never replace a good snapshot with an empty one
 		}
 
 		// streamed gzip from the validated temp file (no full-file memory load)
 		$gz_tmp = $tmp . '.gz';
-		$in     = fopen( $tmp, 'rb' );
+		$in     = fopen( $tmp, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- streaming gzip, no full-file memory load.
 		$gz     = gzopen( $gz_tmp, 'w9' );
 		if ( ! $in || ! $gz ) {
-			@unlink( $tmp );
+			wp_delete_file( $tmp );
 			$stats['error'] = 'gzip_failed';
 			return $stats;
 		}
 		while ( ! feof( $in ) ) {
-			gzwrite( $gz, fread( $in, 512 * 1024 ) );
+			gzwrite( $gz, fread( $in, 512 * 1024 ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread -- streaming gzip.
 		}
-		fclose( $in );
+		fclose( $in ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- streaming gzip.
 		gzclose( $gz );
 
 		// atomic swap: only now the last good snapshot is replaced
-		rename( $tmp, $path );
-		rename( $gz_tmp, $path . '.gz' );
+		rename( $tmp, $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- atomic snapshot swap requires rename() semantics.
+		rename( $gz_tmp, $path . '.gz' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- atomic snapshot swap requires rename() semantics.
 		return $stats;
 	}
 
