@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: woocommerce, ai, mcp, rest api, chatgpt
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.109
+Stable tag: 1.0.110
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -130,6 +130,13 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.110 =
+* Scraper-facing discovery - an HTML comment at the top of every page and an HTTP Link header (rel="kalicart-agent") now point AI agents to the structured catalog in the very surfaces they scrape; validated in blind agent tests (3/3 autonomous discovery vs 0/1 without these signals)
+* MCP handshake - /mcp/.well-known/oauth-protected-resource now answers with RFC 9728 Protected Resource Metadata carrying an empty authorization_servers list, telling MCP clients explicitly that this keyless server requires no OAuth instead of a 404 they must interpret
+* Agent traffic insight - new opt-out telemetry counts daily agent traffic per surface (storefront HTML, catalog REST, MCP) with client classification (branded agents, anonymous programmatic, generic clients, browsers), API route and status breakdown, and MCP client identity, method, tool and outcome from the protocol handshake; server-internal and health-check traffic is excluded; data stays local in a single option, 31-day retention
+* OpenAPI accuracy - the fields parameter is now documented per endpoint (search defaults to summary; products defaults to full and switches to summary when filters are present) and a ProductSummary schema describes the slim projection, so OpenAPI-driven clients no longer read summary responses as missing fields
+* Agent instructions - step 5 now names /catalog/search and /catalog/products explicitly for summary-based triage
 
 = 1.0.109 =
 * Catalog triage - search and filtered product browsing now default to the compact summary projection when fields is omitted; MCP search and list tools always return summaries and default to 10 results, while unfiltered REST enumeration remains full for federated index compatibility

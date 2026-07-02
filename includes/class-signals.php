@@ -142,7 +142,7 @@ class KaliCart_Bridge_Signals {
         if ( is_string( $ip ) && $ip !== '' ) {
             return $ip === '0' ? '' : $ip;
         }
-        $host = (string) parse_url( home_url(), PHP_URL_HOST );
+        $host = (string) wp_parse_url( home_url(), PHP_URL_HOST );
         $ip   = $host !== '' ? (string) gethostbyname( $host ) : '';
         if ( $ip === $host ) {
             $ip = '';
