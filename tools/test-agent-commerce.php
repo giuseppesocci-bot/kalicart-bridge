@@ -26,7 +26,7 @@ $test_opts['last_stats'] = [
 	'rows' => 1,
 	'products' => 1,
 	'excluded_no_image' => 1,
-	'excluded_no_brand' => 1,
+	'rows_missing_brand' => 1,
 	'fallback_brand_rows' => 1,
 	'excluded_invalid' => 0,
 	'invalid_examples' => [],
@@ -56,15 +56,16 @@ include KALICART_BRIDGE_DIR . 'admin/admin-page.php';
 $admin_html = (string) ob_get_clean();
 unset( $_GET['tab'] );
 
-$check( 'tab panel heading', false !== strpos( $html, '>Agent Commerce<' ) );
+$check( 'tab panel heading', false !== strpos( $html, 'ChatGPT Product Feed (OpenAI)' ) && false !== strpos( $admin_html, '>Agent Commerce<' ) );
 $check( 'no separate submenu renderer', ! method_exists( 'KaliCart_Bridge_ACP_Feed', 'register_menu' ) );
 $check( 'form returns to main Agent Commerce tab', false !== strpos( $html, 'page=kalicart-bridge' ) && false !== strpos( $html, 'tab=agent-commerce' ) );
 $check( 'Agent Commerce remains the active server-rendered tab', false !== strpos( $admin_html, 'class="kali-tab kali-tab--active" data-tab="agent-commerce"' ) && false !== strpos( $admin_html, 'id="kali-tab-agent-commerce" class="kali-panel" style="display:block"' ) );
 $check( 'return policy is not duplicated as an input', false === strpos( $html, 'name="return_policy_url"' ) );
 $check( 'return policy comes from Settings', false !== strpos( $html, 'Configured in the Settings tab: https://example.com/returns' ) );
-$check( 'agent-readable contract', false !== strpos( $html, 'Missing brand or primary image does not invalidate the agent-readable catalog.' ) );
+$check( 'agent-readable contract', false !== strpos( $html, 'None of this affects the agent-readable catalog, search, REST API, MCP or UCP surfaces.' ) );
 $check( 'OpenAI brand warning copy', false !== strpos( $html, 'Brand is required by OpenAI’s direct product feed specification.' ) );
-$check( 'fallback is not reported as complete', false !== strpos( $html, '>Fallback applied<' ) && false !== strpos( $html, '1 missing-brand row filled by the merchant fallback' ) );
+$check( 'fallback is not reported as complete', false !== strpos( $html, '>Fallback applied<' ) && false !== strpos( $html, 'rows filled by the merchant fallback' ) );
+$check( 'missing brand is non-blocking with explicit onus', false !== strpos( $html, 'Rows submitted without brand.' ) && false !== strpos( $html, 'you knowingly assume that responsibility' ) );
 $check( 'fallback has a neutral placeholder', false !== strpos( $html, 'placeholder="Your merchant-owned brand"' ) );
 $check( 'merchant responsibility is explicit', false !== strpos( $html, 'the merchant declares it accurate and accepts responsibility' ) );
 $check( 'OpenAI image warning copy', false !== strpos( $html, 'A primary product image is required by OpenAI’s direct product feed specification.' ) );
