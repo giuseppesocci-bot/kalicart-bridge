@@ -477,15 +477,15 @@ class KaliCart_Bridge_ACP_Feed {
 
 	private static function readiness_label( ?bool $state, string $ready = 'Ready', string $action = 'Action needed' ): string {
 		if ( null === $state ) {
-			return '<span style="color:#646970">Not checked</span>';
+			return '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Not checked', 'kalicart-bridge' ) . '</span>';
 		}
 		return $state
-			? '<strong style="color:#008a20">' . esc_html( $ready ) . '</strong>'
-			: '<strong style="color:#b32d2e">' . esc_html( $action ) . '</strong>';
+			? '<span class="kali-pill kali-pill--ok">' . esc_html( $ready ) . '</span>'
+			: '<span class="kali-pill kali-pill--warn">' . esc_html( $action ) . '</span>';
 	}
 
 	private static function readiness_row( string $label, string $status, string $detail ): void {
-		echo '<tr><th scope="row">' . esc_html( $label ) . '</th><td>' . wp_kses_post( $status ) . '</td><td>' . esc_html( $detail ) . '</td></tr>';
+		echo '<div class="kali-acp-row"><div class="kali-acp-row__info"><strong>' . esc_html( $label ) . '</strong><span>' . esc_html( $detail ) . '</span></div><div class="kali-acp-row__status">' . wp_kses_post( $status ) . '</div></div>';
 	}
 
 	/**
@@ -641,7 +641,7 @@ class KaliCart_Bridge_ACP_Feed {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Missing primary product image.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'A primary product image is required by OpenAI’s direct product feed specification. Affected feed rows remain available in the agent-readable catalog but are excluded from the ChatGPT product feed.', 'kalicart-bridge' ) . '</p></div>';
 		}
 
-		echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Check', 'kalicart-bridge' ) . '</th><th>' . esc_html__( 'Status', 'kalicart-bridge' ) . '</th><th>' . esc_html__( 'Meaning', 'kalicart-bridge' ) . '</th></tr></thead><tbody>';
+		echo '<div class="kali-acp-list">';
 		self::readiness_row( 'Return policy', self::readiness_label( $return_ready ), $return_ready ? 'Configured in the Settings tab: ' . (string) $opts['return_policy_url'] : 'Configure it once in the Settings tab; feed generation is blocked when missing.' );
 		self::readiness_row( 'Target countries', self::readiness_label( $countries_ready ), $countries_ready ? implode( ', ', $countries ) : 'Use ISO 3166-1 alpha-2 country codes.' );
 		self::readiness_row( 'Product brand', $brand_status, $brand_detail );
@@ -649,7 +649,7 @@ class KaliCart_Bridge_ACP_Feed {
 		self::readiness_row( 'Schema validation', self::readiness_label( $schema_state, 'Passed', 'Invalid rows' ), null === $schema_state ? 'Run feed generation to check.' : (int) ( $stats['excluded_invalid'] ?? 0 ) . ' invalid rows in the last run.' );
 		self::readiness_row( 'Daily ChatGPT feed refresh', self::readiness_label( (bool) $opts['enabled'], 'Enabled', 'Manual only' ), $opts['enabled'] ? 'Regenerates the validated ChatGPT feed file once per day; delivery to OpenAI is a separate step.' : 'The ChatGPT feed changes only when generated manually and may become outdated after catalog changes.' );
 		self::readiness_row( 'OpenAI feed delivery', self::readiness_label( false, 'Connected', 'Application required' ), 'This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials.' );
-		echo '</tbody></table>';
+		echo '</div>';
 
 		if ( $generated ) {
 			echo '<p><strong>' . esc_html__( 'Last validated ChatGPT feed snapshot:', 'kalicart-bridge' ) . '</strong> ' . esc_html( (string) ( $stats['generated_at'] ?? '' ) ) . ' &mdash; ' . (int) ( $stats['rows'] ?? 0 ) . ' ' . esc_html__( 'conformant rows from', 'kalicart-bridge' ) . ' ' . (int) ( $stats['products'] ?? 0 ) . ' ' . esc_html__( 'products.', 'kalicart-bridge' ) . '</p>';
@@ -671,7 +671,7 @@ class KaliCart_Bridge_ACP_Feed {
 		if ( $live_counts['brand'] || $live_counts['image'] ) {
 			echo '<div class="kali-acp-card"><h2>' . esc_html__( 'Products excluded from the ChatGPT feed', 'kalicart-bridge' ) . '</h2>';
 			echo '<p>' . esc_html__( 'Live counts on your current catalog. These products remain fully available to AI agents through the catalog API, search, MCP and UCP surfaces; they are only excluded from the ChatGPT product feed because a field required by the OpenAI feed specification is missing.', 'kalicart-bridge' ) . '</p>';
-			echo '<table class="widefat striped"><tbody>';
+			echo '<div class="kali-acp-list">';
 			$kb_rows = [
 				'brand' => [ __( 'Missing brand', 'kalicart-bridge' ), __( 'Assign a brand (WooCommerce Brands taxonomy or a brand attribute). Use the Products list for bulk editing.', 'kalicart-bridge' ) ],
 				'image' => [ __( 'Missing primary image', 'kalicart-bridge' ), __( 'Set a featured image in the product editor.', 'kalicart-bridge' ) ],
@@ -681,12 +681,12 @@ class KaliCart_Bridge_ACP_Feed {
 					continue;
 				}
 				$kb_csv = wp_nonce_url( admin_url( 'admin-post.php?action=kalicart_acp_export_exclusions&what=' . $kb_gap ), 'kb_acp_export' );
-				echo '<tr><th scope="row" style="width:220px">' . esc_html( $kb_row[0] ) . '</th>';
-				echo '<td style="width:120px"><strong>' . (int) $live_counts[ $kb_gap ] . '</strong> ' . esc_html__( 'products', 'kalicart-bridge' ) . '</td>';
-				echo '<td>' . esc_html( $kb_row[1] ) . '</td>';
-				echo '<td style="width:300px"><a class="kali-btn kali-btn--secondary" href="' . esc_url( self::products_list_url( $kb_gap ) ) . '">' . esc_html__( 'Open in Products list', 'kalicart-bridge' ) . '</a> <a class="kali-btn kali-btn--secondary" href="' . esc_url( $kb_csv ) . '">' . esc_html__( 'Export CSV', 'kalicart-bridge' ) . '</a></td></tr>';
+				echo '<div class="kali-acp-row">';
+				echo '<div class="kali-acp-row__info"><strong>' . esc_html( $kb_row[0] ) . ' <span class="kali-pill kali-pill--warn">' . (int) $live_counts[ $kb_gap ] . '</span></strong><span>' . esc_html( $kb_row[1] ) . '</span></div>';
+				echo '<div class="kali-acp-row__actions"><a class="kali-btn kali-btn--secondary" href="' . esc_url( self::products_list_url( $kb_gap ) ) . '">' . esc_html__( 'Open in Products list', 'kalicart-bridge' ) . '</a> <a class="kali-btn kali-btn--secondary" href="' . esc_url( $kb_csv ) . '">' . esc_html__( 'Export CSV', 'kalicart-bridge' ) . '</a></div>';
+				echo '</div>';
 			}
-			echo '</tbody></table></div>';
+			echo '</div></div>';
 		}
 
 		echo '<div class="kali-acp-card"><h2>' . esc_html__( 'ChatGPT feed generation settings', 'kalicart-bridge' ) . '</h2>';

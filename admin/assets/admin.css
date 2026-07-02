@@ -862,8 +862,33 @@
 }
 .kali-acp-card h2 { margin-top: 0; }
 .notice, div.error, div.updated { margin-bottom: 10px; }
-.widefat.striped {
-  margin-top: 30px;
-  margin-bottom: 20px;
-  max-width: 100%;
+.kali-acp-list {
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  overflow: hidden;
+  margin: 14px 0;
 }
+.kali-acp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+}
+.kali-acp-row + .kali-acp-row { border-top: 1px solid var(--kb-border); }
+.kali-acp-row:hover { background: var(--kb-surface2); }
+.kali-acp-row__info { flex: 1; }
+.kali-acp-row__info strong { display: block; font-size: 14px; font-weight: 600; color: var(--kb-text); margin-bottom: 2px; }
+.kali-acp-row__info span { font-size: 13px; color: var(--kb-muted); }
+.kali-acp-row__status, .kali-acp-row__actions { flex-shrink: 0; display: flex; gap: 8px; align-items: center; }
+.kali-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.kali-pill--ok   { background: #e6f6ec; color: #0f6f3c; border: 1px solid rgba(15,111,60,.18); }
+.kali-pill--warn { background: #fde8e8; color: #9b1c1c; border: 1px solid rgba(192,57,43,.2); }
+.kali-pill--muted{ background: var(--kb-surface2); color: var(--kb-muted); border: 1px solid var(--kb-border); }
