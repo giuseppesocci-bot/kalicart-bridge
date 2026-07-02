@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KaliCart Bridge 1.0.92\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kalicart-bridge\n"
-"POT-Creation-Date: 2026-06-14T19:45:55+02:00\n"
+"POT-Creation-Date: 2026-07-02T18:47:35+02:00\n"
 "PO-Revision-Date: 2026-06-14 17:03+0000\n"
 "Last-Translator: KaliCart <giuso@kalicart.com>\n"
 "Language-Team: Spanish\n"
@@ -16,638 +16,918 @@ msgstr ""
 
 #. Plugin Name of the plugin
 #: kalicart-bridge.php
-msgid "KaliCart Bridge"
-msgstr ""
+msgid "KaliCart Bridge – Product Feed for ChatGPT & AI Agents"
+msgstr "KaliCart Bridge – Feed de productos para ChatGPT y agentes de IA"
 
 #. Plugin URI of the plugin
 #: kalicart-bridge.php
 msgid "https://bridge.kalicart.com"
-msgstr ""
+msgstr "https://bridge.kalicart.com"
 
 #. Description of the plugin
 #: kalicart-bridge.php
-msgid ""
-"Makes your WooCommerce catalog machine-readable and agent-accessible. "
-"Exposes normalized product data via REST API — no LLM, no external service, "
-"no cloud dependency."
-msgstr ""
-"Hace que tu catálogo de WooCommerce sea legible por máquinas y accesible "
-"para agentes. Expone datos de producto normalizados mediante una API REST — "
-"sin LLM, sin servicio externo, sin dependencia de la nube."
+msgid "Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency."
+msgstr "Hace que tu catálogo de WooCommerce sea legible por máquinas y accesible para agentes. Expone datos de producto normalizados mediante una API REST — sin LLM, sin servicio externo, sin dependencia de la nube."
 
 #. Author of the plugin
 #: kalicart-bridge.php
 msgid "KaliCart"
-msgstr ""
+msgstr "KaliCart"
 
 #. Author URI of the plugin
 #: kalicart-bridge.php
 msgid "https://kalicart.com"
-msgstr ""
+msgstr "https://kalicart.com"
 
-#: admin/admin-page.php:15
+#: admin/admin-page.php:25
 msgid "Agent-readable catalog"
 msgstr "Catálogo legible por agentes"
 
-#: admin/admin-page.php:48
+#: admin/admin-page.php:33
+msgid "Great choice! Your catalog is going global."
+msgstr "¡Excelente elección! Tu catálogo se vuelve global."
+
+#: admin/admin-page.php:34
+msgid "Increase your catalog's visibility"
+msgstr "Aumenta la visibilidad de tu catálogo"
+
+#. translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag
+#: admin/admin-page.php:40
+#, php-format
+msgid "AI assistants can now find your products across the KaliCart global network. Only public catalog data is shared, and you can deactivate it anytime. %1$sSee what is shared%2$s."
+msgstr "Los asistentes de IA ya pueden encontrar tus productos en la red global de KaliCart. Solo se comparten los datos públicos del catálogo y puedes desactivarlo cuando quieras. %1$sDescubre qué se comparte%2$s."
+
+#. translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag
+#: admin/admin-page.php:47
+#, php-format
+msgid "Activate the Federated Catalog for free: your products join a global network where AI assistants can find them. It only takes one click, and you can deactivate it anytime. %1$sSee what is shared%2$s."
+msgstr "Activa gratis el Catálogo Federado: tus productos entran en una red global donde los asistentes de IA pueden encontrarlos. Solo necesitas un clic y puedes desactivarlo cuando quieras. %1$sDescubre qué se comparte%2$s."
+
+#: admin/admin-page.php:53
+msgid "Activate Federated Catalog"
+msgstr "Activar el catálogo federado"
+
+#: admin/admin-page.php:54
+msgid "Revoke consent"
+msgstr "Revocar el consentimiento"
+
+#: admin/admin-page.php:56
+msgid "Use the Federated Catalog banner above to manage consent."
+msgstr "Usa el banner del Catálogo Federado de arriba para gestionar el consentimiento."
+
+#: admin/admin-page.php:60 includes/class-admin.php:139
+msgid "Heads up"
+msgstr "Atención"
+
+#: admin/admin-page.php:61
+msgid "Revoking removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Your data is parked, not deleted, and restored if you re-activate."
+msgstr "Revocar elimina tu catálogo de la búsqueda federada de KaliCart Global. Los agentes que usan el índice federado ya no encontrarán tus productos allí. Tus datos quedan aparcados, no eliminados, y se restauran si vuelves a activar."
+
+#: admin/admin-page.php:63
+msgid "Yes, revoke consent"
+msgstr "Sí, revocar el consentimiento"
+
+#: admin/admin-page.php:64
+msgid "Keep my catalog federated"
+msgstr "Mantener mi catálogo federado"
+
+#: admin/admin-page.php:72
 msgid "Overview"
 msgstr "Resumen"
 
-#: admin/admin-page.php:49 admin/admin-page.php:107
+#: admin/admin-page.php:73 admin/admin-page.php:133
 msgid "Quarantine"
 msgstr "Cuarentena"
 
-#: admin/admin-page.php:50
+#: admin/admin-page.php:74
 msgid "Endpoints"
 msgstr "Endpoints"
 
-#: admin/admin-page.php:51
+#: admin/admin-page.php:75
+msgid "Agent Commerce"
+msgstr "Agent Commerce"
+
+#: admin/admin-page.php:76
 msgid "Settings"
 msgstr "Ajustes"
 
-#: admin/admin-page.php:58
+#: admin/admin-page.php:77
+msgid "Coupons"
+msgstr "Cupones"
+
+#: admin/admin-page.php:84
 msgid "Analysing catalog…"
 msgstr "Analizando el catálogo…"
 
-#: admin/admin-page.php:68
+#: admin/admin-page.php:94
 msgid "quality score"
 msgstr "puntuación de calidad"
 
-#: admin/admin-page.php:71
+#: admin/admin-page.php:97
 msgid "Catalog coverage"
 msgstr "Cobertura del catálogo"
 
-#: admin/admin-page.php:73 admin/admin-page.php:111
+#: admin/admin-page.php:99 admin/admin-page.php:137
 msgid "In stock"
 msgstr "En stock"
 
-#: admin/admin-page.php:78
+#: admin/admin-page.php:104
 msgid "Images"
 msgstr "Imágenes"
 
-#: admin/admin-page.php:83
+#: admin/admin-page.php:109
 msgid "Description"
 msgstr "Descripción"
 
-#: admin/admin-page.php:99
+#: admin/admin-page.php:125
 msgid "Total products"
 msgstr "Productos totales"
 
-#: admin/admin-page.php:103
+#: admin/admin-page.php:129
 msgid "Healthy"
 msgstr "Correctos"
 
-#: admin/admin-page.php:115 includes/class-quarantine.php:358
+#: admin/admin-page.php:141 includes/class-quarantine.php:358
 msgid "Out of stock"
 msgstr "Agotados"
 
-#: admin/admin-page.php:119
+#: admin/admin-page.php:145
 msgid "No SKU"
 msgstr "Sin SKU"
 
-#: admin/admin-page.php:124
+#: admin/admin-page.php:150
 msgid "Catalog issues"
 msgstr "Problemas del catálogo"
 
-#: admin/admin-page.php:128
+#: admin/admin-page.php:154
 msgid "Bad title"
 msgstr "Título incorrecto"
 
-#: admin/admin-page.php:132
+#: admin/admin-page.php:158
 msgid "No image"
 msgstr "Sin imagen"
 
-#: admin/admin-page.php:136
+#: admin/admin-page.php:162
 msgid "No description"
 msgstr "Sin descripción"
 
-#: admin/admin-page.php:140 includes/class-quarantine.php:275
+#: admin/admin-page.php:166 includes/class-quarantine.php:275
 msgid "No category"
 msgstr "Sin categoría"
 
-#: admin/admin-page.php:144
+#: admin/admin-page.php:170
 msgid "Zero price"
 msgstr "Precio cero"
 
-#: admin/admin-page.php:149
+#: admin/admin-page.php:175
 msgid "Suggestions"
 msgstr "Sugerencias"
 
-#: admin/admin-page.php:155
+#: admin/admin-page.php:181
 msgid "Refresh"
 msgstr "Actualizar"
 
-#: admin/admin-page.php:164
+#: admin/admin-page.php:190
 msgid "Quarantined products"
 msgstr "Productos en cuarentena"
 
-#: admin/admin-page.php:167
-msgid ""
-"Products with blocking computability issues: missing descriptions, "
-"categories, or invalid prices."
-msgstr ""
-"Productos con problemas de computabilidad que bloquean: descripciones o "
-"categorías faltantes, o precios no válidos."
+#: admin/admin-page.php:193
+msgid "Products with blocking computability issues: missing descriptions, categories, or invalid prices."
+msgstr "Productos con problemas de computabilidad que bloquean: descripciones o categorías faltantes, o precios no válidos."
 
-#: admin/admin-page.php:173
+#: admin/admin-page.php:199
 msgid "API Endpoints"
 msgstr "Endpoints de la API"
 
 #. translators: %s: the /health endpoint path, shown as code
-#: admin/admin-page.php:174
+#: admin/admin-page.php:200
 #, php-format
 msgid "Read-only REST surfaces. No authentication required except %s."
-msgstr ""
-"Superficies REST de solo lectura. No se requiere autenticación excepto %s."
+msgstr "Superficies REST de solo lectura. No se requiere autenticación excepto %s."
 
-#: admin/admin-page.php:208
+#: admin/admin-page.php:239
 msgid "Refund and Returns Policy URL"
 msgstr "URL de la política de reembolsos y devoluciones"
 
-#: admin/admin-page.php:210
-msgid ""
-"Add your refund and returns policy page so AI agents can inform buyers about"
-" your return conditions. Without this, the catalog health score is reduced "
-"by 10 points."
-msgstr ""
-"Añade tu página de política de reembolsos y devoluciones para que los "
-"agentes de IA puedan informar a los compradores sobre tus condiciones de "
-"devolución. Sin esto, la puntuación de salud del catálogo se reduce en 10 "
-"puntos."
+#: admin/admin-page.php:241
+msgid "Add your refund and returns policy page so AI agents can inform buyers about your return conditions. Without this, the catalog health score is reduced by 10 points."
+msgstr "Añade tu página de política de reembolsos y devoluciones para que los agentes de IA puedan informar a los compradores sobre tus condiciones de devolución. Sin esto, la puntuación de salud del catálogo se reduce en 10 puntos."
 
-#: admin/admin-page.php:222 includes/class-admin.php:94
+#: admin/admin-page.php:253 includes/class-admin.php:140
 msgid "Test link:"
 msgstr "Enlace de prueba:"
 
-#: admin/admin-page.php:227
+#: admin/admin-page.php:258
 msgid "Signal settings"
 msgstr "Ajustes de señales"
 
-#: admin/admin-page.php:233
+#: admin/admin-page.php:264
 msgid "AI catalog badge"
 msgstr "Insignia de catálogo IA"
 
-#: admin/admin-page.php:234
-msgid ""
-"Speaking HTML badge visible on the storefront — machine-readable anchor for "
-"AI agents."
-msgstr ""
-"Insignia HTML parlante visible en la tienda — ancla legible por máquinas "
-"para los agentes de IA."
+#: admin/admin-page.php:265
+msgid "Speaking HTML badge visible on the storefront — machine-readable anchor for AI agents."
+msgstr "Insignia HTML parlante visible en la tienda — ancla legible por máquinas para los agentes de IA."
 
-#: admin/admin-page.php:242
+#: admin/admin-page.php:273
 msgid "Position"
 msgstr "Posición"
 
-#: admin/admin-page.php:245
+#: admin/admin-page.php:276
 msgid "Top left"
 msgstr "Arriba a la izquierda"
 
-#: admin/admin-page.php:245
+#: admin/admin-page.php:276
 msgid "Top right"
 msgstr "Arriba a la derecha"
 
-#: admin/admin-page.php:245
+#: admin/admin-page.php:276
 msgid "Bottom left"
 msgstr "Abajo a la izquierda"
 
-#: admin/admin-page.php:245
+#: admin/admin-page.php:276
 msgid "Bottom right"
 msgstr "Abajo a la derecha"
 
-#: admin/admin-page.php:258
+#: admin/admin-page.php:289
 msgid "robots.txt directive"
 msgstr "Directiva robots.txt"
 
 #. translators: %s: a robots.txt Allow directive, shown as code
-#: admin/admin-page.php:259
+#: admin/admin-page.php:290
 #, php-format
 msgid "Adds %s to robots.txt."
 msgstr "Añade %s a robots.txt."
 
-#: admin/admin-page.php:266
-msgid "KaliCart Global indexing consent"
-msgstr "Consentimiento de indexación de KaliCart Global"
-
-#. translators: %1$s and %2$s: discovery-document field names, shown as code
-#: admin/admin-page.php:267
-#, php-format
-msgid ""
-"Allows KaliCart Global to index this catalog and include it in federated "
-"agent search. Published in the discovery document as %1$s and %2$s. Read-"
-"only: Global never writes to your store."
-msgstr ""
-"Permite que KaliCart Global indexe este catálogo y lo incluya en la búsqueda"
-" federada para agentes. Publicado en el documento de discovery como %1$s y "
-"%2$s. Solo lectura: Global nunca escribe en tu tienda."
-
-#: admin/admin-page.php:275
+#: admin/admin-page.php:297
 msgid "Checkout sessions"
 msgstr "Sesiones de pago"
 
-#: admin/admin-page.php:275
+#: admin/admin-page.php:297
 msgid "optional"
 msgstr "opcional"
 
 #. translators: %s: the POST /checkout/session endpoint, shown as code
-#: admin/admin-page.php:276
+#: admin/admin-page.php:298
 #, php-format
-msgid ""
-"Enables %s — agent creates a session, merchant gets a checkout URL, human "
-"completes payment on WooCommerce. No OAuth, no PII, no payment on the agent "
-"side."
-msgstr ""
-"Habilita %s — el agente crea una sesión, el comerciante obtiene una URL de "
-"pago, el humano completa el pago en WooCommerce. Sin OAuth, sin PII, sin "
-"pago del lado del agente."
+msgid "Enables %s — agent creates a session, merchant gets a checkout URL, human completes payment on WooCommerce. No OAuth, no PII, no payment on the agent side."
+msgstr "Habilita %s — el agente crea una sesión, el comerciante obtiene una URL de pago, el humano completa el pago en WooCommerce. Sin OAuth, sin PII, sin pago del lado del agente."
 
-#: admin/admin-page.php:283
+#: admin/admin-page.php:305
 msgid "Agentic sitemap"
 msgstr "Sitemap agéntico"
 
 #. translators: %s: a link to the agentic sitemap file
-#: admin/admin-page.php:284
+#: admin/admin-page.php:306
 #, php-format
 msgid "Serves %s with annotated catalog endpoints."
 msgstr "Sirve %s con endpoints del catálogo anotados."
 
-#: admin/admin-page.php:291
+#: admin/admin-page.php:313
 msgid "Agent discovery files"
 msgstr "Archivos de discovery para agentes"
 
 #. translators: %1$s and %2$s: .well-known discovery file paths, shown as code
-#: admin/admin-page.php:292
+#: admin/admin-page.php:314
 #, php-format
-msgid ""
-"Writes %1$s and %2$s — standard discovery points for AI agents that probe "
-"the site before navigating it."
-msgstr ""
-"Escribe %1$s y %2$s — puntos de discovery estándar para los agentes de IA "
-"que sondean el sitio antes de navegarlo."
+msgid "Writes %1$s and %2$s — standard discovery points for AI agents that probe the site before navigating it."
+msgstr "Escribe %1$s y %2$s — puntos de discovery estándar para los agentes de IA que sondean el sitio antes de navegarlo."
 
-#: admin/admin-page.php:297
+#: admin/admin-page.php:319
 msgid "Agent discovery hints"
 msgstr "Pistas de discovery para agentes"
 
-#: admin/admin-page.php:301
+#: admin/admin-page.php:323
 msgid "Search form link"
 msgstr "Enlace en el formulario de búsqueda"
 
-#: admin/admin-page.php:302
-msgid ""
-"Appends a visible \"Structured catalog for AI agents\" link after every "
-"search form."
-msgstr ""
-"Añade un enlace visible «Catálogo estructurado para agentes de IA» después "
-"de cada formulario de búsqueda."
+#: admin/admin-page.php:324
+msgid "Appends a visible \"Structured catalog for AI agents\" link after every search form."
+msgstr "Añade un enlace visible «Catálogo estructurado para agentes de IA» después de cada formulario de búsqueda."
 
-#: admin/admin-page.php:309
+#: admin/admin-page.php:331
 msgid "Search results link"
 msgstr "Enlace en los resultados de búsqueda"
 
-#: admin/admin-page.php:310
-msgid ""
-"Shows a minimal \"Machine-readable catalog\" link at the bottom of search "
-"pages — both on zero-results and when results are ambiguous or partial."
-msgstr ""
-"Muestra un enlace mínimo «Catálogo legible por máquinas» al final de las "
-"páginas de búsqueda — tanto sin resultados como cuando los resultados son "
-"ambiguos o parciales."
+#: admin/admin-page.php:332
+msgid "Shows a minimal \"Machine-readable catalog\" link at the bottom of search pages — both on zero-results and when results are ambiguous or partial."
+msgstr "Muestra un enlace mínimo «Catálogo legible por máquinas» al final de las páginas de búsqueda — tanto sin resultados como cuando los resultados son ambiguos o parciales."
 
-#: admin/admin-page.php:317
+#: admin/admin-page.php:339
 msgid "Category & product page links"
 msgstr "Enlaces en las páginas de categoría y producto"
 
-#: admin/admin-page.php:318
-msgid ""
-"Shows a \"Machine-readable category data\" link on category pages and a "
-"\"Machine-readable product data\" link above the product meta on single "
-"product pages — both pointing to the structured API endpoint."
-msgstr ""
-"Muestra un enlace «Datos de categoría legibles por máquinas» en las páginas "
-"de categoría y un enlace «Datos de producto legibles por máquinas» encima de"
-" los metadatos del producto en las páginas de producto — ambos apuntan al "
-"endpoint de API estructurado."
+#: admin/admin-page.php:340
+msgid "Shows a \"Machine-readable category data\" link on category pages and a \"Machine-readable product data\" link above the product meta on single product pages — both pointing to the structured API endpoint."
+msgstr "Muestra un enlace «Datos de categoría legibles por máquinas» en las páginas de categoría y un enlace «Datos de producto legibles por máquinas» encima de los metadatos del producto en las páginas de producto — ambos apuntan al endpoint de API estructurado."
 
-#: admin/admin-page.php:326
+#: admin/admin-page.php:348
 msgid "Agent entry-point page"
 msgstr "Página de entrada para agentes"
 
-#: admin/admin-page.php:326
+#: admin/admin-page.php:348
 msgid "(optional)"
 msgstr "(opcional)"
 
-#: admin/admin-page.php:328
-msgid ""
-"If you want to expose a dedicated machine-readable index for AI agents — a "
-"structured directory of your catalog endpoints and category tree — you can "
-"create a WordPress page and add this shortcode. The page will render a "
-"navigable tree of your catalog API, readable by both agents and curious "
-"humans. It is not required: all discovery signals work automatically without"
-" it."
-msgstr ""
-"Si quieres exponer un índice dedicado legible por máquinas para los agentes "
-"de IA — un directorio estructurado de los endpoints de tu catálogo y del "
-"árbol de categorías — puedes crear una página de WordPress y añadir este "
-"shortcode. La página mostrará un árbol navegable de tu API de catálogo, "
-"legible tanto por agentes como por humanos curiosos. No es obligatorio: "
-"todas las señales de discovery funcionan automáticamente sin ella."
+#: admin/admin-page.php:350
+msgid "If you want to expose a dedicated machine-readable index for AI agents — a structured directory of your catalog endpoints and category tree — you can create a WordPress page and add this shortcode. The page will render a navigable tree of your catalog API, readable by both agents and curious humans. It is not required: all discovery signals work automatically without it."
+msgstr "Si quieres exponer un índice dedicado legible por máquinas para los agentes de IA — un directorio estructurado de los endpoints de tu catálogo y del árbol de categorías — puedes crear una página de WordPress y añadir este shortcode. La página mostrará un árbol navegable de tu API de catálogo, legible tanto por agentes como por humanos curiosos. No es obligatorio: todas las señales de discovery funcionan automáticamente sin ella."
 
-#: admin/admin-page.php:332
+#: admin/admin-page.php:354
 msgid "Copy and paste into any WordPress page"
 msgstr "Copia y pega en cualquier página de WordPress"
 
-#: admin/admin-page.php:335
+#: admin/admin-page.php:357
 msgid "Agent index page URL"
 msgstr "URL de la página de índice para agentes"
 
-#: admin/admin-page.php:339
+#: admin/admin-page.php:361
 msgid "Paste the URL of the page where you added the shortcode"
 msgstr "Pega la URL de la página donde añadiste el shortcode"
 
-#: admin/admin-page.php:344
+#: admin/admin-page.php:366 admin/admin-page.php:396
+#: includes/class-acp-feed.php:704
 msgid "Save settings"
 msgstr "Guardar ajustes"
 
-#: admin/admin-page.php:345
+#: admin/admin-page.php:367 admin/admin-page.php:397
 msgid "Saved"
 msgstr "Guardado"
 
-#: includes/class-admin.php:76
+#: admin/admin-page.php:374
+msgid "Agent coupon exposure"
+msgstr "Exposición de cupones a los agentes"
+
+#: admin/admin-page.php:376
+msgid "By default the catalog tells agents nothing about your coupons. Turn this on and pick exactly which active coupons agents may see. Selected coupons are presented to agents as conditional savings — WooCommerce checkout always has the final say on whether a coupon actually applies. Private, targeted or newsletter codes you leave unticked are never exposed."
+msgstr "Por defecto, el catálogo no dice nada a los agentes sobre tus cupones. Activa esta opción y elige exactamente qué cupones activos pueden ver los agentes. Los cupones seleccionados se presentan a los agentes como ahorros condicionales — el pago de WooCommerce siempre tiene la última palabra sobre si un cupón se aplica realmente. Los códigos privados, dirigidos o de newsletter que no marques nunca se exponen."
+
+#: admin/admin-page.php:382
+msgid "Expose coupons to agents"
+msgstr "Exponer cupones a los agentes"
+
+#: admin/admin-page.php:383
+msgid "Master switch. When off, active_coupons is always empty regardless of selection below."
+msgstr "Interruptor general. Cuando está apagado, active_coupons queda siempre vacío independientemente de la selección de abajo."
+
+#: admin/admin-page.php:390
+msgid "Eligible coupons"
+msgstr "Cupones elegibles"
+
+#: includes/class-acp-feed.php:486
+msgid "Ready"
+msgstr "Listo"
+
+#: includes/class-acp-feed.php:487
+msgid "Action needed"
+msgstr "Acción necesaria"
+
+#: includes/class-acp-feed.php:489
+msgid "Not checked"
+msgstr "Sin comprobar"
+
+#: includes/class-acp-feed.php:542
+msgid "Not allowed."
+msgstr "Operación no permitida."
+
+#: includes/class-acp-feed.php:573
+msgid "You do not have permission to access this page."
+msgstr "No tienes permiso para acceder a esta página."
+
+#: includes/class-acp-feed.php:589
+msgid "Agent Commerce settings saved."
+msgstr "Ajustes de Agent Commerce guardados."
+
+#: includes/class-acp-feed.php:608
+msgid "Run feed generation to check declared brands."
+msgstr "Genera el feed para comprobar las marcas declaradas."
+
+#: includes/class-acp-feed.php:613
+msgid "Fallback applied"
+msgstr "Valor de respaldo aplicado"
+
+#. translators: 1: rows filled by fallback, 2: rows submitted without brand
+#: includes/class-acp-feed.php:615
+#, php-format
+msgid "%1$d rows filled by the merchant fallback; %2$d rows submitted without brand."
+msgstr "%1$d filas rellenadas por el valor de respaldo del comerciante; %2$d filas enviadas sin marca."
+
+#: includes/class-acp-feed.php:617
+msgid "Submitted without brand"
+msgstr "Enviadas sin marca"
+
+#. translators: %d: rows submitted without brand
+#: includes/class-acp-feed.php:619
+#, php-format
+msgid "%d rows are in the feed without the brand field. Brand is required by the OpenAI specification: OpenAI may reject those rows. You submit them under your own responsibility."
+msgstr "%d filas están en el feed sin el campo de marca. La marca es obligatoria según la especificación de OpenAI: OpenAI puede rechazar esas filas. Las envías bajo tu propia responsabilidad."
+
+#: includes/class-acp-feed.php:621 includes/class-acp-feed.php:652
+msgid "Complete"
+msgstr "Completo"
+
+#: includes/class-acp-feed.php:622
+msgid "Every feed row carries a merchant-declared brand."
+msgstr "Cada fila del feed lleva una marca declarada por el comerciante."
+
+#: includes/class-acp-feed.php:627
+msgid "ChatGPT Product Feed (OpenAI)"
+msgstr "Feed de productos de ChatGPT (OpenAI)"
+
+#: includes/class-acp-feed.php:628
+msgid "This optional export follows OpenAI’s direct product feed specification. Application and approval are required; after approval, OpenAI provides the delivery channel. Checkout stays on your storefront."
+msgstr "Esta exportación opcional sigue la especificación del feed directo de productos de OpenAI. Se requieren solicitud y aprobación; tras la aprobación, OpenAI proporciona el canal de entrega. El pago permanece en tu tienda."
+
+#: includes/class-acp-feed.php:629
+msgid "ChatGPT feed only:"
+msgstr "Solo feed de ChatGPT:"
+
+#: includes/class-acp-feed.php:629
+msgid "Every status and setting in this section refers only to the optional file delivered to OpenAI. It does not enable, disable or limit KaliCart search, REST API, MCP, UCP or the federated catalog."
+msgstr "Cada estado y ajuste de esta sección se refiere únicamente al archivo opcional entregado a OpenAI. No habilita, deshabilita ni limita la búsqueda de KaliCart, la REST API, MCP, UCP ni el catálogo federado."
+
+#: includes/class-acp-feed.php:633
+msgid "Last generation blocked:"
+msgstr "Última generación bloqueada:"
+
+#: includes/class-acp-feed.php:633
+msgid "The previous valid feed, if any, was preserved."
+msgstr "El feed válido anterior, si existía, se ha conservado."
+
+#: includes/class-acp-feed.php:636
+msgid "Feed readiness has not been checked with the current settings. Save and generate a snapshot to run the validator."
+msgstr "La preparación del feed no se ha comprobado con los ajustes actuales. Guarda y genera una instantánea para ejecutar el validador."
+
+#: includes/class-acp-feed.php:639
+msgid "Rows submitted without brand."
+msgstr "Filas enviadas sin marca."
+
+#: includes/class-acp-feed.php:639
+msgid "Brand is required by OpenAI’s direct product feed specification. These rows are included in the file without the brand field: OpenAI may accept or reject them - by submitting the feed you knowingly assume that responsibility. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API, MCP and UCP surfaces."
+msgstr "La marca es obligatoria según la especificación del feed directo de productos de OpenAI. Estas filas se incluyen en el archivo sin el campo de marca: OpenAI puede aceptarlas o rechazarlas - al enviar el feed asumes conscientemente esa responsabilidad. Los productos permanecen plenamente disponibles a través del catálogo legible por agentes de KaliCart, la búsqueda, la REST API, MCP y UCP."
+
+#: includes/class-acp-feed.php:642
+msgid "Merchant brand fallback applied."
+msgstr "Marca de respaldo del comerciante aplicada."
+
+#: includes/class-acp-feed.php:642
+msgid "These rows do not contain a product-level brand in WooCommerce. The merchant is responsible for declaring that the fallback is accurate for every affected product."
+msgstr "Estas filas no contienen una marca a nivel de producto en WooCommerce. Es responsabilidad del comerciante declarar que el valor de respaldo es exacto para cada producto afectado."
+
+#: includes/class-acp-feed.php:645
+msgid "Missing primary product image."
+msgstr "Falta la imagen principal del producto."
+
+#: includes/class-acp-feed.php:645
+msgid "A primary product image is required by OpenAI’s direct product feed specification. Affected feed rows remain available in the agent-readable catalog but are excluded from the ChatGPT product feed."
+msgstr "La especificación del feed directo de productos de OpenAI requiere una imagen principal del producto. Las filas afectadas siguen disponibles en el catálogo legible por agentes, pero quedan excluidas del feed de productos de ChatGPT."
+
+#: includes/class-acp-feed.php:649
+#, fuzzy
+msgid "Return policy"
+msgstr "Configura la URL de la política de devoluciones"
+
+#: includes/class-acp-feed.php:649
+msgid "Configured in the Settings tab: "
+msgstr "Configurada en la pestaña Settings: "
+
+#: includes/class-acp-feed.php:649
+msgid "Configure it once in the Settings tab; feed generation is blocked when missing."
+msgstr "Configúrala una vez en la pestaña Settings; si falta, la generación del feed queda bloqueada."
+
+#: includes/class-acp-feed.php:650 includes/class-acp-feed.php:702
+msgid "Target countries"
+msgstr "Países de destino"
+
+#: includes/class-acp-feed.php:650
+msgid "Use ISO 3166-1 alpha-2 country codes."
+msgstr "Usa códigos de país ISO 3166-1 alpha-2."
+
+#: includes/class-acp-feed.php:651
+msgid "Product brand"
+msgstr "Marca del producto"
+
+#: includes/class-acp-feed.php:652
+msgid "Primary image"
+msgstr "Imagen principal"
+
+#: includes/class-acp-feed.php:652
+msgid "Missing rows"
+msgstr "Filas faltantes"
+
+#. translators: %d: rows excluded for missing image
+#: includes/class-acp-feed.php:652 includes/class-acp-feed.php:653
+msgid "Run feed generation to check."
+msgstr "Genera el feed para comprobar."
+
+#. translators: %d: rows excluded for missing image
+#: includes/class-acp-feed.php:652
+#, php-format
+msgid "%d feed rows excluded in the last run."
+msgstr "%d filas del feed excluidas en la última generación."
+
+#. translators: %d: rows excluded for missing image
+#: includes/class-acp-feed.php:653
+msgid "Schema validation"
+msgstr "Validación del esquema"
+
+#. translators: %d: rows excluded for missing image
+#: includes/class-acp-feed.php:653
+msgid "Passed"
+msgstr "Superada"
+
+#. translators: %d: rows excluded for missing image
+#: includes/class-acp-feed.php:653
+msgid "Invalid rows"
+msgstr "Filas no válidas"
+
+#. translators: %d: invalid rows
+#: includes/class-acp-feed.php:653
+#, php-format
+msgid "%d invalid rows in the last run."
+msgstr "%d filas no válidas en la última generación."
+
+#. translators: %d: invalid rows
+#: includes/class-acp-feed.php:654
+msgid "Daily ChatGPT feed refresh"
+msgstr "Actualización diaria del feed de ChatGPT"
+
+#. translators: %d: invalid rows
+#: includes/class-acp-feed.php:654
+msgid "Enabled"
+msgstr "Activada"
+
+#. translators: %d: invalid rows
+#: includes/class-acp-feed.php:654
+#, fuzzy
+msgid "Manual only"
+msgstr "solo admin"
+
+#. translators: %d: invalid rows
+#: includes/class-acp-feed.php:654
+msgid "Regenerates the validated ChatGPT feed file once per day; delivery to OpenAI is a separate step."
+msgstr "Regenera el archivo del feed de ChatGPT validado una vez al día; la entrega a OpenAI es un paso independiente."
+
+#. translators: %d: invalid rows
+#: includes/class-acp-feed.php:654
+msgid "The ChatGPT feed changes only when generated manually and may become outdated after catalog changes."
+msgstr "El feed de ChatGPT solo cambia cuando se genera manualmente y puede quedar desactualizado tras cambios en el catálogo."
+
+#: includes/class-acp-feed.php:655
+msgid "OpenAI feed delivery"
+msgstr "Entrega del feed a OpenAI"
+
+#: includes/class-acp-feed.php:655
+msgid "Connected"
+msgstr "Conectado"
+
+#: includes/class-acp-feed.php:655
+msgid "Application required"
+msgstr "Solicitud requerida"
+
+#: includes/class-acp-feed.php:655
+msgid "This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials."
+msgstr "Por ahora, el plugin prepara el archivo. OpenAI aprueba al comerciante y asigna las credenciales de entrega SFTP o API."
+
+#: includes/class-acp-feed.php:659
+msgid "Last validated ChatGPT feed snapshot:"
+msgstr "Última instantánea validada del feed de ChatGPT:"
+
+#: includes/class-acp-feed.php:659
+msgid "conformant rows from"
+msgstr "filas conformes de"
+
+#: includes/class-acp-feed.php:659
+#, fuzzy
+msgid "products."
+msgstr "productos"
+
+#: includes/class-acp-feed.php:663
+msgid "Download JSONL"
+msgstr "Descargar JSONL"
+
+#: includes/class-acp-feed.php:663
+msgid "Download JSONL.GZ"
+msgstr "Descargar JSONL.GZ"
+
+#: includes/class-acp-feed.php:676
+msgid "ChatGPT feed data gaps"
+msgstr "Datos faltantes para el feed de ChatGPT"
+
+#: includes/class-acp-feed.php:677
+msgid "Live counts on your current catalog. Products without a primary image are excluded from the ChatGPT feed; products without a brand are submitted without that field, at your responsibility. None of this affects the agent-readable catalog, search, REST API, MCP or UCP surfaces."
+msgstr "Recuentos en tiempo real sobre tu catálogo actual. Los productos sin imagen principal quedan excluidos del feed de ChatGPT; los productos sin marca se envían sin ese campo, bajo tu responsabilidad. Nada de esto afecta al catálogo legible por agentes, la búsqueda, la REST API, MCP ni UCP."
+
+#: includes/class-acp-feed.php:680
+msgid "Missing brand (submitted without it)"
+msgstr "Marca faltante (enviados sin ella)"
+
+#: includes/class-acp-feed.php:680
+msgid "These rows enter the feed without the brand field; OpenAI may reject them. Assign a brand (WooCommerce Brands taxonomy or a brand attribute) to make them fully conformant."
+msgstr "Estas filas entran en el feed sin el campo de marca; OpenAI puede rechazarlas. Asigna una marca (taxonomía de Marcas de WooCommerce o un atributo de marca) para hacerlas plenamente conformes."
+
+#: includes/class-acp-feed.php:681
+msgid "Missing primary image"
+msgstr "Imagen principal faltante"
+
+#: includes/class-acp-feed.php:681
+msgid "Set a featured image in the product editor."
+msgstr "Establece una imagen destacada en el editor del producto."
+
+#: includes/class-acp-feed.php:690
+#, fuzzy
+msgid "Open in Products list"
+msgstr "Abrir producto"
+
+#: includes/class-acp-feed.php:690
+msgid "Export CSV"
+msgstr "Exportar CSV"
+
+#: includes/class-acp-feed.php:696
+msgid "ChatGPT feed generation settings"
+msgstr "Ajustes de generación del feed de ChatGPT"
+
+#: includes/class-acp-feed.php:699
+msgid "Generate the ChatGPT feed daily"
+msgstr "Generar el feed de ChatGPT a diario"
+
+#: includes/class-acp-feed.php:699
+msgid "Refreshes the local validated file only. Automatic delivery can be configured after OpenAI approves the merchant and supplies credentials."
+msgstr "Actualiza únicamente el archivo validado local. La entrega automática podrá configurarse después de que OpenAI apruebe al comerciante y proporcione las credenciales."
+
+#: includes/class-acp-feed.php:701
+msgid "Brand fallback (optional)"
+msgstr "Marca de respaldo (opcional)"
+
+#: includes/class-acp-feed.php:701
+msgid "Your merchant-owned brand"
+msgstr "La marca propia de tu tienda"
+
+#: includes/class-acp-feed.php:701
+msgid "Leave empty unless every otherwise brandless product is genuinely sold under this merchant-owned brand. By entering a value, the merchant declares it accurate and accepts responsibility for applying it to every missing-brand feed row. Multi-brand retailers should leave this empty."
+msgstr "Déjalo vacío a menos que cada producto sin marca se venda realmente bajo esta marca propia de la tienda. Al introducir un valor, el comerciante declara su exactitud y acepta la responsabilidad de aplicarlo a cada fila del feed sin marca. Los minoristas multimarca deberían dejarlo vacío."
+
+#: includes/class-acp-feed.php:702
+msgid "Comma-separated ISO 3166-1 alpha-2 codes. Defaults to WooCommerce selling locations."
+msgstr "Códigos ISO 3166-1 alpha-2 separados por comas. Por defecto, las ubicaciones de venta de WooCommerce."
+
+#: includes/class-acp-feed.php:704
+msgid "Save and generate/validate now"
+msgstr "Guardar y generar/validar ahora"
+
+#: includes/class-acp-feed.php:707
+msgid "What to do with this file (OpenAI guidelines)"
+msgstr "Qué hacer con este archivo (directrices de OpenAI)"
+
+#: includes/class-acp-feed.php:708
+msgid "The file is a complete snapshot of your feed-eligible products, regenerated in full every time: products removed from your catalog disappear from the next snapshot automatically. OpenAI recommends refreshing it at least daily and always keeping the same filename."
+msgstr "El archivo es una instantánea completa de tus productos elegibles para el feed, regenerada íntegramente cada vez: los productos eliminados de tu catálogo desaparecen automáticamente de la siguiente instantánea. OpenAI recomienda actualizarlo al menos a diario y mantener siempre el mismo nombre de archivo."
+
+#: includes/class-acp-feed.php:710
+msgid "Generate and validate here."
+msgstr "Genera y valida aquí."
+
+#: includes/class-acp-feed.php:710
+msgid "Every row is checked against the OpenAI Product Feed specification before it enters the file."
+msgstr "Cada fila se comprueba contra la especificación OpenAI Product Feed antes de entrar en el archivo."
+
+#: includes/class-acp-feed.php:711
+msgid "Apply for direct-feed access."
+msgstr "Solicita el acceso direct-feed."
+
+#. translators: %s: link to chatgpt.com/merchants
+#: includes/class-acp-feed.php:713
+#, php-format
+msgid "Submit your store at %s with your business contact. Approval is decided entirely by OpenAI; being on the waitlist costs nothing."
+msgstr "Presenta tu tienda en %s con tu contacto comercial. La aprobación la decide íntegramente OpenAI; estar en la lista de espera no cuesta nada."
+
+#: includes/class-acp-feed.php:716
+msgid "Deliver after approval."
+msgstr "Entrega tras la aprobación."
+
+#: includes/class-acp-feed.php:716
+msgid "OpenAI assigns your delivery channel and credentials (SFTP push or API). Upload the JSONL.GZ file there on every refresh. OpenAI does not fetch any URL from your site: the download buttons above are for you, not for them."
+msgstr "OpenAI asigna tu canal de entrega y credenciales (push SFTP o API). Sube allí el archivo JSONL.GZ en cada actualización. OpenAI no lee ninguna URL de tu sitio: los botones de descarga de arriba son para ti, no para ellos."
+
+#: includes/class-acp-feed.php:718
+msgid "The feed format is region-neutral. Merchant eligibility and shopping-surface availability are determined by OpenAI and may vary by market."
+msgstr "El formato del feed es neutral respecto a la región. La elegibilidad del comerciante y la disponibilidad de las superficies de compra las determina OpenAI y pueden variar según el mercado."
+
+#. translators: %s: link to OpenAI commerce documentation
+#: includes/class-acp-feed.php:720
+#, fuzzy, php-format
+msgid "Official documentation: %s."
+msgstr "Documentación"
+
+#: includes/class-admin.php:122
 msgid "Unknown error"
 msgstr "Error desconocido"
 
-#: includes/class-admin.php:80
+#: includes/class-admin.php:123
+msgid "Registered on"
+msgstr "Registrado el"
+
+#: includes/class-admin.php:124
+msgid "Tick the consent box above first."
+msgstr "Marca primero la casilla de consentimiento de arriba."
+
+#: includes/class-admin.php:125
+msgid "Activation failed. Please try again."
+msgstr "La activación ha fallado. Inténtalo de nuevo."
+
+#: includes/class-admin.php:126
 msgid "Error:"
 msgstr "Error:"
 
-#: includes/class-admin.php:81
+#: includes/class-admin.php:127
 msgid "Loading…"
 msgstr "Cargando…"
 
-#: includes/class-admin.php:82
+#: includes/class-admin.php:128
 msgid "No issues. Catalog looks great!"
 msgstr "Sin problemas. ¡El catálogo se ve genial!"
 
-#: includes/class-admin.php:83
+#: includes/class-admin.php:129
 msgid "products"
 msgstr "productos"
 
-#: includes/class-admin.php:84
+#: includes/class-admin.php:130
 msgid "Configure"
 msgstr "Configurar"
 
-#: includes/class-admin.php:85
+#: includes/class-admin.php:131
 msgid "Updated:"
 msgstr "Actualizado:"
 
-#: includes/class-admin.php:86
+#: includes/class-admin.php:132
 msgid "No products for"
 msgstr "Ningún producto para"
 
-#: includes/class-admin.php:87
+#: includes/class-admin.php:133
 msgid "No products in quarantine."
 msgstr "Ningún producto en cuarentena."
 
-#: includes/class-admin.php:88
+#: includes/class-admin.php:134
 msgid "Showing"
 msgstr "Mostrando"
 
-#: includes/class-admin.php:89
+#: includes/class-admin.php:135
 msgid "Clear filter"
 msgstr "Quitar filtro"
 
-#: includes/class-admin.php:90
+#: includes/class-admin.php:136
 msgid "Open product"
 msgstr "Abrir producto"
 
-#: includes/class-admin.php:91
+#: includes/class-admin.php:137
 msgid "admin only"
 msgstr "solo admin"
 
-#: includes/class-admin.php:92
+#: includes/class-admin.php:138
 msgid "Preview"
 msgstr "Vista previa"
 
-#: admin/admin-page.php:36 includes/class-admin.php:93
-msgid "Heads up"
-msgstr "Atención"
-
-#: includes/class-admin.php:95
+#: includes/class-admin.php:141
 msgid "CONFIGURED"
 msgstr "CONFIGURADO"
 
-#: includes/class-admin.php:96
+#: includes/class-admin.php:142
 msgid "REQUIRED"
 msgstr "REQUERIDO"
 
-#: includes/class-admin.php:97
+#: includes/class-admin.php:143
 msgid "Why product titles matter"
 msgstr "Por qué importan los títulos de los productos"
 
-#: includes/class-admin.php:98
-msgid ""
-"Agents use the title as the first matching signal. Titles should contain at "
-"least three useful words, usually product type, brand and model or variant."
-msgstr ""
-"Los agentes usan el título como primera señal de coincidencia. Los títulos "
-"deben contener al menos tres palabras útiles, normalmente tipo de producto, "
-"marca y modelo o variante."
+#: includes/class-admin.php:144
+msgid "Agents use the title as the first matching signal. Titles should contain at least three useful words, usually product type, brand and model or variant."
+msgstr "Los agentes usan el título como primera señal de coincidencia. Los títulos deben contener al menos tres palabras útiles, normalmente tipo de producto, marca y modelo o variante."
 
-#: includes/class-admin.php:99
+#: includes/class-admin.php:145
 msgid "Why descriptions matter"
 msgstr "Por qué importan las descripciones"
 
-#: includes/class-admin.php:100
-msgid ""
-"Descriptions give agents the extra attributes that are often missing from "
-"filters, such as fit, material, use case, style and compatibility."
-msgstr ""
-"Las descripciones dan a los agentes los atributos adicionales que a menudo "
-"faltan en los filtros, como el ajuste, el material, el caso de uso, el "
-"estilo y la compatibilidad."
+#: includes/class-admin.php:146
+msgid "Descriptions give agents the extra attributes that are often missing from filters, such as fit, material, use case, style and compatibility."
+msgstr "Las descripciones dan a los agentes los atributos adicionales que a menudo faltan en los filtros, como el ajuste, el material, el caso de uso, el estilo y la compatibilidad."
 
-#: includes/class-admin.php:101
+#: includes/class-admin.php:147
 msgid "Why categories matter"
 msgstr "Por qué importan las categorías"
 
-#: includes/class-admin.php:102
-msgid ""
-"Categories let agents browse and narrow the catalog even when the user does "
-"not know the exact product name used by the merchant."
-msgstr ""
-"Las categorías permiten a los agentes explorar y acotar el catálogo aunque "
-"el usuario no conozca el nombre exacto del producto usado por el "
-"comerciante."
+#: includes/class-admin.php:148
+msgid "Categories let agents browse and narrow the catalog even when the user does not know the exact product name used by the merchant."
+msgstr "Las categorías permiten a los agentes explorar y acotar el catálogo aunque el usuario no conozca el nombre exacto del producto usado por el comerciante."
 
-#: includes/class-admin.php:103
+#: includes/class-admin.php:149
 msgid "Why price matters"
 msgstr "Por qué importa el precio"
 
-#: includes/class-admin.php:104
-msgid ""
-"Price is required for budget checks, comparisons and purchase decisions. "
-"Products without a valid price cannot be trusted in commerce-intent results."
-msgstr ""
-"El precio es necesario para comprobaciones de presupuesto, comparaciones y "
-"decisiones de compra. No se puede confiar en productos sin un precio válido "
-"en los resultados commerce-intent."
+#: includes/class-admin.php:150
+msgid "Price is required for budget checks, comparisons and purchase decisions. Products without a valid price cannot be trusted in commerce-intent results."
+msgstr "El precio es necesario para comprobaciones de presupuesto, comparaciones y decisiones de compra. No se puede confiar en productos sin un precio válido en los resultados commerce-intent."
 
-#: includes/class-admin.php:105
+#: includes/class-admin.php:151
 msgid "Why images matter"
 msgstr "Por qué importan las imágenes"
 
-#: includes/class-admin.php:106
-msgid ""
-"Images do not block agent queries, but they improve visual verification and "
-"reduce ambiguity when products have similar names or variants."
-msgstr ""
-"Las imágenes no bloquean las consultas de los agentes, pero mejoran la "
-"verificación visual y reducen la ambigüedad cuando los productos tienen "
-"nombres o variantes similares."
+#: includes/class-admin.php:152
+msgid "Images do not block agent queries, but they improve visual verification and reduce ambiguity when products have similar names or variants."
+msgstr "Las imágenes no bloquean las consultas de los agentes, pero mejoran la verificación visual y reducen la ambigüedad cuando los productos tienen nombres o variantes similares."
 
-#: includes/class-admin.php:107
+#: includes/class-admin.php:153
 msgid "Why SKUs matter"
 msgstr "Por qué importan los SKU"
 
-#: includes/class-admin.php:108
-msgid ""
-"SKUs do not block agent queries, but they help identify, deduplicate and "
-"reconcile exact products across syncs, variants and downstream systems."
-msgstr ""
-"Los SKU no bloquean las consultas de los agentes, pero ayudan a identificar,"
-" deduplicar y conciliar productos exactos entre sincronizaciones, variantes "
-"y sistemas posteriores."
+#: includes/class-admin.php:154
+msgid "SKUs do not block agent queries, but they help identify, deduplicate and reconcile exact products across syncs, variants and downstream systems."
+msgstr "Los SKU no bloquean las consultas de los agentes, pero ayudan a identificar, deduplicar y conciliar productos exactos entre sincronizaciones, variantes y sistemas posteriores."
 
-#: includes/class-admin.php:109
+#: includes/class-admin.php:155
 msgid "Why stock matters"
 msgstr "Por qué importa el stock"
 
-#: includes/class-admin.php:110
-msgid ""
-"Availability tells agents whether a product can be proposed now or should be"
-" excluded from purchase-ready results."
-msgstr ""
-"La disponibilidad indica a los agentes si un producto puede proponerse ahora"
-" o debe excluirse de los resultados listos para comprar."
+#: includes/class-admin.php:156
+msgid "Availability tells agents whether a product can be proposed now or should be excluded from purchase-ready results."
+msgstr "La disponibilidad indica a los agentes si un producto puede proponerse ahora o debe excluirse de los resultados listos para comprar."
 
-#: includes/class-admin.php:111
-msgid ""
-"UCP profile — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)"
-msgstr ""
-"Perfil UCP — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)"
+#: includes/class-admin.php:157
+msgid "UCP profile — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)"
+msgstr "Perfil UCP — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)"
 
-#: includes/class-admin.php:112
-msgid ""
-"KaliCart Bridge discovery entry point for agents probing well-known paths"
-msgstr ""
-"Punto de entrada de discovery de KaliCart Bridge para agentes que sondean "
-"las rutas well-known"
+#: includes/class-admin.php:158
+msgid "KaliCart Bridge discovery entry point for agents probing well-known paths"
+msgstr "Punto de entrada de discovery de KaliCart Bridge para agentes que sondean las rutas well-known"
 
-#: includes/class-admin.php:113
+#: includes/class-admin.php:159
 msgid "Discovery document — entry point for every agent, full capability map"
-msgstr ""
-"Documento de discovery — punto de entrada para cada agente, mapa completo de"
-" capacidades"
+msgstr "Documento de discovery — punto de entrada para cada agente, mapa completo de capacidades"
 
-#: includes/class-admin.php:114
-msgid ""
-"Model Context Protocol (MCP) server — JSON-RPC 2.0 over POST; the catalog as"
-" agent tools (search_products, get_product, list_products, list_categories, "
-"get_meta)"
-msgstr ""
-"Servidor Model Context Protocol (MCP) — JSON-RPC 2.0 sobre POST; el catálogo"
-" como herramientas de agente (search_products, get_product, list_products, "
-"list_categories, get_meta)"
+#: includes/class-admin.php:160
+msgid "Model Context Protocol (MCP) server — JSON-RPC 2.0 over POST; the catalog as agent tools (search_products, get_product, list_products, list_categories, get_meta)"
+msgstr "Servidor Model Context Protocol (MCP) — JSON-RPC 2.0 sobre POST; el catálogo como herramientas de agente (search_products, get_product, list_products, list_categories, get_meta)"
 
-#: includes/class-admin.php:115
+#: includes/class-admin.php:161
 msgid "Accepted filter values, category slugs, price range"
 msgstr "Valores de filtro aceptados, slugs de categorías, rango de precios"
 
-#: includes/class-admin.php:116
-msgid ""
-"Full-text + filtered search — supports q, category, on_sale, in_stock, price"
-msgstr ""
-"Búsqueda full-text + filtrada — admite q, category, on_sale, in_stock, price"
+#: includes/class-admin.php:162
+msgid "Full-text + filtered search — supports q, category, on_sale, in_stock, price"
+msgstr "Búsqueda full-text + filtrada — admite q, category, on_sale, in_stock, price"
 
-#: includes/class-admin.php:117
+#: includes/class-admin.php:163
 msgid "Browse products by filters (no text query needed)"
 msgstr "Explora los productos por filtros (no se necesita consulta de texto)"
 
-#: includes/class-admin.php:118
-msgid ""
-"Single product — price, stock, variants[], barcodes, purchase_readiness"
-msgstr ""
-"Producto individual — precio, stock, variants[], barcodes, "
-"purchase_readiness"
+#: includes/class-admin.php:164
+msgid "Single product — price, stock, variants[], barcodes, purchase_readiness"
+msgstr "Producto individual — precio, stock, variants[], barcodes, purchase_readiness"
 
-#: includes/class-admin.php:119
+#: includes/class-admin.php:165
 msgid "Full merchant category tree with has_products flag"
-msgstr ""
-"Árbol completo de categorías del comerciante con el indicador has_products"
+msgstr "Árbol completo de categorías del comerciante con el indicador has_products"
 
-#: includes/class-admin.php:120
+#: includes/class-admin.php:166
 msgid "Catalog quality report — quarantine list, suggestions, scores"
-msgstr ""
-"Informe de calidad del catálogo — lista de cuarentena, sugerencias, "
-"puntuaciones"
+msgstr "Informe de calidad del catálogo — lista de cuarentena, sugerencias, puntuaciones"
 
-#: includes/class-admin.php:121
-msgid ""
-"POST — agent creates cart session, returns cart_url and checkout_url for "
-"buyer"
-msgstr ""
-"POST — el agente crea una sesión de carrito, devuelve cart_url y "
-"checkout_url para el comprador"
+#: includes/class-admin.php:167
+msgid "POST — agent creates cart session, returns cart_url and checkout_url for buyer"
+msgstr "POST — el agente crea una sesión de carrito, devuelve cart_url y checkout_url para el comprador"
 
-#: includes/class-admin.php:122
-msgid ""
-"Disabling the AI catalog badge removes a key discovery signal for agents "
-"browsing the storefront DOM. Agents that rely on body anchors will not find "
-"your catalog."
-msgstr ""
-"Desactivar la insignia de catálogo IA elimina una señal de discovery clave "
-"para los agentes que exploran el DOM de la tienda. Los agentes que dependen "
-"de los anclajes del body no encontrarán tu catálogo."
+#: includes/class-admin.php:168
+msgid "Disabling the AI catalog badge removes a key discovery signal for agents browsing the storefront DOM. Agents that rely on body anchors will not find your catalog."
+msgstr "Desactivar la insignia de catálogo IA elimina una señal de discovery clave para los agentes que exploran el DOM de la tienda. Los agentes que dependen de los anclajes del body no encontrarán tu catálogo."
 
-#: includes/class-admin.php:123
-msgid ""
-"Disabling the robots.txt directive removes the crawl permission for AI "
-"agents. Some agents check robots.txt before querying any endpoint."
-msgstr ""
-"Desactivar la directiva robots.txt elimina el permiso de rastreo para los "
-"agentes de IA. Algunos agentes comprueban robots.txt antes de consultar "
-"cualquier endpoint."
+#: includes/class-admin.php:169
+msgid "Disabling the robots.txt directive removes the crawl permission for AI agents. Some agents check robots.txt before querying any endpoint."
+msgstr "Desactivar la directiva robots.txt elimina el permiso de rastreo para los agentes de IA. Algunos agentes comprueban robots.txt antes de consultar cualquier endpoint."
 
-#: includes/class-admin.php:124
-msgid ""
-"Disabling Global indexing consent removes your catalog from KaliCart Global "
-"federated search. Agents using the federated index will no longer discover "
-"your products there. Direct agent access to this store stays active."
-msgstr ""
-"Desactivar el consentimiento de indexación Global elimina tu catálogo de la "
-"búsqueda federada de KaliCart Global. Los agentes que usan el índice "
-"federado ya no descubrirán tus productos allí. El acceso directo de los "
-"agentes a esta tienda permanece activo."
+#: includes/class-admin.php:170
+msgid "Disabling Global indexing consent removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Direct agent access to this store stays active."
+msgstr "Desactivar el consentimiento de indexación Global elimina tu catálogo de la búsqueda federada de KaliCart Global. Los agentes que usan el índice federado ya no descubrirán tus productos allí. El acceso directo de los agentes a esta tienda permanece activo."
 
-#: includes/class-admin.php:125
-msgid ""
-"Disabling the agentic sitemap removes the structured endpoint map that "
-"agents use to enumerate your catalog surfaces."
-msgstr ""
-"Desactivar el sitemap agéntico elimina el mapa estructurado de endpoints que"
-" los agentes usan para enumerar las superficies de tu catálogo."
+#: includes/class-admin.php:171
+msgid "Disabling the agentic sitemap removes the structured endpoint map that agents use to enumerate your catalog surfaces."
+msgstr "Desactivar el sitemap agéntico elimina el mapa estructurado de endpoints que los agentes usan para enumerar las superficies de tu catálogo."
 
-#: includes/class-admin.php:126
-msgid ""
-"Disabling .well-known discovery files removes the first-probe signal used by"
-" agents that check standard discovery paths before loading your storefront."
-msgstr ""
-"Desactivar los archivos de discovery .well-known elimina la señal de primer "
-"sondeo que usan los agentes que comprueban las rutas de discovery estándar "
-"antes de cargar tu tienda."
+#: includes/class-admin.php:172
+msgid "Disabling .well-known discovery files removes the first-probe signal used by agents that check standard discovery paths before loading your storefront."
+msgstr "Desactivar los archivos de discovery .well-known elimina la señal de primer sondeo que usan los agentes que comprueban las rutas de discovery estándar antes de cargar tu tienda."
 
-#: includes/class-admin.php:142
+#: includes/class-admin.php:173
+msgid "When enabled, only the coupons you tick below are exposed to agents. Selected coupons appear in catalog results as conditional checkout savings; WooCommerce checkout remains the final authority on validity. Coupons you do not tick — including private or targeted codes — are never sent to agents."
+msgstr "Cuando está activado, solo los cupones que marques abajo se exponen a los agentes. Los cupones seleccionados aparecen en los resultados del catálogo como ahorros condicionales al pagar; el pago de WooCommerce sigue siendo la autoridad final sobre su validez. Los cupones que no marques — incluidos los códigos privados o dirigidos — nunca se envían a los agentes."
+
+#: includes/class-admin.php:174
+msgid "No active coupons available to expose."
+msgstr "No hay cupones activos disponibles para exponer."
+
+#: includes/class-admin.php:175
+msgid "Tick the coupons you want agents to see. Expired or used-up coupons are not listed."
+msgstr "Marca los cupones que quieres que vean los agentes. Los cupones caducados o agotados no se muestran."
+
+#: includes/class-admin.php:191
 msgid "Documentation"
 msgstr "Documentación"
 
@@ -669,9 +949,7 @@ msgstr "Mejora los títulos de los productos"
 
 #: includes/class-quarantine.php:382
 msgid "Short or non-speaking titles reduce catalog computability."
-msgstr ""
-"Los títulos cortos o poco descriptivos reducen la computabilidad del "
-"catálogo."
+msgstr "Los títulos cortos o poco descriptivos reducen la computabilidad del catálogo."
 
 #: includes/class-quarantine.php:383
 msgid "Add product images"
@@ -679,9 +957,7 @@ msgstr "Añade imágenes a los productos"
 
 #: includes/class-quarantine.php:383
 msgid "Missing images reduce discoverability but do not block agent queries."
-msgstr ""
-"Las imágenes faltantes reducen la descubribilidad pero no bloquean las "
-"consultas de los agentes."
+msgstr "Las imágenes faltantes reducen la descubribilidad pero no bloquean las consultas de los agentes."
 
 #: includes/class-quarantine.php:384
 msgid "Add product descriptions"
@@ -689,9 +965,7 @@ msgstr "Añade descripciones a los productos"
 
 #: includes/class-quarantine.php:384
 msgid "Missing or very short descriptions are weak signals for AI agents."
-msgstr ""
-"Las descripciones ausentes o muy cortas son señales débiles para los agentes"
-" de IA."
+msgstr "Las descripciones ausentes o muy cortas son señales débiles para los agentes de IA."
 
 #: includes/class-quarantine.php:385
 msgid "Assign categories"
@@ -699,9 +973,7 @@ msgstr "Asigna categorías"
 
 #: includes/class-quarantine.php:385
 msgid "Uncategorized products are invisible to category-based agent queries."
-msgstr ""
-"Los productos sin categoría son invisibles para las consultas por categoría "
-"de los agentes."
+msgstr "Los productos sin categoría son invisibles para las consultas por categoría de los agentes."
 
 #: includes/class-quarantine.php:386
 msgid "Fix zero-price products"
@@ -709,135 +981,57 @@ msgstr "Corrige los productos con precio cero"
 
 #: includes/class-quarantine.php:386
 msgid "Products with no price are excluded from commerce-intent pipelines."
-msgstr ""
-"Los productos sin precio quedan excluidos de los pipelines commerce-intent."
+msgstr "Los productos sin precio quedan excluidos de los pipelines commerce-intent."
 
 #: includes/class-quarantine.php:387
 msgid "Add SKU codes"
 msgstr "Añade códigos SKU"
 
 #: includes/class-quarantine.php:387
-msgid ""
-"SKUs enable precise product identification and deduplication by agents."
-msgstr ""
-"Los SKU permiten a los agentes una identificación precisa de los productos y"
-" la deduplicación."
+msgid "SKUs enable precise product identification and deduplication by agents."
+msgstr "Los SKU permiten a los agentes una identificación precisa de los productos y la deduplicación."
 
 #: includes/class-quarantine.php:396
 msgid "Configure return policy URL"
 msgstr "Configura la URL de la política de devoluciones"
 
 #: includes/class-quarantine.php:397
-msgid ""
-"Agents cannot inform buyers about your return conditions. Add your return "
-"policy page URL in Settings."
-msgstr ""
-"Los agentes no pueden informar a los compradores sobre tus condiciones de "
-"devolución. Añade la URL de tu página de política de devoluciones en "
-"Ajustes."
+msgid "Agents cannot inform buyers about your return conditions. Add your return policy page URL in Settings."
+msgstr "Los agentes no pueden informar a los compradores sobre tus condiciones de devolución. Añade la URL de tu página de política de devoluciones en Ajustes."
 
-#: includes/class-signals.php:154
-msgid ""
-"Structured catalog API for agents: returns products with normalized price, "
-"availability and filters. Preferred entry point over the human Shop page."
-msgstr ""
-"API de catálogo estructurada para agentes: devuelve productos con precio, "
-"disponibilidad y filtros normalizados. Punto de entrada preferido frente a "
-"la página de Tienda para humanos."
+#: includes/class-signals.php:349
+msgid "Structured catalog API for agents: returns products with normalized price, availability and filters. Preferred entry point over the human Shop page."
+msgstr "API de catálogo estructurada para agentes: devuelve productos con precio, disponibilidad y filtros normalizados. Punto de entrada preferido frente a la página de Tienda para humanos."
 
-#: includes/class-signals.php:155
+#: includes/class-signals.php:350
 msgid "AI catalog — structured product data for agents"
 msgstr "Catálogo IA — datos de producto estructurados para agentes"
 
-#: includes/class-signals.php:160
+#: includes/class-signals.php:355
 msgid "AI catalog"
 msgstr "Catálogo IA"
 
-#: kalicart-bridge.php:100
-msgid ""
-"KaliCart Bridge requires WooCommerce to be installed and active. Please "
-"activate WooCommerce first, then activate KaliCart Bridge."
-msgstr ""
-"KaliCart Bridge requiere que WooCommerce esté instalado y activo. Activa "
-"primero WooCommerce y luego activa KaliCart Bridge."
+#: kalicart-bridge.php:127
+msgid "KaliCart Bridge requires WooCommerce to be installed and active. Please activate WooCommerce first, then activate KaliCart Bridge."
+msgstr "KaliCart Bridge requiere que WooCommerce esté instalado y activo. Activa primero WooCommerce y luego activa KaliCart Bridge."
 
-#: kalicart-bridge.php:101
+#: kalicart-bridge.php:128
 msgid "WooCommerce required"
 msgstr "WooCommerce necesario"
 
-#: admin/admin-page.php:20
-msgid "Federated catalog"
-msgstr "Catálogo federado"
+#~ msgid "KaliCart Global indexing consent"
+#~ msgstr "Consentimiento de indexación de KaliCart Global"
 
-#. translators: %1$s: opening link tag to privacy notice, %2$s: closing link
-#. tag
-#: admin/admin-page.php:24
 #, php-format
-msgid ""
-"Clicking Activate sends your store's public URL once to KaliCart Global, "
-"which then periodically reads your public catalog and includes it in "
-"federated agent search. No customer, order, or private data is ever sent. "
-"You can revoke anytime. %1$sWhat is sent and how it is used%2$s."
-msgstr ""
-"Al hacer clic en Activar, la URL pública de tu tienda se envía una sola vez "
-"a KaliCart Global, que luego lee periódicamente tu catálogo público y lo "
-"incluye en la búsqueda federada para agentes. Nunca se envían datos de "
-"clientes, pedidos ni datos privados. Puedes revocar en cualquier momento. "
-"%1$sQué se envía y cómo se usa%2$s."
+#~ msgid "Allows KaliCart Global to index this catalog and include it in federated agent search. Published in the discovery document as %1$s and %2$s. Read-only: Global never writes to your store."
+#~ msgstr "Permite que KaliCart Global indexe este catálogo y lo incluya en la búsqueda federada para agentes. Publicado en el documento de discovery como %1$s y %2$s. Solo lectura: Global nunca escribe en tu tienda."
 
-#: admin/admin-page.php:29
-msgid "Activate Federated Catalog"
-msgstr "Activar el catálogo federado"
+#~ msgid "Federated catalog"
+#~ msgstr "Catálogo federado"
 
-#: admin/admin-page.php:30
-msgid "Revoke consent"
-msgstr "Revocar el consentimiento"
+#, php-format
+#~ msgid "Clicking Activate sends your store's public URL once to KaliCart Global, which then periodically reads your public catalog and includes it in federated agent search. No customer, order, or private data is ever sent. You can revoke anytime. %1$sWhat is sent and how it is used%2$s."
+#~ msgstr "Al hacer clic en Activar, la URL pública de tu tienda se envía una sola vez a KaliCart Global, que luego lee periódicamente tu catálogo público y lo incluye en la búsqueda federada para agentes. Nunca se envían datos de clientes, pedidos ni datos privados. Puedes revocar en cualquier momento. %1$sQué se envía y cómo se usa%2$s."
 
-#: admin/admin-page.php:32
-msgid "Tick the Global indexing consent box in Settings first."
-msgstr ""
-"Marca primero la casilla de consentimiento de indexación Global en Ajustes."
-
-#: admin/admin-page.php:37
-msgid ""
-"Revoking removes your catalog from KaliCart Global federated search. Agents "
-"using the federated index will no longer discover your products there. Your "
-"data is parked, not deleted, and restored if you re-activate."
-msgstr ""
-"Revocar elimina tu catálogo de la búsqueda federada de KaliCart Global. Los "
-"agentes que usan el índice federado ya no encontrarán tus productos allí. "
-"Tus datos quedan aparcados, no eliminados, y se restauran si vuelves a "
-"activar."
-
-#: admin/admin-page.php:39
-msgid "Yes, revoke consent"
-msgstr "Sí, revocar el consentimiento"
-
-#: admin/admin-page.php:40
-msgid "Keep my catalog federated"
-msgstr "Mantener mi catálogo federado"
-
-#: includes/class-admin.php:77
-msgid "Registered on"
-msgstr "Registrado el"
-
-#: includes/class-admin.php:78
-msgid "Tick the consent box above first."
-msgstr "Marca primero la casilla de consentimiento de arriba."
-
-#: includes/class-admin.php:79
-msgid "Activation failed. Please try again."
-msgstr "La activación ha fallado. Inténtalo de nuevo."
-
-
-msgid "Increase your catalog's visibility"
-msgstr "Aumenta la visibilidad de tu catálogo"
-
-msgid "Great choice! Your catalog is going global."
-msgstr "¡Excelente elección! Tu catálogo se vuelve global."
-
-msgid "Activate the Federated Catalog for free: your products join a global network where AI assistants can find them. It only takes one click, and you can deactivate it anytime. %1$sSee what is shared%2$s."
-msgstr "Activa gratis el Catálogo Federado: tus productos entran en una red global donde los asistentes de IA pueden encontrarlos. Solo necesitas un clic y puedes desactivarlo cuando quieras. %1$sDescubre qué se comparte%2$s."
-
-msgid "AI assistants can now find your products across the KaliCart global network. Only public catalog data is shared, and you can deactivate it anytime. %1$sSee what is shared%2$s."
-msgstr "Los asistentes de IA ya pueden encontrar tus productos en la red global de KaliCart. Solo se comparten los datos públicos del catálogo y puedes desactivarlo cuando quieras. %1$sDescubre qué se comparte%2$s."
+#~ msgid "Tick the Global indexing consent box in Settings first."
+#~ msgstr "Marca primero la casilla de consentimiento de indexación Global en Ajustes."

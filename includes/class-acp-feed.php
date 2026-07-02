@@ -482,7 +482,9 @@ class KaliCart_Bridge_ACP_Feed {
 
 	// ── admin ───────────────────────────────────────────────────────────────
 
-	private static function readiness_label( ?bool $state, string $ready = 'Ready', string $action = 'Action needed' ): string {
+	private static function readiness_label( ?bool $state, string $ready = '', string $action = '' ): string {
+		$ready  = '' !== $ready ? $ready : __( 'Ready', 'kalicart-bridge' );
+		$action = '' !== $action ? $action : __( 'Action needed', 'kalicart-bridge' );
 		if ( null === $state ) {
 			return '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Not checked', 'kalicart-bridge' ) . '</span>';
 		}
@@ -644,13 +646,13 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 
 		echo '<div class="kali-acp-list">';
-		self::readiness_row( 'Return policy', self::readiness_label( $return_ready ), $return_ready ? 'Configured in the Settings tab: ' . (string) $opts['return_policy_url'] : 'Configure it once in the Settings tab; feed generation is blocked when missing.' );
-		self::readiness_row( 'Target countries', self::readiness_label( $countries_ready ), $countries_ready ? implode( ', ', $countries ) : 'Use ISO 3166-1 alpha-2 country codes.' );
-		self::readiness_row( 'Product brand', $brand_status, $brand_detail );
-		self::readiness_row( 'Primary image', self::readiness_label( $image_state, 'Complete', 'Missing rows' ), null === $image_state ? 'Run feed generation to check.' : (int) ( $stats['excluded_no_image'] ?? 0 ) . ' feed rows excluded in the last run.' );
-		self::readiness_row( 'Schema validation', self::readiness_label( $schema_state, 'Passed', 'Invalid rows' ), null === $schema_state ? 'Run feed generation to check.' : (int) ( $stats['excluded_invalid'] ?? 0 ) . ' invalid rows in the last run.' );
-		self::readiness_row( 'Daily ChatGPT feed refresh', self::readiness_label( (bool) $opts['enabled'], 'Enabled', 'Manual only' ), $opts['enabled'] ? 'Regenerates the validated ChatGPT feed file once per day; delivery to OpenAI is a separate step.' : 'The ChatGPT feed changes only when generated manually and may become outdated after catalog changes.' );
-		self::readiness_row( 'OpenAI feed delivery', self::readiness_label( false, 'Connected', 'Application required' ), 'This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials.' );
+		self::readiness_row( __( 'Return policy', 'kalicart-bridge' ), self::readiness_label( $return_ready ), $return_ready ? __( 'Configured in the Settings tab: ', 'kalicart-bridge' ) . (string) $opts['return_policy_url'] : __( 'Configure it once in the Settings tab; feed generation is blocked when missing.', 'kalicart-bridge' ) );
+		self::readiness_row( __( 'Target countries', 'kalicart-bridge' ), self::readiness_label( $countries_ready ), $countries_ready ? implode( ', ', $countries ) : __( 'Use ISO 3166-1 alpha-2 country codes.', 'kalicart-bridge' ) );
+		self::readiness_row( __( 'Product brand', 'kalicart-bridge' ), $brand_status, $brand_detail );
+		self::readiness_row( __( 'Primary image', 'kalicart-bridge' ), self::readiness_label( $image_state, __( 'Complete', 'kalicart-bridge' ), __( 'Missing rows', 'kalicart-bridge' ) ), null === $image_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: rows excluded for missing image */ __( '%d feed rows excluded in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_no_image'] ?? 0 ) ) );
+		self::readiness_row( __( 'Schema validation', 'kalicart-bridge' ), self::readiness_label( $schema_state, __( 'Passed', 'kalicart-bridge' ), __( 'Invalid rows', 'kalicart-bridge' ) ), null === $schema_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: invalid rows */ __( '%d invalid rows in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_invalid'] ?? 0 ) ) );
+		self::readiness_row( __( 'Daily ChatGPT feed refresh', 'kalicart-bridge' ), self::readiness_label( (bool) $opts['enabled'], __( 'Enabled', 'kalicart-bridge' ), __( 'Manual only', 'kalicart-bridge' ) ), $opts['enabled'] ? __( 'Regenerates the validated ChatGPT feed file once per day; delivery to OpenAI is a separate step.', 'kalicart-bridge' ) : __( 'The ChatGPT feed changes only when generated manually and may become outdated after catalog changes.', 'kalicart-bridge' ) );
+		self::readiness_row( __( 'OpenAI feed delivery', 'kalicart-bridge' ), self::readiness_label( false, __( 'Connected', 'kalicart-bridge' ), __( 'Application required', 'kalicart-bridge' ) ), __( 'This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials.', 'kalicart-bridge' ) );
 		echo '</div>';
 
 		if ( $generated ) {
