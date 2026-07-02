@@ -43,6 +43,7 @@ require_once KALICART_BRIDGE_DIR . 'includes/class-quarantine.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-api.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-mcp.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-signals.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-acp-feed.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-admin.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-checkout.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-shortcodes.php';
@@ -64,6 +65,7 @@ add_action( 'plugins_loaded', function () {
     KaliCart_Bridge_API::init();
     KaliCart_Bridge_MCP::init();
     KaliCart_Bridge_Signals::init();
+    KaliCart_Bridge_ACP_Feed::init();
     // Version-gated migration — runs once per plugin version, on init (needs $wp_rewrite).
     // Removes legacy extension-less static files (served as text/plain by the webserver)
     // and flushes rewrite rules so serve_well_known() answers on every install.
