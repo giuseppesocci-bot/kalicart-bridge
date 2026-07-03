@@ -686,7 +686,11 @@
   form.addEventListener('submit', function () {
     var btn = form.querySelector('button[type="submit"]');
     var spin = form.querySelector('.spinner');
-    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
-    if (spin) { spin.classList.add('is-active'); }
+    // Defer: disabling a submit button synchronously would exclude its
+    // name/value from the serialized form data (classic gotcha).
+    setTimeout(function () {
+      if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+      if (spin) { spin.classList.add('is-active'); }
+    }, 0);
   });
 })();

@@ -592,9 +592,11 @@ class KaliCart_Bridge_ACP_Feed {
 			unset( $opts['return_policy_url'] ); // Managed only by the main Settings tab.
 			update_option( self::OPTION, $opts, false );
 			self::maybe_schedule();
-			if ( isset( $_POST['regenerate'] ) ) {
-				self::generate();
-			}
+			// Single-action form: a valid POST always means save AND generate.
+			// Never gate on the submit button's own name/value: it is absent
+			// when the form is submitted via Enter, and when the loader
+			// disables the button before serialization.
+			self::generate();
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'ChatGPT feed settings saved.', 'kalicart-bridge' ) . '</p></div>';
 		}
 
