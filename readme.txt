@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.112
+Stable tag: 1.0.113
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -148,6 +148,14 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.113 =
+* Performance - ChatGPT feed generation is dramatically faster on large catalogs: product data is now batch-primed (posts, meta and terms per page, variations included), collapsing thousands of per-product queries; catalogs that previously took ~20 seconds generate in a fraction of that, and very large catalogs no longer risk PHP execution-time limits
+* ChatGPT Feed - the tab is now named for what it is; single "Save and generate/validate now" action (the separate save-only button always left an unverified state), with a progress spinner while the snapshot is generated
+* Fix - saving settings now reliably regenerates the feed: generation no longer depends on the submit button's own value, which browsers omit when submitting with the Enter key
+* Fallback brand - the "Fallback applied" readiness state is now a soft amber notice instead of red: with the merchant's explicit declaration it is a legitimate configuration for own-label stores, not an error
+* Translations - fixed five interface strings per language that silently rendered in English at runtime (Italian, French, German, Spanish are now fully translated end to end)
+* Housekeeping - the optional "Agent entry-point page" shortcode section has been retired from Settings and from the discovery document: real-world telemetry showed agents use the structured discovery signals, not HTML directory pages. Existing pages using the shortcode keep rendering unchanged
 
 = 1.0.112 =
 * Agent Commerce - the ChatGPT feed now lives in a dedicated Agent Commerce tab inside the plugin dashboard, with a readiness checklist (return policy, countries, brand, images, schema validation, daily refresh, delivery status), live data-gap counts with one-click access to the pre-filtered Products list and a full CSV export, and a step-by-step guide to OpenAI's application and delivery workflow
