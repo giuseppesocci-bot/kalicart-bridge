@@ -378,8 +378,6 @@ class KaliCart_Bridge_API {
             ],
 
             'ucp_profile_url'  => home_url( '/.well-known/ucp.json' ),
-            'agent_index_url'  => ( get_option( 'kalicart_bridge_agent_index_url', '' ) ?: null ),
-            'agent_index_note' => 'If set, this URL points to a merchant-published page using the [kalicart_agent_index] shortcode — a navigable directory of all endpoints and category tree. null means the merchant has not published an agent index page.',
 
             'checkout_session' => [
                 'enabled'     => (bool) get_option( 'kalicart_bridge_checkout_enabled', false ),

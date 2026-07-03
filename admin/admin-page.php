@@ -344,24 +344,6 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
 
     </div>
 
-    <div style="margin:24px 0 0;padding:16px 20px;background:#f9f9f9;border:1px solid #e5e5e5;border-radius:6px;">
-      <div class="kali-section-title" style="margin-bottom:10px"><?php esc_html_e( 'Agent entry-point page', 'kalicart-bridge' ); ?> <span style="font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;color:#999;"><?php esc_html_e( '(optional)', 'kalicart-bridge' ); ?></span></div>
-      <p style="margin:0 0 10px;font-size:13px;color:#555;line-height:1.6;">
-        <?php esc_html_e( 'If you want to expose a dedicated machine-readable index for AI agents — a structured directory of your catalog endpoints and category tree — you can create a WordPress page and add this shortcode. The page will render a navigable tree of your catalog API, readable by both agents and curious humans. It is not required: all discovery signals work automatically without it.', 'kalicart-bridge' ); ?>
-      </p>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-        <code style="background:#fff;border:1px solid #ddd;border-radius:4px;padding:6px 12px;font-size:13px;color:#1d2327;user-select:all;">[kalicart_agent_index]</code>
-        <span style="font-size:12px;color:#999;"><?php esc_html_e( 'Copy and paste into any WordPress page', 'kalicart-bridge' ); ?></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <label style="font-size:13px;color:#555;white-space:nowrap;"><?php esc_html_e( 'Agent index page URL', 'kalicart-bridge' ); ?></label>
-        <input type="url" id="agentIndexUrl" placeholder="https://yoursite.com/ai-catalog"
-          value="<?php echo esc_attr( get_option( 'kalicart_bridge_agent_index_url', '' ) ); ?>"
-          style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;" />
-        <span style="font-size:12px;color:#999;"><?php esc_html_e( 'Paste the URL of the page where you added the shortcode', 'kalicart-bridge' ); ?></span>
-      </div>
-    </div>
-
     <div class="kali-settings-footer">
       <button id="btnSaveSettings" class="kali-btn kali-btn--primary"><?php esc_html_e( 'Save settings', 'kalicart-bridge' ); ?></button>
       <span id="settingsSaved" class="kali-saved-notice" style="display:none">&#x2713; <?php esc_html_e( 'Saved', 'kalicart-bridge' ); ?></span>

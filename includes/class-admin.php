@@ -219,7 +219,6 @@ class KaliCart_Bridge_Admin {
             'hint_search'        => filter_input( INPUT_POST, 'hint_search',        FILTER_VALIDATE_BOOLEAN ),
             'hint_zero'          => filter_input( INPUT_POST, 'hint_zero',          FILTER_VALIDATE_BOOLEAN ),
             'hint_category'      => filter_input( INPUT_POST, 'hint_category',      FILTER_VALIDATE_BOOLEAN ),
-            'agent_index_url'    => esc_url_raw( filter_input( INPUT_POST, 'agent_index_url', FILTER_SANITIZE_URL ) ?? '' ),
             'return_policy_url'  => esc_url_raw( filter_input( INPUT_POST, 'return_policy_url', FILTER_SANITIZE_URL ) ?? '' ),
             'coupons_agent_enabled' => filter_input( INPUT_POST, 'coupons_agent_enabled', FILTER_VALIDATE_BOOLEAN ),
         ];
@@ -240,9 +239,7 @@ class KaliCart_Bridge_Admin {
         update_option( 'kalicart_bridge_well_known_enabled', $settings['well_known_enabled'] );
         update_option( 'kalicart_bridge_hint_search',        $settings['hint_search'] );
         update_option( 'kalicart_bridge_hint_zero',          $settings['hint_zero'] );
-        update_option( 'kalicart_bridge_hint_category',      $settings['hint_category'] );
-        update_option( 'kalicart_bridge_agent_index_url',    $settings['agent_index_url'] ?: null );
-        update_option( 'kalicart_bridge_return_policy_url',  $settings['return_policy_url'] ?: null );
+        update_option( 'kalicart_bridge_hint_category',      $settings['hint_category'] );        update_option( 'kalicart_bridge_return_policy_url',  $settings['return_policy_url'] ?: null );
         update_option( 'kalicart_bridge_coupons_agent_enabled', $settings['coupons_agent_enabled'] );
         update_option( 'kalicart_bridge_coupons_agent_whitelist', $coupon_ids );
         if ( $settings['well_known_enabled'] ) {
