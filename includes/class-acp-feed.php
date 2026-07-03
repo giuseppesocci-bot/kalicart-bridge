@@ -181,6 +181,9 @@ class KaliCart_Bridge_ACP_Feed {
 				'paged'          => $paged,
 				'fields'         => 'ids',
 			] );
+			// N+1 killer: post+meta+termini dell'intera pagina in 3 query;
+			// le successive wc_get_product/wp_get_post_terms diventano cache-hit.
+			_prime_post_caches( $q->posts, true, true );
 			foreach ( $q->posts as $pid ) {
 				$product = wc_get_product( $pid );
 				if ( ! $product || ! $product->is_visible() || 'grouped' === $product->get_type() ) {
@@ -242,7 +245,12 @@ class KaliCart_Bridge_ACP_Feed {
 	private static function rows_for_product( WC_Product $product, array $opts, array $countries, array &$stats ): array {
 		$rows = [];
 		if ( $product->is_type( 'variable' ) ) {
-			foreach ( $product->get_children() as $vid ) {
+			$kb_children = $product->get_children();
+			if ( $kb_children ) {
+				_prime_post_caches( $kb_children, false, false ); // post cache variazioni: 1 query
+				update_postmeta_cache( $kb_children );            // meta variazioni: 1 query
+			}
+			foreach ( $kb_children as $vid ) {
 				$v = wc_get_product( $vid );
 				if ( ! $v || ! $v->is_purchasable() ) {
 					continue;
@@ -695,14 +703,14 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 
 		echo '<div class="kali-acp-card"><h2>' . esc_html__( 'ChatGPT feed generation settings', 'kalicart-bridge' ) . '</h2>';
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin.php?page=kalicart-bridge&tab=agent-commerce' ) ) . '">';
+		echo '<form method="post" id="kb-acp-form" action="' . esc_url( admin_url( 'admin.php?page=kalicart-bridge&tab=agent-commerce' ) ) . '">';
 		wp_nonce_field( 'kb_acp_save', 'kb_acp_nonce' );
 		echo '<div class="kali-toggle-group" style="margin-bottom:14px"><label class="kali-toggle-row"><div class="kali-toggle-info"><strong>' . esc_html__( 'Generate the ChatGPT feed daily', 'kalicart-bridge' ) . '</strong><span>' . esc_html__( 'Refreshes the local validated file only. Automatic delivery can be configured after OpenAI approves the merchant and supplies credentials.', 'kalicart-bridge' ) . '</span></div><div class="kali-toggle"><input type="checkbox" name="enabled" ' . checked( $opts['enabled'], true, false ) . '><span class="kali-toggle__slider"></span></div></label></div>';
 		echo '<table class="form-table">';
 		echo '<tr><th>' . esc_html__( 'Brand fallback (optional)', 'kalicart-bridge' ) . '</th><td><input type="text" class="regular-text" name="brand_fallback" value="' . esc_attr( $opts['brand_fallback'] ) . '" placeholder="' . esc_attr__( 'Your merchant-owned brand', 'kalicart-bridge' ) . '"><p class="description">' . esc_html__( 'Leave empty unless every otherwise brandless product is genuinely sold under this merchant-owned brand. By entering a value, the merchant declares it accurate and accepts responsibility for applying it to every missing-brand feed row. Multi-brand retailers should leave this empty.', 'kalicart-bridge' ) . '</p></td></tr>';
 		echo '<tr><th>' . esc_html__( 'Target countries', 'kalicart-bridge' ) . '</th><td><input type="text" class="regular-text" name="target_countries" value="' . esc_attr( $opts['target_countries'] ) . '"><p class="description">' . esc_html__( 'Comma-separated ISO 3166-1 alpha-2 codes. Defaults to WooCommerce selling locations.', 'kalicart-bridge' ) . '</p></td></tr>';
 		echo '</table>';
-		echo '<p style="margin-top:16px"><button type="submit" class="kali-btn kali-btn--primary">' . esc_html__( 'Save settings', 'kalicart-bridge' ) . '</button> <button type="submit" class="kali-btn kali-btn--secondary" name="regenerate" value="1">' . esc_html__( 'Save and generate/validate now', 'kalicart-bridge' ) . '</button></p>';
+		echo '<p style="margin-top:16px"><button type="submit" class="kali-btn kali-btn--primary" name="regenerate" value="1">' . esc_html__( 'Save and generate/validate now', 'kalicart-bridge' ) . '</button><span class="spinner" style="float:none;margin:0 0 0 10px"></span></p>';
 		echo '</form></div>';
 
 		echo '<div class="kali-acp-card"><h2>' . esc_html__( 'What to do with this file (OpenAI guidelines)', 'kalicart-bridge' ) . '</h2>';

@@ -677,3 +677,16 @@
     return String( s ).replace( /&/g,'&amp;' ).replace( /</g,'&lt;' ).replace( />/g,'&gt;' ).replace( /"/g,'&quot;' );
   }
 } )();
+
+/* Agent Commerce: la generazione e' sincrona (secondi su cataloghi grandi):
+   feedback immediato, bottone disabilitato, spinner attivo fino al reload. */
+(function () {
+  var form = document.getElementById('kb-acp-form');
+  if (!form) return;
+  form.addEventListener('submit', function () {
+    var btn = form.querySelector('button[type="submit"]');
+    var spin = form.querySelector('.spinner');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    if (spin) { spin.classList.add('is-active'); }
+  });
+})();
