@@ -72,7 +72,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       <button class="kali-tab<?php echo 'overview' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="overview"><?php esc_html_e( 'Overview', 'kalicart-bridge' ); ?></button>
       <button class="kali-tab<?php echo 'quarantine' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="quarantine"><?php esc_html_e( 'Quarantine', 'kalicart-bridge' ); ?></button>
       <button class="kali-tab<?php echo 'endpoints' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="endpoints"><?php esc_html_e( 'Endpoints', 'kalicart-bridge' ); ?></button>
-      <button class="kali-tab<?php echo 'agent-commerce' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="agent-commerce"><?php esc_html_e( 'Agent Commerce', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab<?php echo 'agent-commerce' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="agent-commerce">ChatGPT Feed</button>
       <button class="kali-tab<?php echo 'settings' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="settings"><?php esc_html_e( 'Settings', 'kalicart-bridge' ); ?></button>
       <button class="kali-tab<?php echo 'coupons' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="coupons"><?php esc_html_e( 'Coupons', 'kalicart-bridge' ); ?></button>
     </div>

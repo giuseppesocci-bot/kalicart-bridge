@@ -56,7 +56,7 @@ include KALICART_BRIDGE_DIR . 'admin/admin-page.php';
 $admin_html = (string) ob_get_clean();
 unset( $_GET['tab'] );
 
-$check( 'tab panel heading', false !== strpos( $html, 'ChatGPT Product Feed (OpenAI)' ) && false !== strpos( $admin_html, '>Agent Commerce<' ) );
+$check( 'tab panel heading', false !== strpos( $html, 'ChatGPT Product Feed (OpenAI)' ) && false !== strpos( $admin_html, '>ChatGPT Feed<' ) );
 $check( 'no separate submenu renderer', ! method_exists( 'KaliCart_Bridge_ACP_Feed', 'register_menu' ) );
 $check( 'form returns to main Agent Commerce tab', false !== strpos( $html, 'page=kalicart-bridge' ) && false !== strpos( $html, 'tab=agent-commerce' ) );
 $check( 'Agent Commerce remains the active server-rendered tab', false !== strpos( $admin_html, 'class="kali-tab kali-tab--active" data-tab="agent-commerce"' ) && false !== strpos( $admin_html, 'id="kali-tab-agent-commerce" class="kali-panel" style="display:block"' ) );

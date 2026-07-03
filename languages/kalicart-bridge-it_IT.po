@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KaliCart Bridge 1.0.92\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kalicart-bridge\n"
-"POT-Creation-Date: 2026-07-02T18:47:35+02:00\n"
+"POT-Creation-Date: 2026-07-03T09:43:17+02:00\n"
 "PO-Revision-Date: 2026-06-14 17:03+0000\n"
 "Last-Translator: KaliCart <giuso@kalicart.com>\n"
 "Language-Team: Italian\n"
@@ -102,10 +102,6 @@ msgstr "Quarantena"
 #: admin/admin-page.php:74
 msgid "Endpoints"
 msgstr "Endpoint"
-
-#: admin/admin-page.php:75
-msgid "Agent Commerce"
-msgstr "Agent Commerce"
 
 #: admin/admin-page.php:76
 msgid "Settings"
@@ -346,7 +342,6 @@ msgid "Paste the URL of the page where you added the shortcode"
 msgstr "Incolla l’URL della pagina in cui hai aggiunto lo shortcode"
 
 #: admin/admin-page.php:366 admin/admin-page.php:396
-#: includes/class-acp-feed.php:704
 msgid "Save settings"
 msgstr "Salva le impostazioni"
 
@@ -374,347 +369,348 @@ msgstr "Interruttore generale. Quando è spento, active_coupons resta sempre vuo
 msgid "Eligible coupons"
 msgstr "Coupon idonei"
 
-#: includes/class-acp-feed.php:486
+#: includes/class-acp-feed.php:494
 msgid "Ready"
 msgstr "Pronto"
 
-#: includes/class-acp-feed.php:487
+#: includes/class-acp-feed.php:495
 msgid "Action needed"
 msgstr "Azione richiesta"
 
-#: includes/class-acp-feed.php:489
+#: includes/class-acp-feed.php:497
 msgid "Not checked"
 msgstr "Non verificato"
 
-#: includes/class-acp-feed.php:542
+#: includes/class-acp-feed.php:550
 msgid "Not allowed."
 msgstr "Operazione non consentita."
 
-#: includes/class-acp-feed.php:573
+#: includes/class-acp-feed.php:582
 msgid "You do not have permission to access this page."
 msgstr "Non hai i permessi per accedere a questa pagina."
 
-#: includes/class-acp-feed.php:589
-msgid "Agent Commerce settings saved."
-msgstr "Impostazioni Agent Commerce salvate."
+#: includes/class-acp-feed.php:598
+#, fuzzy
+msgid "ChatGPT feed settings saved."
+msgstr "Impostazioni di generazione del feed ChatGPT"
 
-#: includes/class-acp-feed.php:608
+#: includes/class-acp-feed.php:617
 msgid "Run feed generation to check declared brands."
 msgstr "Genera il feed per verificare i brand dichiarati."
 
-#: includes/class-acp-feed.php:613
+#: includes/class-acp-feed.php:622
 msgid "Fallback applied"
 msgstr "Fallback applicato"
 
 #. translators: 1: rows filled by fallback, 2: rows submitted without brand
-#: includes/class-acp-feed.php:615
+#: includes/class-acp-feed.php:624
 #, php-format
 msgid "%1$d rows filled by the merchant fallback; %2$d rows submitted without brand."
 msgstr "%1$d righe compilate dal fallback del merchant; %2$d righe inviate senza brand."
 
-#: includes/class-acp-feed.php:617
+#: includes/class-acp-feed.php:626
 msgid "Submitted without brand"
 msgstr "Inviate senza brand"
 
 #. translators: %d: rows submitted without brand
-#: includes/class-acp-feed.php:619
+#: includes/class-acp-feed.php:628
 #, php-format
 msgid "%d rows are in the feed without the brand field. Brand is required by the OpenAI specification: OpenAI may reject those rows. You submit them under your own responsibility."
 msgstr "%d righe sono nel feed senza il campo brand. Il brand è richiesto dalla specifica OpenAI: OpenAI potrebbe rifiutare quelle righe. Le invii sotto la tua responsabilità."
 
-#: includes/class-acp-feed.php:621 includes/class-acp-feed.php:652
+#: includes/class-acp-feed.php:630 includes/class-acp-feed.php:661
 msgid "Complete"
 msgstr "Completo"
 
-#: includes/class-acp-feed.php:622
+#: includes/class-acp-feed.php:631
 msgid "Every feed row carries a merchant-declared brand."
 msgstr "Ogni riga del feed contiene un brand dichiarato dal merchant."
 
-#: includes/class-acp-feed.php:627
+#: includes/class-acp-feed.php:636
 msgid "ChatGPT Product Feed (OpenAI)"
 msgstr "Product Feed ChatGPT (OpenAI)"
 
-#: includes/class-acp-feed.php:628
+#: includes/class-acp-feed.php:637
 msgid "This optional export follows OpenAI’s direct product feed specification. Application and approval are required; after approval, OpenAI provides the delivery channel. Checkout stays on your storefront."
 msgstr "Questa esportazione opzionale segue la specifica del product feed diretto di OpenAI. Sono richieste candidatura e approvazione; dopo l'approvazione, OpenAI fornisce il canale di consegna. Il checkout resta sul tuo negozio."
 
-#: includes/class-acp-feed.php:629
+#: includes/class-acp-feed.php:638
 msgid "ChatGPT feed only:"
 msgstr "Solo feed ChatGPT:"
 
-#: includes/class-acp-feed.php:629
+#: includes/class-acp-feed.php:638
 msgid "Every status and setting in this section refers only to the optional file delivered to OpenAI. It does not enable, disable or limit KaliCart search, REST API, MCP, UCP or the federated catalog."
 msgstr "Ogni stato e impostazione di questa sezione riguarda soltanto il file opzionale consegnato a OpenAI. Non abilita, disabilita né limita la ricerca KaliCart, la REST API, MCP, UCP o il catalogo federato."
 
-#: includes/class-acp-feed.php:633
+#: includes/class-acp-feed.php:642
 msgid "Last generation blocked:"
 msgstr "Ultima generazione bloccata:"
 
-#: includes/class-acp-feed.php:633
+#: includes/class-acp-feed.php:642
 msgid "The previous valid feed, if any, was preserved."
 msgstr "Il precedente feed valido, se presente, è stato preservato."
 
-#: includes/class-acp-feed.php:636
+#: includes/class-acp-feed.php:645
 msgid "Feed readiness has not been checked with the current settings. Save and generate a snapshot to run the validator."
 msgstr "La readiness del feed non è stata verificata con le impostazioni attuali. Salva e genera uno snapshot per eseguire il validatore."
 
-#: includes/class-acp-feed.php:639
+#: includes/class-acp-feed.php:648
 msgid "Rows submitted without brand."
 msgstr "Righe inviate senza brand."
 
-#: includes/class-acp-feed.php:639
+#: includes/class-acp-feed.php:648
 msgid "Brand is required by OpenAI’s direct product feed specification. These rows are included in the file without the brand field: OpenAI may accept or reject them - by submitting the feed you knowingly assume that responsibility. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API, MCP and UCP surfaces."
 msgstr "Il brand è richiesto dalla specifica del product feed diretto di OpenAI. Queste righe sono incluse nel file senza il campo brand: OpenAI può accettarle o rifiutarle - inviando il feed te ne assumi consapevolmente la responsabilità. I prodotti restano pienamente disponibili tramite il catalogo agent-readable di KaliCart, la ricerca, la REST API, MCP e UCP."
 
-#: includes/class-acp-feed.php:642
+#: includes/class-acp-feed.php:651
 msgid "Merchant brand fallback applied."
 msgstr "Fallback brand del merchant applicato."
 
-#: includes/class-acp-feed.php:642
+#: includes/class-acp-feed.php:651
 msgid "These rows do not contain a product-level brand in WooCommerce. The merchant is responsible for declaring that the fallback is accurate for every affected product."
 msgstr "Queste righe non contengono un brand a livello di prodotto in WooCommerce. È responsabilità del merchant dichiarare che il fallback è accurato per ogni prodotto interessato."
 
-#: includes/class-acp-feed.php:645
+#: includes/class-acp-feed.php:654
 msgid "Missing primary product image."
 msgstr "Immagine principale del prodotto mancante."
 
-#: includes/class-acp-feed.php:645
+#: includes/class-acp-feed.php:654
 msgid "A primary product image is required by OpenAI’s direct product feed specification. Affected feed rows remain available in the agent-readable catalog but are excluded from the ChatGPT product feed."
 msgstr "Un'immagine principale del prodotto è richiesta dalla specifica del product feed diretto di OpenAI. Le righe interessate restano disponibili nel catalogo agent-readable ma sono escluse dal product feed ChatGPT."
 
-#: includes/class-acp-feed.php:649
+#: includes/class-acp-feed.php:658
 #, fuzzy
 msgid "Return policy"
 msgstr "Configura l'URL della politica di reso"
 
-#: includes/class-acp-feed.php:649
+#: includes/class-acp-feed.php:658
 msgid "Configured in the Settings tab: "
 msgstr "Configurata nella scheda Settings: "
 
-#: includes/class-acp-feed.php:649
+#: includes/class-acp-feed.php:658
 msgid "Configure it once in the Settings tab; feed generation is blocked when missing."
 msgstr "Configurala una volta nella scheda Settings; se manca, la generazione del feed è bloccata."
 
-#: includes/class-acp-feed.php:650 includes/class-acp-feed.php:702
+#: includes/class-acp-feed.php:659 includes/class-acp-feed.php:711
 msgid "Target countries"
 msgstr "Paesi di destinazione"
 
-#: includes/class-acp-feed.php:650
+#: includes/class-acp-feed.php:659
 msgid "Use ISO 3166-1 alpha-2 country codes."
 msgstr "Usa codici paese ISO 3166-1 alpha-2."
 
-#: includes/class-acp-feed.php:651
+#: includes/class-acp-feed.php:660
 msgid "Product brand"
 msgstr "Brand del prodotto"
 
-#: includes/class-acp-feed.php:652
+#: includes/class-acp-feed.php:661
 msgid "Primary image"
 msgstr "Immagine principale"
 
-#: includes/class-acp-feed.php:652
+#: includes/class-acp-feed.php:661
 msgid "Missing rows"
 msgstr "Righe mancanti"
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:652 includes/class-acp-feed.php:653
+#: includes/class-acp-feed.php:661 includes/class-acp-feed.php:662
 msgid "Run feed generation to check."
 msgstr "Genera il feed per verificare."
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:652
+#: includes/class-acp-feed.php:661
 #, php-format
 msgid "%d feed rows excluded in the last run."
 msgstr "%d righe del feed escluse nell'ultima generazione."
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:653
+#: includes/class-acp-feed.php:662
 msgid "Schema validation"
 msgstr "Validazione dello schema"
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:653
+#: includes/class-acp-feed.php:662
 msgid "Passed"
 msgstr "Superata"
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:653
+#: includes/class-acp-feed.php:662
 msgid "Invalid rows"
 msgstr "Righe non valide"
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:653
+#: includes/class-acp-feed.php:662
 #, php-format
 msgid "%d invalid rows in the last run."
 msgstr "%d righe non valide nell'ultima generazione."
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:654
+#: includes/class-acp-feed.php:663
 msgid "Daily ChatGPT feed refresh"
 msgstr "Aggiornamento giornaliero del feed ChatGPT"
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:654
+#: includes/class-acp-feed.php:663
 msgid "Enabled"
 msgstr "Attivo"
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:654
+#: includes/class-acp-feed.php:663
 #, fuzzy
 msgid "Manual only"
 msgstr "solo admin"
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:654
+#: includes/class-acp-feed.php:663
 msgid "Regenerates the validated ChatGPT feed file once per day; delivery to OpenAI is a separate step."
 msgstr "Rigenera il file del feed ChatGPT validato una volta al giorno; la consegna a OpenAI è un passaggio separato."
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:654
+#: includes/class-acp-feed.php:663
 msgid "The ChatGPT feed changes only when generated manually and may become outdated after catalog changes."
 msgstr "Il feed ChatGPT cambia solo quando viene generato manualmente e può diventare obsoleto dopo modifiche al catalogo."
 
-#: includes/class-acp-feed.php:655
+#: includes/class-acp-feed.php:664
 msgid "OpenAI feed delivery"
 msgstr "Consegna del feed a OpenAI"
 
-#: includes/class-acp-feed.php:655
+#: includes/class-acp-feed.php:664
 msgid "Connected"
 msgstr "Connesso"
 
-#: includes/class-acp-feed.php:655
+#: includes/class-acp-feed.php:664
 msgid "Application required"
 msgstr "Candidatura richiesta"
 
-#: includes/class-acp-feed.php:655
+#: includes/class-acp-feed.php:664
 msgid "This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials."
 msgstr "Al momento il plugin prepara il file. OpenAI approva il merchant e assegna le credenziali di consegna SFTP o API."
 
-#: includes/class-acp-feed.php:659
+#: includes/class-acp-feed.php:668
 msgid "Last validated ChatGPT feed snapshot:"
 msgstr "Ultimo snapshot validato del feed ChatGPT:"
 
-#: includes/class-acp-feed.php:659
+#: includes/class-acp-feed.php:668
 msgid "conformant rows from"
 msgstr "righe conformi da"
 
-#: includes/class-acp-feed.php:659
+#: includes/class-acp-feed.php:668
 #, fuzzy
 msgid "products."
 msgstr "prodotti"
 
-#: includes/class-acp-feed.php:663
+#: includes/class-acp-feed.php:672
 msgid "Download JSONL"
 msgstr "Scarica JSONL"
 
-#: includes/class-acp-feed.php:663
+#: includes/class-acp-feed.php:672
 msgid "Download JSONL.GZ"
 msgstr "Scarica JSONL.GZ"
 
-#: includes/class-acp-feed.php:676
+#: includes/class-acp-feed.php:685
 msgid "ChatGPT feed data gaps"
 msgstr "Dati mancanti per il feed ChatGPT"
 
-#: includes/class-acp-feed.php:677
+#: includes/class-acp-feed.php:686
 msgid "Live counts on your current catalog. Products without a primary image are excluded from the ChatGPT feed; products without a brand are submitted without that field, at your responsibility. None of this affects the agent-readable catalog, search, REST API, MCP or UCP surfaces."
 msgstr "Conteggi in tempo reale sul catalogo attuale. I prodotti senza immagine principale sono esclusi dal feed ChatGPT; i prodotti senza brand vengono inviati senza quel campo, sotto la tua responsabilità. Nulla di tutto ciò influisce sul catalogo agent-readable, sulla ricerca, sulla REST API, su MCP o su UCP."
 
-#: includes/class-acp-feed.php:680
+#: includes/class-acp-feed.php:689
 msgid "Missing brand (submitted without it)"
 msgstr "Brand mancante (inviati senza)"
 
-#: includes/class-acp-feed.php:680
+#: includes/class-acp-feed.php:689
 msgid "These rows enter the feed without the brand field; OpenAI may reject them. Assign a brand (WooCommerce Brands taxonomy or a brand attribute) to make them fully conformant."
 msgstr "Queste righe entrano nel feed senza il campo brand; OpenAI potrebbe rifiutarle. Assegna un brand (tassonomia Brand di WooCommerce o un attributo brand) per renderle pienamente conformi."
 
-#: includes/class-acp-feed.php:681
+#: includes/class-acp-feed.php:690
 msgid "Missing primary image"
 msgstr "Immagine principale mancante"
 
-#: includes/class-acp-feed.php:681
+#: includes/class-acp-feed.php:690
 msgid "Set a featured image in the product editor."
 msgstr "Imposta un'immagine in evidenza nell'editor del prodotto."
 
-#: includes/class-acp-feed.php:690
+#: includes/class-acp-feed.php:699
 #, fuzzy
 msgid "Open in Products list"
 msgstr "Apri prodotto"
 
-#: includes/class-acp-feed.php:690
+#: includes/class-acp-feed.php:699
 msgid "Export CSV"
 msgstr "Esporta CSV"
 
-#: includes/class-acp-feed.php:696
+#: includes/class-acp-feed.php:705
 msgid "ChatGPT feed generation settings"
 msgstr "Impostazioni di generazione del feed ChatGPT"
 
-#: includes/class-acp-feed.php:699
+#: includes/class-acp-feed.php:708
 msgid "Generate the ChatGPT feed daily"
 msgstr "Genera il feed ChatGPT ogni giorno"
 
-#: includes/class-acp-feed.php:699
+#: includes/class-acp-feed.php:708
 msgid "Refreshes the local validated file only. Automatic delivery can be configured after OpenAI approves the merchant and supplies credentials."
 msgstr "Aggiorna soltanto il file validato locale. La consegna automatica potrà essere configurata dopo che OpenAI avrà approvato il merchant e fornito le credenziali."
 
-#: includes/class-acp-feed.php:701
+#: includes/class-acp-feed.php:710
 msgid "Brand fallback (optional)"
 msgstr "Brand di fallback (opzionale)"
 
-#: includes/class-acp-feed.php:701
+#: includes/class-acp-feed.php:710
 msgid "Your merchant-owned brand"
 msgstr "Il brand di proprietà del tuo negozio"
 
-#: includes/class-acp-feed.php:701
+#: includes/class-acp-feed.php:710
 msgid "Leave empty unless every otherwise brandless product is genuinely sold under this merchant-owned brand. By entering a value, the merchant declares it accurate and accepts responsibility for applying it to every missing-brand feed row. Multi-brand retailers should leave this empty."
 msgstr "Lascia vuoto a meno che ogni prodotto altrimenti senza brand sia realmente venduto sotto questo brand di proprietà del negozio. Inserendo un valore, il merchant ne dichiara l'accuratezza e accetta la responsabilità di applicarlo a ogni riga del feed priva di brand. I rivenditori multimarca dovrebbero lasciarlo vuoto."
 
-#: includes/class-acp-feed.php:702
+#: includes/class-acp-feed.php:711
 msgid "Comma-separated ISO 3166-1 alpha-2 codes. Defaults to WooCommerce selling locations."
 msgstr "Codici ISO 3166-1 alpha-2 separati da virgola. Di default usa le località di vendita di WooCommerce."
 
-#: includes/class-acp-feed.php:704
+#: includes/class-acp-feed.php:713
 msgid "Save and generate/validate now"
 msgstr "Salva e genera/valida ora"
 
-#: includes/class-acp-feed.php:707
+#: includes/class-acp-feed.php:716
 msgid "What to do with this file (OpenAI guidelines)"
 msgstr "Cosa fare con questo file (linee guida OpenAI)"
 
-#: includes/class-acp-feed.php:708
+#: includes/class-acp-feed.php:717
 msgid "The file is a complete snapshot of your feed-eligible products, regenerated in full every time: products removed from your catalog disappear from the next snapshot automatically. OpenAI recommends refreshing it at least daily and always keeping the same filename."
 msgstr "Il file è uno snapshot completo dei prodotti idonei al feed, rigenerato integralmente ogni volta: i prodotti rimossi dal catalogo scompaiono automaticamente dallo snapshot successivo. OpenAI raccomanda di aggiornarlo almeno ogni giorno mantenendo sempre lo stesso nome file."
 
-#: includes/class-acp-feed.php:710
+#: includes/class-acp-feed.php:719
 msgid "Generate and validate here."
 msgstr "Genera e valida qui."
 
-#: includes/class-acp-feed.php:710
+#: includes/class-acp-feed.php:719
 msgid "Every row is checked against the OpenAI Product Feed specification before it enters the file."
 msgstr "Ogni riga viene verificata rispetto alla specifica OpenAI Product Feed prima di entrare nel file."
 
-#: includes/class-acp-feed.php:711
+#: includes/class-acp-feed.php:720
 msgid "Apply for direct-feed access."
 msgstr "Candidati per l'accesso direct-feed."
 
 #. translators: %s: link to chatgpt.com/merchants
-#: includes/class-acp-feed.php:713
+#: includes/class-acp-feed.php:722
 #, php-format
 msgid "Submit your store at %s with your business contact. Approval is decided entirely by OpenAI; being on the waitlist costs nothing."
 msgstr "Presenta il tuo negozio su %s con il tuo contatto aziendale. L'approvazione è decisa interamente da OpenAI; stare in lista d'attesa non costa nulla."
 
-#: includes/class-acp-feed.php:716
+#: includes/class-acp-feed.php:725
 msgid "Deliver after approval."
 msgstr "Consegna dopo l'approvazione."
 
-#: includes/class-acp-feed.php:716
+#: includes/class-acp-feed.php:725
 msgid "OpenAI assigns your delivery channel and credentials (SFTP push or API). Upload the JSONL.GZ file there on every refresh. OpenAI does not fetch any URL from your site: the download buttons above are for you, not for them."
 msgstr "OpenAI assegna il canale di consegna e le credenziali (push SFTP o API). Carica lì il file JSONL.GZ a ogni aggiornamento. OpenAI non legge alcun URL dal tuo sito: i pulsanti di download qui sopra servono a te, non a loro."
 
-#: includes/class-acp-feed.php:718
+#: includes/class-acp-feed.php:727
 msgid "The feed format is region-neutral. Merchant eligibility and shopping-surface availability are determined by OpenAI and may vary by market."
 msgstr "Il formato del feed è neutro rispetto alla regione. L'idoneità del merchant e la disponibilità delle superfici di shopping sono decise da OpenAI e possono variare per mercato."
 
 #. translators: %s: link to OpenAI commerce documentation
-#: includes/class-acp-feed.php:720
+#: includes/class-acp-feed.php:729
 #, fuzzy, php-format
 msgid "Official documentation: %s."
 msgstr "Documentazione"
@@ -1018,6 +1014,12 @@ msgstr "KaliCart Bridge richiede che WooCommerce sia installato e attivo. Attiva
 #: kalicart-bridge.php:128
 msgid "WooCommerce required"
 msgstr "WooCommerce richiesto"
+
+#~ msgid "Agent Commerce"
+#~ msgstr "Agent Commerce"
+
+#~ msgid "Agent Commerce settings saved."
+#~ msgstr "Impostazioni Agent Commerce salvate."
 
 #~ msgid "KaliCart Global indexing consent"
 #~ msgstr "Consenso all’indicizzazione di KaliCart Global"

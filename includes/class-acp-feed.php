@@ -595,7 +595,7 @@ class KaliCart_Bridge_ACP_Feed {
 			if ( isset( $_POST['regenerate'] ) ) {
 				self::generate();
 			}
-			echo '<div class="notice notice-success"><p>' . esc_html__( 'Agent Commerce settings saved.', 'kalicart-bridge' ) . '</p></div>';
+			echo '<div class="notice notice-success"><p>' . esc_html__( 'ChatGPT feed settings saved.', 'kalicart-bridge' ) . '</p></div>';
 		}
 
 		$opts      = self::get_options();
