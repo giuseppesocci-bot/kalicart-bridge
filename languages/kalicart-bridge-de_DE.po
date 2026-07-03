@@ -390,9 +390,8 @@ msgid "You do not have permission to access this page."
 msgstr "Du hast keine Berechtigung, auf diese Seite zuzugreifen."
 
 #: includes/class-acp-feed.php:598
-#, fuzzy
 msgid "ChatGPT feed settings saved."
-msgstr "Einstellungen der ChatGPT-Feed-Generierung"
+msgstr "ChatGPT-Feed-Einstellungen gespeichert."
 
 #: includes/class-acp-feed.php:617
 msgid "Run feed generation to check declared brands."
