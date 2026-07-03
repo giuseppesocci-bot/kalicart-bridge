@@ -478,9 +478,8 @@ msgid "A primary product image is required by OpenAI’s direct product feed spe
 msgstr "Une image principale du produit est requise par la spécification du flux produits direct d'OpenAI. Les lignes concernées restent disponibles dans le catalogue lisible par les agents mais sont exclues du flux produits ChatGPT."
 
 #: includes/class-acp-feed.php:658
-#, fuzzy
 msgid "Return policy"
-msgstr "Configurer l'URL de la politique de retour"
+msgstr "Politique de retour"
 
 #: includes/class-acp-feed.php:658
 msgid "Configured in the Settings tab: "
@@ -554,9 +553,8 @@ msgstr "Activée"
 
 #. translators: %d: invalid rows
 #: includes/class-acp-feed.php:663
-#, fuzzy
 msgid "Manual only"
-msgstr "admin uniquement"
+msgstr "Manuelle uniquement"
 
 #. translators: %d: invalid rows
 #: includes/class-acp-feed.php:663
@@ -593,9 +591,8 @@ msgid "conformant rows from"
 msgstr "lignes conformes issues de"
 
 #: includes/class-acp-feed.php:668
-#, fuzzy
 msgid "products."
-msgstr "produits"
+msgstr "produits."
 
 #: includes/class-acp-feed.php:672
 msgid "Download JSONL"
@@ -630,9 +627,8 @@ msgid "Set a featured image in the product editor."
 msgstr "Définissez une image mise en avant dans l'éditeur de produit."
 
 #: includes/class-acp-feed.php:699
-#, fuzzy
 msgid "Open in Products list"
-msgstr "Ouvrir le produit"
+msgstr "Ouvrir dans la liste des produits"
 
 #: includes/class-acp-feed.php:699
 msgid "Export CSV"
@@ -710,9 +706,9 @@ msgstr "Le format du flux est neutre quant à la région. L'éligibilité du mar
 
 #. translators: %s: link to OpenAI commerce documentation
 #: includes/class-acp-feed.php:729
-#, fuzzy, php-format
+#, php-format
 msgid "Official documentation: %s."
-msgstr "Documentation"
+msgstr "Documentation officielle : %s."
 
 #: includes/class-admin.php:122
 msgid "Unknown error"
