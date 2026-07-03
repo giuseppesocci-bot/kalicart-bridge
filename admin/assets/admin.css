@@ -885,10 +885,15 @@
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
-  border-radius: 99px;
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
 }
 .kali-pill--ok   { background: #e6f6ec; color: #0f6f3c; border: 1px solid rgba(15,111,60,.18); }
 .kali-pill--warn { background: #fde8e8; color: #9b1c1c; border: 1px solid rgba(192,57,43,.2); }
 .kali-pill--muted{ background: var(--kb-surface2); color: var(--kb-muted); border: 1px solid var(--kb-border); }
+.kali-pill--fallback {
+  background: #fff2d4;
+  color: #3c3c3c;
+  border: 1px solid rgba(255, 131, 22, 0.2);
+}

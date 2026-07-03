@@ -619,7 +619,7 @@ class KaliCart_Bridge_ACP_Feed {
 			$brand_missing  = (int) ( $stats['rows_missing_brand'] ?? 0 );
 			$brand_fallback = (int) $stats['fallback_brand_rows'];
 			if ( $brand_fallback > 0 ) {
-				$brand_status = '<span class="kali-pill kali-pill--warn">' . esc_html__( 'Fallback applied', 'kalicart-bridge' ) . '</span>';
+				$brand_status = '<span class="kali-pill kali-pill--fallback">' . esc_html__( 'Fallback applied', 'kalicart-bridge' ) . '</span>';
 				/* translators: 1: rows filled by fallback, 2: rows submitted without brand */
 				$brand_detail = sprintf( __( '%1$d rows filled by the merchant fallback; %2$d rows submitted without brand.', 'kalicart-bridge' ), $brand_fallback, $brand_missing );
 			} elseif ( $brand_missing > 0 ) {
