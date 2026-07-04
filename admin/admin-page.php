@@ -70,7 +70,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
   <div class="kali-tabsrow">
     <div class="kali-tabs">
       <button class="kali-tab<?php echo 'overview' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="overview"><?php esc_html_e( 'Overview', 'kalicart-bridge' ); ?></button>
-      <button class="kali-tab<?php echo 'quarantine' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="quarantine"><?php esc_html_e( 'Quarantine', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab<?php echo 'quarantine' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="quarantine"><?php esc_html_e( 'Quality Signals', 'kalicart-bridge' ); ?></button>
       <button class="kali-tab<?php echo 'endpoints' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="endpoints"><?php esc_html_e( 'Endpoints', 'kalicart-bridge' ); ?></button>
       <button class="kali-tab<?php echo 'agent-commerce' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="agent-commerce">ChatGPT Feed</button>
       <button class="kali-tab<?php echo 'settings' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="settings"><?php esc_html_e( 'Settings', 'kalicart-bridge' ); ?></button>
@@ -130,7 +130,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       </div>
       <div class="kali-stat kali-stat--red kali-stat--clickable" id="stat-card-quarantine">
         <span class="kali-stat__value" id="statQuarantine">&ndash;</span>
-        <span class="kali-stat__label"><?php esc_html_e( 'Quarantine', 'kalicart-bridge' ); ?></span>
+        <span class="kali-stat__label"><?php esc_html_e( 'Quality signals', 'kalicart-bridge' ); ?></span>
       </div>
       <div class="kali-stat kali-stat--green">
         <span class="kali-stat__value" id="statInStock">&ndash;</span>
@@ -187,10 +187,10 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
   <!-- TAB: QUARANTINE -->
   <div id="kali-tab-quarantine" class="kali-panel" style="display:<?php echo 'quarantine' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
     <div class="kali-section-title">
-      <?php esc_html_e( 'Quarantined products', 'kalicart-bridge' ); ?>
+      <?php esc_html_e( 'Products with quality signals', 'kalicart-bridge' ); ?>
       <span class="kali-badge kali-badge--red" id="quarantineCount">&ndash;</span>
     </div>
-    <p class="kali-hint"><?php esc_html_e( 'Products with blocking computability issues: missing descriptions, categories, or invalid prices.', 'kalicart-bridge' ); ?></p>
+    <p class="kali-hint"><?php esc_html_e( 'Nothing here is blocked or hidden: these products stay fully served to agents in catalog, search and MCP. Their issues travel with the data as declared quality flags and a lower score, and agents can weigh them. Fix the signals to raise computability - use the filters below to work each problem in the native Products list.', 'kalicart-bridge' ); ?></p>
     <div id="quarantineList" class="kali-quarantine-list"></div>
   </div>
 

@@ -210,6 +210,39 @@
   }
 
   // ── Quarantine ────────────────────────────────────────────────────────────
+  const ISSUE_COUNT_KEY = {
+    TITLE_TOO_SHORT: 'bad_title', NO_DESCRIPTION: 'no_description', NO_CATEGORY: 'no_category',
+    ZERO_PRICE: 'zero_price', NO_IMAGE: 'no_image', NO_SKU: 'no_sku',
+  };
+
+  function qualityFilterBtn( label, count, url ) {
+    if ( ! count ) return '';
+    return `<a class="kali-btn kali-btn--ghost kali-q-filter-btn" href="${ esc( url ) }">${ label } <span class="kali-q-filter-count">${ count }</span></a>`;
+  }
+
+  // Due file: segnali critici (ragioni di quality signal) e migliorie.
+  // Ogni bottone lavora UN problema nella lista prodotti nativa (bulk/quick edit gratis).
+  function renderQualityFilters( data ) {
+    const i = data.issues ?? {};
+    const base = KaliBridge.productsUrl;
+    const critical = [
+      qualityFilterBtn( STR.btn_title,       i.bad_title,      base + '&kalicart_missing=title' ),
+      qualityFilterBtn( STR.btn_description, i.no_description, base + '&kalicart_missing=description' ),
+      qualityFilterBtn( STR.btn_category,    i.no_category,    base + '&kalicart_missing=category' ),
+      qualityFilterBtn( STR.btn_price,       i.zero_price,     base + '&kalicart_missing=price' ),
+    ].join( '' );
+    const improvements = [
+      qualityFilterBtn( STR.btn_image, i.no_image, base + '&kalicart_missing=image' ),
+      qualityFilterBtn( STR.btn_sku,   i.no_sku,   base + '&kalicart_missing=sku' ),
+      qualityFilterBtn( STR.btn_stock, data.out_of_stock_count, base + '&stock_status=outofstock' ),
+    ].join( '' );
+    if ( ! critical && ! improvements ) return '';
+    return `<div class="kali-q-actions">
+      ${ critical ? `<div class="kali-q-actions__row"><span class="kali-q-actions__label">${ STR.critical_signals }</span>${ critical }</div>` : '' }
+      ${ improvements ? `<div class="kali-q-actions__row"><span class="kali-q-actions__label">${ STR.improvements }</span>${ improvements }</div>` : '' }
+    </div>`;
+  }
+
   function renderQuarantine( data ) {
     const badge = $( 'quarantineCount' );
     if ( badge ) badge.textContent = data.quarantine_count ?? 0;
@@ -234,11 +267,19 @@
       return;
     }
 
+    const totalForView = activeIssueFilter === 'OUT_OF_STOCK'
+      ? ( data.out_of_stock_count ?? items.length )
+      : activeIssueFilter
+        ? ( data.issues?.[ ISSUE_COUNT_KEY[ activeIssueFilter ] ] ?? items.length )
+        : ( data.quarantine_count ?? items.length );
+    const sampleNote = totalForView > items.length
+      ? `<div class="kali-q-sample-note">${ STR.showing_first.replace( '%1$s', String( items.length ) ).replace( '%2$s', String( totalForView ) ) }</div>`
+      : '';
     const filterBar = activeIssueFilter
       ? `<div class="kali-q-filter">${ STR.showing } ${ esc( activeIssueFilter ) } <button type="button" id="clearIssueFilter">${ STR.clear_filter }</button></div>`
       : '';
 
-    container.innerHTML = issueIntro + filterBar + items.map( item => {
+    container.innerHTML = issueIntro + filterBar + sampleNote + items.map( item => {
       const c = item.score >= 70 ? '#22c55e' : item.score >= 40 ? '#f59e0b' : '#ef4444';
       const flags = ( item.flags ?? [] ).map( f =>
         `<span class="kali-flag kali-flag--${ f.severity }">${ esc( f.code ) }</span>`
@@ -256,6 +297,7 @@
           ${ item.url ? `<a class="kali-q-item__edit" href="${ esc( item.url ) }" target="_blank">${ STR.open_product } &rarr;</a>` : '' }
         </div>`;
     } ).join( '' );
+    container.innerHTML += renderQualityFilters( data );
     $( 'clearIssueFilter' )?.addEventListener( 'click', () => {
       activeIssueFilter = null;
       renderQuarantine( report || data );

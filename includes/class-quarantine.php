@@ -151,14 +151,17 @@ class KaliCart_Bridge_Quarantine {
             $issue_product_ids['NO_CATEGORY'],
             $issue_product_ids['ZERO_PRICE']
         ) ) );
+        rsort( $quarantine_ids ); // recenti prima, coerente con le liste per-issue
         $quarantine_count = count( $quarantine_ids );
 
-        // ── Quarantine list (dettaglio, max 300) ──────────────────────────────
-        $quarantined_products = self::build_quarantine_list( array_slice( $quarantine_ids, 0, 300 ), $uncategorized_id );
-        $out_of_stock_products = self::build_out_of_stock_list( 300 );
+        // ── Quarantine list (dettaglio, campione max 100 - i conteggi restano pieni) ──
+        // La UI dichiara il taglio ("primi 100 di N"); il lavoro in massa passa
+        // dai filtri sulla lista prodotti nativa, non da questa tab.
+        $quarantined_products = self::build_quarantine_list( array_slice( $quarantine_ids, 0, 100 ), $uncategorized_id );
+        $out_of_stock_products = self::build_out_of_stock_list( 100 );
         $issue_products = [
-            'NO_IMAGE' => self::build_issue_list( array_slice( $issue_product_ids['NO_IMAGE'], 0, 300 ), 'NO_IMAGE', 'No image', 'image' ),
-            'NO_SKU'   => self::build_issue_list( array_slice( $issue_product_ids['NO_SKU'], 0, 300 ), 'NO_SKU', 'No SKU', 'sku' ),
+            'NO_IMAGE' => self::build_issue_list( array_slice( $issue_product_ids['NO_IMAGE'], 0, 100 ), 'NO_IMAGE', 'No image', 'image' ),
+            'NO_SKU'   => self::build_issue_list( array_slice( $issue_product_ids['NO_SKU'], 0, 100 ), 'NO_SKU', 'No SKU', 'sku' ),
         ];
 
         // ── Suggestions ───────────────────────────────────────────────────────
@@ -247,7 +250,7 @@ class KaliCart_Bridge_Quarantine {
              AND (pm.meta_value IS NULL OR pm.meta_value='')"
         );
 
-        return [
+        $lists = [
             'TITLE_TOO_SHORT' => array_map( 'intval', $bad_title ),
             'NO_IMAGE'       => array_map( 'intval', $no_image ),
             'NO_DESCRIPTION' => array_map( 'intval', $no_desc ),
@@ -255,6 +258,13 @@ class KaliCart_Bridge_Quarantine {
             'ZERO_PRICE'     => array_map( 'intval', $no_price ),
             'NO_SKU'         => array_map( 'intval', $no_sku ),
         ];
+        // Recenti prima: il campione mostrato in tab deve pescare i prodotti
+        // su cui il merchant sta lavorando ora, non i piu' vecchi per ID.
+        foreach ( $lists as &$l ) {
+            rsort( $l );
+        }
+        unset( $l );
+        return $lists;
     }
 
     // ── Quarantine list dettagliata ───────────────────────────────────────────
@@ -356,7 +366,7 @@ class KaliCart_Bridge_Quarantine {
              JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_stock_status'
              WHERE p.post_type='product' AND p.post_status='publish'
              AND pm.meta_value!='instock'
-             ORDER BY p.post_title ASC
+             ORDER BY p.ID DESC
              LIMIT %d",
             $limit
         ) );

@@ -50,6 +50,7 @@ class KaliCart_Bridge_Admin {
         );
 
         wp_localize_script( 'kalicart-bridge-admin', 'KaliBridge', [
+            'productsUrl' => admin_url( 'edit.php?post_type=product' ),
             'ajax_url'      => admin_url( 'admin-ajax.php' ),
             'nonce'         => wp_create_nonce( 'kalicart_bridge' ),
             'badge_position'      => get_option('kalicart_bridge_badge_position','bottom-right'),
@@ -132,6 +133,17 @@ class KaliCart_Bridge_Admin {
             'no_products_for'        => __( 'No products for', 'kalicart-bridge' ),
             'no_products_quarantine' => __( 'No products in quarantine.', 'kalicart-bridge' ),
             'showing'        => __( 'Showing', 'kalicart-bridge' ),
+            /* translators: 1: number of items shown, 2: total number of items */
+            'showing_first'  => __( 'Showing the most recent %1$s of %2$s - use the filters below for the full list.', 'kalicart-bridge' ),
+            'critical_signals' => __( 'Critical signals', 'kalicart-bridge' ),
+            'improvements'     => __( 'Improvements', 'kalicart-bridge' ),
+            'btn_title'        => __( 'Short titles', 'kalicart-bridge' ),
+            'btn_description'  => __( 'No description', 'kalicart-bridge' ),
+            'btn_category'     => __( 'No category', 'kalicart-bridge' ),
+            'btn_price'        => __( 'No price', 'kalicart-bridge' ),
+            'btn_image'        => __( 'No image', 'kalicart-bridge' ),
+            'btn_sku'          => __( 'No SKU', 'kalicart-bridge' ),
+            'btn_stock'        => __( 'Out of stock', 'kalicart-bridge' ),
             'clear_filter'   => __( 'Clear filter', 'kalicart-bridge' ),
             'open_product'   => __( 'Open product', 'kalicart-bridge' ),
             'admin_only'     => __( 'admin only', 'kalicart-bridge' ),

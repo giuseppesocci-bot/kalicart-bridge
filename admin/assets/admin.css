@@ -897,3 +897,45 @@
   color: #3c3c3c;
   border: 1px solid rgba(255, 131, 22, 0.2);
 }
+
+/* ── Quality Signals: nota campione + bottoni-filtro (1.0.114) ── */
+.kali-q-sample-note {
+  font-size: 12px;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+}
+.kali-q-actions { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.kali-q-actions__row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kali-q-actions__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  min-width: 110px;
+}
+.kali-q-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  text-decoration: none;
+}
+.kali-q-filter-btn:hover { border-color: var(--kb-acc); color: var(--kb-acc); }
+.kali-q-filter-count {
+  background: #eef2f7;
+  border-radius: 99px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+}

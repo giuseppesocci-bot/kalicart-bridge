@@ -532,6 +532,22 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only list filter.
 		$what = sanitize_key( wp_unslash( $_GET['kalicart_missing'] ?? '' ) );
+		// Quality-signal reasons: served from the cached health report (post__in),
+		// so the button count in the Quality Signals tab and this list ALWAYS
+		// match by construction - one number, one source.
+		$report_map = [
+			'title'       => 'TITLE_TOO_SHORT',
+			'description' => 'NO_DESCRIPTION',
+			'category'    => 'NO_CATEGORY',
+			'price'       => 'ZERO_PRICE',
+			'sku'         => 'NO_SKU',
+		];
+		if ( isset( $report_map[ $what ] ) ) {
+			$ids = KaliCart_Bridge_Quarantine::get_report()['issue_product_ids'][ $report_map[ $what ] ] ?? [];
+			$query->set( 'post__in', $ids ? array_map( 'intval', $ids ) : [ 0 ] );
+			$query->set( 'orderby', 'post__in' ); // recenti prima, come in tab
+			return;
+		}
 		if ( ! in_array( $what, [ 'brand', 'image' ], true ) ) {
 			return;
 		}
