@@ -465,7 +465,7 @@ class KaliCart_Bridge_API {
 
             'placement_guidance' => 'The <link rel="kalicart-agent"> in <head> and the body anchor badge both carry this discovery URL. Head covers head-reading agents; body anchor covers DOM/content-parsing agents. Both are in raw HTML — not injected via JavaScript.',
 
-            'recommended_head_link_html' => '<link rel="kalicart-agent" type="application/json" href="' . esc_url( $discovery ) . '" />' . "\n" . '<link rel="service-desc" type="application/vnd.oai.openapi+json" href="' . esc_url( rest_url( KALICART_BRIDGE_API_NS . '/openapi' ) ) . '" />' . "\n" . '<link rel="api-catalog" type="application/linkset+json" href="' . esc_url( home_url( '/.well-known/api-catalog' ) ) . '" />',
+            'recommended_head_link_html' => '<link rel="kalicart-agent" type="application/json" href="' . esc_url( $discovery ) . '" />' . "\n" . '<link rel="service-desc" type="application/vnd.oai.openapi+json" href="' . esc_url( rest_url( KALICART_BRIDGE_API_NS . '/openapi' ) ) . '" />',
 
             'merchant' => [
                 'name'     => $site_name,

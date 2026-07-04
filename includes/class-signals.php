@@ -252,15 +252,17 @@ class KaliCart_Bridge_Signals {
     public static function inject_head_link(): void {
         $url     = rest_url( KALICART_BRIDGE_API_NS . '/discovery' );
         $openapi = rest_url( KALICART_BRIDGE_API_NS . '/openapi' );
-        $catalog = home_url( '/.well-known/api-catalog' );
+        // api-catalog link removed (1.0.114): the extensionless /.well-known path
+        // is intercepted by static webserver config on most hosts (404 observed
+        // live on real merchants, and one blind-test agent wasted a fetch on it).
+        // A sign that may lie is worse than no sign. The linkset stays served
+        // (rewrite + physical api-catalog.json) for any client that still probes.
         printf(
             "\n" . '<link rel="kalicart-agent" type="application/json" href="%s"' .
             ' title="Structured catalog API for AI agents — KaliCart Bridge" />' . "\n" .
-            '<link rel="service-desc" type="application/vnd.oai.openapi+json" href="%s" />' . "\n" .
-            '<link rel="api-catalog" type="application/linkset+json" href="%s" />' . "\n",
+            '<link rel="service-desc" type="application/vnd.oai.openapi+json" href="%s" />' . "\n",
             esc_url( $url ),
-            esc_url( $openapi ),
-            esc_url( $catalog )
+            esc_url( $openapi )
         );
     }
 
@@ -393,7 +395,6 @@ class KaliCart_Bridge_Signals {
         $output .= "Allow: /.well-known/kalicart-bridge.json\n";
         $output .= "Allow: /.well-known/agent-catalog.json\n";
         $output .= "Allow: /.well-known/ucp.json\n";
-        $output .= "Allow: /.well-known/api-catalog\n";
         $output .= "Content-Signal: " . self::content_signal_value() . "\n";
         $output .= "Sitemap: " . $sitemap_url . "\n";
 
