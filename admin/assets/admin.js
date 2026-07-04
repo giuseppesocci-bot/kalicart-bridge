@@ -261,9 +261,12 @@
 
     const issueIntro = activeIssueFilter ? renderIssueIntro( activeIssueFilter ) : '';
     if ( items.length === 0 ) {
+      // Anche a lista vuota i bottoni-filtro restano: altri problemi (immagini,
+      // SKU, stock) possono avere conteggi > 0 pur senza segnali critici.
       container.innerHTML = issueIntro + ( activeIssueFilter
         ? `<div class="kali-empty">&#x2713; ${ STR.no_products_for } ${ esc( activeIssueFilter ) }.</div>`
-        : `<div class="kali-empty">&#x2713; ${ STR.no_products_quarantine }</div>` );
+        : `<div class="kali-empty">&#x2713; ${ STR.no_products_quarantine }</div>` ) + renderQualityFilters( data );
+      $( 'clearIssueFilter' )?.addEventListener( 'click', () => { activeIssueFilter = null; renderQuarantine( report || data ); } );
       return;
     }
 
