@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.113
+Stable tag: 1.0.114
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -148,6 +148,13 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.114 =
+* Quality Signals: the Quarantine tab renamed and rebuilt for large catalogs - honest sample (the most recent 100, with full counts and a visible note), plus per-problem filter buttons that open the native Products list pre-filtered (bulk and quick edit for free)
+* New Products-list filters: short titles, no description, no category, no price, no SKU - served from the cached health report, so button counts and list contents always match
+* Clarified in the UI: nothing in Quality Signals is blocked or hidden - products stay fully served to agents with their issues declared as quality flags and score, which agents can weigh
+* Overview: new suggestion for products without a brand - not required by the agent-readable catalog, search or MCP, but required by the ChatGPT product feed specification
+* Signals cleanup: removed the api-catalog head link and its robots.txt entry (the extensionless /.well-known path returns 404 on most hosting setups); the discovery and OpenAPI links remain, and the physical api-catalog.json file stays served for clients that probe it
 
 = 1.0.113 =
 * Performance - ChatGPT feed generation is dramatically faster on large catalogs: product data is now batch-primed (posts, meta and terms per page, variations included), collapsing thousands of per-product queries; catalogs that previously took ~20 seconds generate in a fraction of that, and very large catalogs no longer risk PHP execution-time limits
