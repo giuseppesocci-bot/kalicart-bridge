@@ -111,6 +111,20 @@ class KaliCart_Bridge_Quarantine {
              AND (pm.meta_value IS NULL OR pm.meta_value='')"
         );
 
+        // ── Senza brand (stesse tassonomie di KaliCart_Bridge_Catalog_Engine::resolve_brand) ──
+        // Non e' un difetto del catalogo (score NON toccato): serve solo alla
+        // suggestion sul feed ChatGPT, dove la spec richiede il brand.
+        $no_brand = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
+            "SELECT COUNT(*) FROM {$wpdb->posts} p
+             WHERE p.post_type='product' AND p.post_status='publish'
+             AND NOT EXISTS (
+               SELECT 1 FROM {$wpdb->term_relationships} tr
+               JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+               WHERE tr.object_id = p.ID
+               AND tt.taxonomy IN ('product_brand','pwb-brand','pa_brand','pa_marca')
+             )"
+        );
+
         // ── In stock ──────────────────────────────────────────────────────────
         $in_stock = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT COUNT(*) FROM {$wpdb->posts} p
@@ -148,7 +162,7 @@ class KaliCart_Bridge_Quarantine {
         ];
 
         // ── Suggestions ───────────────────────────────────────────────────────
-        $suggestions = self::build_suggestions( $total, $bad_title, $no_image, $no_desc, $no_cat, $no_price, $no_sku );
+        $suggestions = self::build_suggestions( $total, $bad_title, $no_image, $no_desc, $no_cat, $no_price, $no_sku, $no_brand );
 
         return [
             'generated_at'     => gmdate( 'c' ),
@@ -374,7 +388,7 @@ class KaliCart_Bridge_Quarantine {
 
     // ── Suggestions ───────────────────────────────────────────────────────────
 
-    private static function build_suggestions( int $total, int $bad_title, int $no_image, int $no_desc, int $no_cat, int $no_price, int $no_sku ): array {
+    private static function build_suggestions( int $total, int $bad_title, int $no_image, int $no_desc, int $no_cat, int $no_price, int $no_sku, int $no_brand = 0 ): array {
         $s = [];
 
         $admin_url = admin_url( 'edit.php?post_type=product' );
@@ -385,6 +399,19 @@ class KaliCart_Bridge_Quarantine {
         if ( $no_cat > 0 )    $s[] = [ 'priority' => 'high',   'code' => 'NO_CATEGORY',    'label' => __( 'Assign categories', 'kalicart-bridge' ),        'detail' => __( 'Uncategorized products are invisible to category-based agent queries.', 'kalicart-bridge' ),'affected' => $no_cat,   'admin_url' => $admin_url ];
         if ( $no_price > 0 )  $s[] = [ 'priority' => 'medium', 'code' => 'ZERO_PRICE',     'label' => __( 'Fix zero-price products', 'kalicart-bridge' ),  'detail' => __( 'Products with no price are excluded from commerce-intent pipelines.', 'kalicart-bridge' ),  'affected' => $no_price, 'admin_url' => $admin_url ];
         if ( $no_sku > 0 )    $s[] = [ 'priority' => 'low',    'code' => 'NO_SKU',         'label' => __( 'Add SKU codes', 'kalicart-bridge' ),            'detail' => __( 'SKUs enable precise product identification and deduplication by agents.', 'kalicart-bridge' ),'affected' => $no_sku,   'admin_url' => $admin_url ];
+
+        // Brand: non richiesto dal catalogo (nessun impatto su score/quarantena),
+        // richiesto dalla spec del feed ChatGPT. Educare alla distinzione.
+        if ( $no_brand > 0 ) {
+            $s[] = [
+                'priority'  => 'low',
+                'code'      => 'NO_BRAND',
+                'label'     => __( 'Assign product brands', 'kalicart-bridge' ),
+                'detail'    => __( 'Not required for the agent-readable catalog, search or MCP. The ChatGPT product feed specification does require brand: rows without it ship at your responsibility and OpenAI may reject them.', 'kalicart-bridge' ),
+                'affected'  => $no_brand,
+                'admin_url' => admin_url( 'admin.php?page=kalicart-bridge#agent-commerce' ),
+            ];
+        }
 
         // Return policy suggestion
         $return_policy_url = get_option( 'kalicart_bridge_return_policy_url', '' );
