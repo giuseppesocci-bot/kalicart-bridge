@@ -1,5 +1,14 @@
 *** KaliCart Bridge Changelog ***
 
+2026-07-10 - version 1.0.115
+
+* Fix: products whose description is empty markup (empty paragraph, `&nbsp;`, non-breaking space) are no longer dropped from the ChatGPT feed. The product name is used as a fallback, and entity-only descriptions no longer leak into the feed. Plain-text extraction now decodes HTML entities.
+* Change: the AI catalog badge is now off by default on new installs. Existing installs and merchant choices are preserved across updates.
+* New: ChatGPT feed readiness reports how many rows were sent with the product name in place of a real description.
+* The validator's excluded-row count is now always shown in the feed snapshot summary.
+* Readme: Description rewritten to lead with the catalog-readiness report; technical details grouped under "For developers and AI integrations".
+
+
 2026-07-04 - version 1.0.114
 
 * Quality Signals: the Quarantine tab renamed and rebuilt for large catalogs - honest sample (the most recent 100, with full counts and a visible note), plus per-problem filter buttons that open the native Products list pre-filtered (bulk and quick edit for free)

@@ -17,7 +17,7 @@ class KaliCart_Bridge_Signals {
 
         add_action( 'wp_head', [ __CLASS__, 'inject_head_link' ] );
 
-        if ( get_option( 'kalicart_bridge_badge_enabled', true ) ) {
+        if ( get_option( 'kalicart_bridge_badge_enabled', false ) ) {
             add_action( 'wp_footer', [ __CLASS__, 'inject_badge' ] );
         }
 

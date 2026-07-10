@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.114
+Stable tag: 1.0.115
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -13,11 +13,24 @@ Validated OpenAI-compatible product feed for ChatGPT product discovery (ACP), pl
 
 == Description ==
 
-AI agents are becoming a real shopping channel. Shopify merchants are integrated into ChatGPT automatically through Shopify Catalog — WooCommerce does not currently provide an equivalent native integration. KaliCart Bridge provides that missing export layer today: it generates a validated, OpenAI-compatible product feed for ChatGPT product discovery (Agentic Commerce Protocol), exposes your catalog via UCP discovery, a structured REST API and an MCP server for every other AI agent, and shows you which agents already visit your store. Direct-feed access requires merchant application and approval — OpenAI provides the delivery channel. Checkout always stays on your storefront: you remain merchant of record, in line with OpenAI's shift to merchant-owned checkout.
+Make your WooCommerce catalog ready to be read and verified by AI shopping systems.
 
-KaliCart Bridge makes your WooCommerce product catalog computable: it exposes a structured, normalized REST API and an MCP server that AI shopping agents and assistants — such as ChatGPT, Claude, Gemini, Perplexity and any MCP-capable client — can read and act on directly. No LLM runs on your server; the plugin only turns your existing catalog into clean, computable data.
+KaliCart Bridge gives you an immediate catalog-readiness report inside WooCommerce: it identifies products with missing images, brand, usable description, category, price or SKU, and links you directly to the native Products screen to fix them. It then exposes your live catalog in a structured form for AI agents and can generate a validated product feed ready for ChatGPT merchant submission.
+
+No LLM runs on your site. No cloud service or customer data is sent anywhere by default. Prices, availability and product changes remain live on your WooCommerce store.
+
+The plugin does not promise traffic, ChatGPT placement or merchant approval. It prepares and exposes your catalog; OpenAI controls access to its own shopping surfaces and delivery channel.
+
+**What you get after installation**
+
+* A catalog-readiness report with actionable product fixes.
+* A current, structured catalog API for agents that reach your store.
+* An optional ChatGPT feed, validated before export.
+* Optional inclusion in KaliCart's federated catalog, only with explicit consent.
 
 Documentation: https://bridge.kalicart.com/docs/
+
+**For developers and AI integrations**
 
 **What it does:**
 
@@ -148,6 +161,13 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.115 =
+* Fix: products whose description is empty markup (empty paragraph, `&nbsp;`, non-breaking space) are no longer dropped from the ChatGPT feed. The product name is used as a fallback, and entity-only descriptions no longer leak into the feed. Plain-text extraction now decodes HTML entities.
+* Change: the AI catalog badge is now off by default on new installs. Existing installs and merchant choices are preserved across updates.
+* New: ChatGPT feed readiness reports how many rows were sent with the product name in place of a real description.
+* The validator's excluded-row count is now always shown in the feed snapshot summary.
+* Readme: Description rewritten to lead with the catalog-readiness report; technical details grouped under "For developers and AI integrations".
 
 = 1.0.114 =
 * Quality Signals: the Quarantine tab renamed and rebuilt for large catalogs - honest sample (the most recent 100, with full counts and a visible note), plus per-problem filter buttons that open the native Products list pre-filtered (bulk and quick edit for free)
