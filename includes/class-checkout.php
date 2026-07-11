@@ -72,6 +72,28 @@ class KaliCart_Bridge_Checkout {
     public static function create_session( WP_REST_Request $req ): WP_REST_Response {
         $body = $req->get_json_params();
 
+        // Idempotency-Key: an agent that retries the same request (network failure or
+        // double submit) must receive the same session, not a new one. Same key + same
+        // payload replays the original response; same key + different payload is a 409.
+        // This hardens an existing path; it is not a new surface.
+        $idem_key   = trim( (string) $req->get_header( 'Idempotency-Key' ) );
+        $idem_store = '';
+        $idem_hash  = '';
+        if ( '' !== $idem_key ) {
+            if ( strlen( $idem_key ) > 255 ) {
+                return self::error( 'Idempotency-Key must be at most 255 characters.', 400 );
+            }
+            $idem_hash  = hash( 'sha256', (string) wp_json_encode( self::idem_canonicalize( is_array( $body ) ? $body : array() ) ) );
+            $idem_store = 'kalicart_checkout_idem_' . get_current_blog_id() . '_' . md5( $idem_key );
+            $prev = get_transient( $idem_store );
+            if ( is_array( $prev ) && isset( $prev['payload_hash'], $prev['response'] ) ) {
+                if ( hash_equals( (string) $prev['payload_hash'], $idem_hash ) ) {
+                    return new WP_REST_Response( $prev['response'], 201 );
+                }
+                return self::error( 'Idempotency-Key already used with a different request payload.', 409 );
+            }
+        }
+
         // Supporta sia array di prodotti che singolo prodotto
         if ( isset( $body['items'] ) && is_array( $body['items'] ) ) {
             $raw_items = $body['items'];
@@ -166,7 +188,11 @@ class KaliCart_Bridge_Checkout {
 
         set_transient( 'kalicart_session_' . $session_id, $session_data, self::SESSION_TTL );
 
-        return new WP_REST_Response( array_merge( [ 'success' => true ], $session_data ), 201 );
+        $response = array_merge( [ 'success' => true ], $session_data );
+        if ( '' !== $idem_key ) {
+            set_transient( $idem_store, array( 'payload_hash' => $idem_hash, 'session_id' => $session_id, 'response' => $response ), self::SESSION_TTL );
+        }
+        return new WP_REST_Response( $response, 201 );
     }
 
     // ── GET ───────────────────────────────────────────────────────────────────
@@ -250,6 +276,22 @@ class KaliCart_Bridge_Checkout {
     }
 
     // ── HELPERS ───────────────────────────────────────────────────────────────
+
+    /**
+     * Canonicalize a decoded JSON payload for stable hashing: sort associative
+     * keys, preserve the order of list arrays (e.g. items[]), recurse into both.
+     */
+    private static function idem_canonicalize( $value ) {
+        if ( is_array( $value ) ) {
+            if ( $value !== array() && array_keys( $value ) !== range( 0, count( $value ) - 1 ) ) {
+                ksort( $value );
+            }
+            foreach ( $value as $k => $v ) {
+                $value[ $k ] = self::idem_canonicalize( $v );
+            }
+        }
+        return $value;
+    }
 
     private static function error( string $message, int $status = 400 ): WP_REST_Response {
         return new WP_REST_Response( [ 'success' => false, 'message' => $message ], $status );

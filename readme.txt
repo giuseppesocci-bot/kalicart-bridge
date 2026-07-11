@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.115
+Stable tag: 1.0.116
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,9 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.116 =
+* New: POST /checkout/session honors an optional Idempotency-Key header. Retrying with the same key and payload returns the original session instead of creating a duplicate; reusing a key with a different payload returns 409. Hardens agent retries and double-submits on an existing endpoint.
 
 = 1.0.115 =
 * Fix: products whose description is empty markup (empty paragraph, `&nbsp;`, non-breaking space) are no longer dropped from the ChatGPT feed. The product name is used as a fallback, and entity-only descriptions no longer leak into the feed. Plain-text extraction now decodes HTML entities.
