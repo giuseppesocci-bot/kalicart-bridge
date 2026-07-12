@@ -3,7 +3,7 @@
  * Plugin Name:       KaliCart Bridge – Product Feed for ChatGPT & AI Agents
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.117
+ * Version:           1.0.118
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.117' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.118' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
@@ -115,6 +115,21 @@ add_action( 'kalicart_bridge_facets_rebuild', function () {
 
 if ( ! wp_next_scheduled( 'kalicart_bridge_facets_rebuild' ) ) {
     wp_schedule_event( time(), 'twicedaily', 'kalicart_bridge_facets_rebuild' );
+}
+
+// ── Checkout session claim cleanup cron ─────────────────────────────────────
+// The atomic claim rows written by KaliCart_Bridge_Checkout::attribute_order()
+// (kalicart_session_claimed_{id}, non-autoload) must not accumulate forever in
+// wp_options: one row per attributed checkout, with no natural expiry of its own
+// (unlike transients). Sweeps rows older than the retention window daily.
+add_action( 'kalicart_bridge_cleanup_claims', function () {
+    if ( class_exists( 'KaliCart_Bridge_Checkout' ) ) {
+        KaliCart_Bridge_Checkout::cleanup_stale_claims();
+    }
+} );
+
+if ( ! wp_next_scheduled( 'kalicart_bridge_cleanup_claims' ) ) {
+    wp_schedule_event( time(), 'daily', 'kalicart_bridge_cleanup_claims' );
 }
 
 register_activation_hook( __FILE__, function () {

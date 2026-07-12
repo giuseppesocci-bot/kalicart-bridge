@@ -32,6 +32,15 @@ foreach ( $kalicart_bridge_options as $kalicart_bridge_option ) {
 
 // Cron
 wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
+wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
+
+// Checkout session claim rows (kalicart_session_claimed_{id}): dynamically keyed, one per
+// attributed checkout — not in the fixed options list above, needs a LIKE-pattern sweep.
+global $wpdb;
+$wpdb->query( $wpdb->prepare(
+    "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+    $wpdb->esc_like( 'kalicart_session_claimed_' ) . '%'
+) );
 
 // Transients
 $kalicart_bridge_transients = [

@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.117
+Stable tag: 1.0.118
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,11 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.118 =
+* New: checkout attribution. Orders completed via a Bridge checkout session (classic checkout and Checkout Block) are linked back to that session, with a local funnel (sessions created, carts loaded, orders linked, net value) shown in the Federated Catalog panel — no cloud. Net value counts only genuinely confirmed payments (date_paid); cash on delivery, bank transfer and cheque orders are excluded until payment is actually confirmed.
+* Hardening: rate limiting on POST /checkout/session (per-client and short global window, proxy-safe — X-Forwarded-For is honored only from a configurable trusted-proxy allowlist, filterable thresholds); one checkout session now yields at most one attributed conversion, enforced atomically; a reused session link is blocked with a generic 410 response, without revealing any detail about the original order; requested quantities are validated against WooCommerce's own purchasable maximum before a session is created.
+* Checkout session claim records are cleaned up automatically (daily, filterable retention) and on uninstall.
 
 = 1.0.117 =
 * New: "Check external visibility" in the Federated Catalog panel. Shows what KaliCart Global observed from outside the last time it probed your /discovery endpoint — the same reachability an external agent depends on. Clearly labeled as a snapshot (not a live scan), scoped to discovery reachability only, with a staleness warning past 7 days. Read-only: does not trigger a new probe or change federation consent.
