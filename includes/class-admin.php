@@ -133,9 +133,15 @@ class KaliCart_Bridge_Admin {
             'external_check_reachable'     => __( 'Reachable', 'kalicart-bridge' ),
             'external_check_unreachable'   => __( 'Not reachable', 'kalicart-bridge' ),
             'external_check_never'         => __( 'Never checked', 'kalicart-bridge' ),
-            'external_check_stale'         => __( 'This observation is more than 7 days old \u2014 consider re-activating to refresh it.', 'kalicart-bridge' ),
-            'external_check_ago_days'      => __( 'days ago', 'kalicart-bridge' ),
-            'external_check_ago_hours'     => __( 'hours ago', 'kalicart-bridge' ),
+            'external_check_stale'         => __( 'This observation is more than 7 days old.', 'kalicart-bridge' ),
+            /* translators: %d: number of days since the last external observation */
+            'external_check_ago_day'       => __( '%d day ago', 'kalicart-bridge' ),
+            /* translators: %d: number of days since the last external observation */
+            'external_check_ago_days'      => __( '%d days ago', 'kalicart-bridge' ),
+            /* translators: %d: number of hours since the last external observation */
+            'external_check_ago_hour'      => __( '%d hour ago', 'kalicart-bridge' ),
+            /* translators: %d: number of hours since the last external observation */
+            'external_check_ago_hours'     => __( '%d hours ago', 'kalicart-bridge' ),
             'external_check_ago_now'       => __( 'just now', 'kalicart-bridge' ),
             'yes'                           => __( 'Yes', 'kalicart-bridge' ),
             'no'                            => __( 'No', 'kalicart-bridge' ),
@@ -192,7 +198,7 @@ class KaliCart_Bridge_Admin {
             'ep_categories' => __( 'Full merchant category tree with has_products flag', 'kalicart-bridge' ),
             'ep_health'     => __( 'Catalog quality report — quarantine list, suggestions, scores', 'kalicart-bridge' ),
             'ep_checkout'   => __( 'POST — agent creates cart session, returns cart_url and checkout_url for buyer', 'kalicart-bridge' ),
-            'warn_badge'     => __( 'The AI catalog badge is an optional body-DOM discovery anchor and is off by default. Head-reading agents, the REST API, MCP and the ChatGPT feed do not depend on it.', 'kalicart-bridge' ),
+            'warn_badge'     => __( 'The AI catalog badge is an optional discovery anchor in the storefront body DOM and is disabled by default. Agents that inspect the document head can discover the catalog without it; the REST API, MCP and the ChatGPT feed do not depend on it.', 'kalicart-bridge' ),
             'warn_robots'    => __( 'Disabling the robots.txt directive removes the crawl permission for AI agents. Some agents check robots.txt before querying any endpoint.', 'kalicart-bridge' ),
             'warn_global'    => __( 'Disabling Global indexing consent removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Direct agent access to this store stays active.', 'kalicart-bridge' ),
             'warn_sitemap'   => __( 'Disabling the agentic sitemap removes the structured endpoint map that agents use to enumerate your catalog surfaces.', 'kalicart-bridge' ),

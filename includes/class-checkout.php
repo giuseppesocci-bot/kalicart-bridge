@@ -80,30 +80,14 @@ class KaliCart_Bridge_Checkout {
 
         // Rate limit (mitigation, not absolute protection - WooCommerce's own Store API
         // rate limiter states the same). Two layers: per-client and a short global cap,
-        // both proxy-aware (first X-Forwarded-For entry, else REMOTE_ADDR - same extraction
-        // as class-signals.php for consistency). Uses transients: "good enough" throttling,
+        // both proxy-aware (the X-Forwarded-For chain is used only behind explicitly trusted
+        // proxies and is walked from the nearest hop outward). Uses transients: "good enough"
+        // throttling,
         // NOT the strict atomicity used below for the session claim, where correctness of
         // the funnel/attribution actually depends on it.
         $rl = self::check_rate_limit();
         if ( true !== $rl ) {
             return $rl; // WP_REST_Response 429 with Retry-After
-        }
-
-        // Quantity cap: reject a session that WooCommerce's own cart would refuse anyway,
-        // with a clear message instead of a silent reduction later. This is an early-reject
-        // nicety, not a security boundary - WC_Cart::add_to_cart() (called by
-        // handle_session_redirect()) already validates is_purchasable()/has_enough_stock()/
-        // sold_individually independently of Bridge.
-        foreach ( (array) ( $body['items'] ?? [] ) as $it ) {
-            $pid = (int) ( $it['product_id'] ?? 0 );
-            $qty = (int) ( $it['quantity'] ?? 0 );
-            $p   = $pid ? wc_get_product( $pid ) : null;
-            if ( $p ) {
-                $max = $p->get_max_purchase_quantity();
-                if ( $max > 0 && $qty > $max ) {
-                    return self::error( sprintf( 'Quantity %d for product %d exceeds the maximum purchasable quantity (%d).', $qty, $pid, $max ), 400 );
-                }
-            }
         }
 
         // Idempotency-Key: an agent that retries the same request (network failure or
@@ -147,10 +131,15 @@ class KaliCart_Bridge_Checkout {
         }
 
         // Valida e normalizza ogni item
-        $items      = [];
-        $line_total = 0.0;
+        $items                = [];
+        $line_total           = 0.0;
+        $requested_quantities = [];
 
         foreach ( $raw_items as $idx => $raw ) {
+            if ( ! is_array( $raw ) ) {
+                return self::error( "items[$idx] must be an object.", 400 );
+            }
+
             $product_id   = absint( $raw['product_id'] ?? 0 );
             $quantity     = max( 1, absint( $raw['quantity'] ?? 1 ) );
             $variation_id = absint( $raw['variation_id'] ?? 0 );
@@ -176,6 +165,24 @@ class KaliCart_Bridge_Checkout {
             $price_product = $variation_id ? wc_get_product( $variation_id ) : $product;
             if ( ! $price_product ) {
                 return self::error( "items[$idx]: variation $variation_id not found.", 404 );
+            }
+            if ( $variation_id && ( ! $price_product->is_type( 'variation' ) || (int) $price_product->get_parent_id() !== $product_id ) ) {
+                return self::error( "items[$idx]: variation $variation_id is not valid for product $product_id.", 422 );
+            }
+            if ( ! $price_product->is_in_stock() ) {
+                return self::error( "items[$idx]: product $product_id is out of stock.", 409 );
+            }
+
+            // Validate the effective purchasable object after normalizing both accepted
+            // request formats. For variable products the stock/sold-individually ceiling
+            // belongs to the selected variation, not to its parent product. Duplicate rows
+            // for the same cart item are accumulated so they cannot bypass the ceiling.
+            $quantity_key = $product_id . ':' . $variation_id;
+            $requested_quantities[ $quantity_key ] = (int) ( $requested_quantities[ $quantity_key ] ?? 0 ) + $quantity;
+            $requested_quantity = $requested_quantities[ $quantity_key ];
+            $max_quantity       = $price_product->get_max_purchase_quantity();
+            if ( $max_quantity >= 0 && $requested_quantity > $max_quantity ) {
+                return self::error( sprintf( 'Quantity %d for product %d exceeds the maximum purchasable quantity (%d).', $requested_quantity, $product_id, $max_quantity ), 400 );
             }
 
             $unit_price  = (float) $price_product->get_price();
@@ -284,13 +291,7 @@ class KaliCart_Bridge_Checkout {
         $session_id = sanitize_text_field( wp_unslash( $_GET['kalicart_session'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $dest       = sanitize_text_field( wp_unslash( $_GET['kalicart_dest'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-        if ( ! $session_id || ! in_array( $dest, [ 'cart', 'checkout' ], true ) ) return;
-
-        $data = get_transient( 'kalicart_session_' . $session_id );
-        if ( ! $data ) {
-            wp_safe_redirect( wc_get_cart_url() );
-            exit;
-        }
+        if ( ! self::is_valid_session_token( $session_id ) || ! in_array( $dest, [ 'cart', 'checkout' ], true ) ) return;
 
         // Soft check: has this session ALREADY produced an attributed order (claimed by
         // attribute_order(), see below)? If so, do NOT populate the cart or reveal anything
@@ -298,12 +299,18 @@ class KaliCart_Bridge_Checkout {
         // to the first order's checkout would leak it to whoever holds this URL next. Show
         // a generic message and stop. The authoritative, race-safe check is the atomic claim
         // at order-processed time; this is a fast, honest early exit for the common case.
-        if ( get_option( 'kalicart_session_claimed_' . $session_id ) ) {
+        if ( self::session_is_claimed( $session_id ) ) {
             wp_die(
                 esc_html__( 'This checkout link has already been used and cannot be reused.', 'kalicart-bridge' ),
                 esc_html__( 'Link already used', 'kalicart-bridge' ),
                 [ 'response' => 410 ]
             );
+        }
+
+        $data = get_transient( 'kalicart_session_' . $session_id );
+        if ( ! $data ) {
+            wp_safe_redirect( wc_get_cart_url() );
+            exit;
         }
 
         // Funnel guard: was this session ALREADY at cart_loaded before this visit? A buyer
@@ -351,6 +358,22 @@ class KaliCart_Bridge_Checkout {
      */
     private static function claim_retention_seconds(): int {
         return (int) apply_filters( 'kalicart_bridge_claim_retention_seconds', 30 * DAY_IN_SECONDS );
+    }
+
+    /**
+     * Read through the same uncached storage used by the atomic INSERT IGNORE claim.
+     * Mixing that write with get_option() would let the notoptions cache hide a newly
+     * inserted claim, especially when a persistent object cache is active.
+     */
+    private static function session_is_claimed( string $session_id ): bool {
+        global $wpdb;
+        $claim_key = 'kalicart_session_claimed_' . $session_id;
+        $claimed = $wpdb->get_var( $wpdb->prepare(
+            "SELECT 1 FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+            $claim_key
+        ) );
+        // Fail closed: a storage error must never repopulate a potentially used link.
+        return null !== $claimed || '' !== $wpdb->last_error;
     }
 
     public static function cleanup_stale_claims(): void {
@@ -414,8 +437,12 @@ class KaliCart_Bridge_Checkout {
         if ( $remote === '' ) {
             return false;
         }
+        return self::is_trusted_proxy_ip( $remote );
+    }
+
+    private static function is_trusted_proxy_ip( string $ip ): bool {
         foreach ( self::trusted_proxies() as $entry ) {
-            if ( self::ip_in_cidr( $remote, (string) $entry ) ) {
+            if ( self::ip_in_cidr( $ip, (string) $entry ) ) {
                 return true;
             }
         }
@@ -423,13 +450,23 @@ class KaliCart_Bridge_Checkout {
     }
 
     private static function client_ip(): string {
+        $remote = trim( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) );
         if ( self::remote_addr_is_trusted_proxy() ) {
             $xff = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? (string) $_SERVER['HTTP_X_FORWARDED_FOR'] : '';
             if ( $xff !== '' ) {
-                return trim( explode( ',', $xff )[0] );
+                // Trusted proxies normally append to X-Forwarded-For. Walk right-to-left,
+                // discard trusted proxy hops, and use the nearest untrusted valid address.
+                // This prevents a client-supplied leftmost value from rotating the limiter key.
+                $hops = array_reverse( array_map( 'trim', explode( ',', $xff ) ) );
+                foreach ( $hops as $hop ) {
+                    if ( ! filter_var( $hop, FILTER_VALIDATE_IP ) || self::is_trusted_proxy_ip( $hop ) ) {
+                        continue;
+                    }
+                    return $hop;
+                }
             }
         }
-        return (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
+        return $remote;
     }
 
     private static function rate_limit_per_client(): int {
@@ -541,17 +578,17 @@ class KaliCart_Bridge_Checkout {
         if ( ! is_array( $stats ) ) {
             $stats = [];
         }
+        $stats[ $day ][ $metric ] = (int) ( $stats[ $day ][ $metric ] ?? 0 ) + 1;
         if ( count( $stats ) > 31 ) {
             ksort( $stats );
             $stats = array_slice( $stats, -31, null, true );
         }
-        $stats[ $day ][ $metric ] = (int) ( $stats[ $day ][ $metric ] ?? 0 ) + 1;
         update_option( 'kalicart_bridge_agent_funnel', $stats, false );
     }
 
     /**
-     * Funnel totals for the panel: 30-day rollup of the three counters, plus net paid
-     * value of linked orders (paid statuses only, minus refunds). HPOS-safe: uses
+     * Funnel totals for the panel: 30 calendar days including today, plus the net paid
+     * value of orders linked in that same window. HPOS-safe: uses paginated
      * wc_get_orders()/WC_Order CRUD, never raw postmeta queries.
      */
     public static function get_funnel_report(): array {
@@ -559,7 +596,8 @@ class KaliCart_Bridge_Checkout {
         if ( ! is_array( $stats ) ) {
             $stats = [];
         }
-        $cutoff = gmdate( 'Y-m-d', strtotime( '-30 days' ) );
+        $now    = time();
+        $cutoff = gmdate( 'Y-m-d', $now - ( 29 * DAY_IN_SECONDS ) );
         $totals = [ 'sessions_created' => 0, 'carts_loaded' => 0, 'orders_linked' => 0 ];
         foreach ( $stats as $day => $bucket ) {
             if ( $day < $cutoff || ! is_array( $bucket ) ) {
@@ -570,27 +608,38 @@ class KaliCart_Bridge_Checkout {
             }
         }
 
-        $order_ids = wc_get_orders( [
-            'meta_key'   => '_kalicart_bridge_source',
-            'meta_value' => 'agent_checkout',
-            'return'     => 'ids',
-            'limit'      => 500, // known scaling point: raise or paginate if this is ever hit
-            'status'     => wc_get_is_paid_statuses(), // plain array of status slugs, NOT associative — no array_keys()
-        ] );
-        // Paid-status membership is not proof of payment: a COD/BACS/cheque order reaches
-        // 'processing' immediately, with date_paid left NULL (verified live on this
-        // install). get_date_paid() is set only by WC_Order::payment_complete(), which real
-        // gateways call on actual confirmation - the correct signal for "genuinely paid".
-        $net          = 0.0;
-        $paid_count   = 0;
-        foreach ( $order_ids as $oid ) {
-            $o = wc_get_order( $oid );
-            if ( ! $o || ! $o->get_date_paid() ) {
-                continue;
+        $window_start = strtotime( $cutoff . ' 00:00:00 UTC' );
+        $query_args   = [
+            'meta_key'     => '_kalicart_bridge_source',
+            'meta_value'   => 'agent_checkout',
+            'date_created' => $window_start . '...' . $now,
+            'return'       => 'objects',
+            'limit'        => 100,
+            'paginate'     => true,
+            'orderby'      => 'ID',
+            'order'        => 'ASC',
+        ];
+        // A paid-looking status is not proof of payment: COD/BACS/cheque orders can reach
+        // processing with date_paid still NULL. Conversely, a refunded order can retain a
+        // genuine payment date and must contribute its post-refund net value (often zero).
+        $net        = 0.0;
+        $paid_count = 0;
+        $page       = 1;
+        do {
+            $query_args['page'] = $page;
+            $result             = wc_get_orders( $query_args );
+            $orders             = is_object( $result ) && isset( $result->orders ) ? (array) $result->orders : (array) $result;
+            $max_pages          = is_object( $result ) && isset( $result->max_num_pages ) ? (int) $result->max_num_pages : 1;
+
+            foreach ( $orders as $order ) {
+                if ( ! ( $order instanceof WC_Order ) || ! $order->get_date_paid() ) {
+                    continue;
+                }
+                $paid_count++;
+                $net += (float) $order->get_total() - (float) $order->get_total_refunded();
             }
-            $paid_count++;
-            $net += (float) $o->get_total() - (float) $o->get_total_refunded();
-        }
+            $page++;
+        } while ( $page <= $max_pages );
         $totals['orders_paid_count']    = $paid_count;
         $totals['net_paid_value']       = $net;
         $totals['currency']             = get_woocommerce_currency();

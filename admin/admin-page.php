@@ -60,7 +60,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
          a correctly-configured Bridge invisible to real agents; this surfaces that gap). -->
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--kb-border,#e2e2e2)">
       <button type="button" class="kali-btn kali-btn--secondary" id="externalVisibilityBtn"><?php esc_html_e( 'Check external visibility', 'kalicart-bridge' ); ?></button>
-      <p style="margin:6px 0 0;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Shows KaliCart Global\'s last periodic observation of your discovery endpoint \u2014 not a live scan. Covers discovery reachability only, not MCP, the ChatGPT feed, or checkout.', 'kalicart-bridge' ); ?></p>
+      <p style="margin:6px 0 0;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Shows KaliCart Global’s latest periodic observation of your discovery endpoint — not a live scan. It checks discovery reachability only, not MCP, the ChatGPT feed, or checkout.', 'kalicart-bridge' ); ?></p>
       <div id="externalVisibilityResult" style="margin-top:8px;font-size:13px"></div>
     </div>
 
@@ -393,7 +393,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
   <!-- TAB: STATS -->
   <div id="kali-tab-stats" class="kali-panel" style="display:<?php echo 'stats' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
     <div class="kali-section-title"><?php esc_html_e( 'Agent checkout', 'kalicart-bridge' ); ?></div>
-    <p class="kali-hint"><?php esc_html_e( 'Last 30 days, local counters only — no cloud. Orders completed via a Bridge checkout session (classic checkout or Checkout Block) are linked back to that session.', 'kalicart-bridge' ); ?></p>
+    <p class="kali-hint"><?php esc_html_e( 'Last 30 days. Local counters only — no cloud. Orders created from a Bridge checkout session, through either classic checkout or Checkout Block, are linked back to that session.', 'kalicart-bridge' ); ?></p>
 
     <?php
     $kalicart_bridge_funnel = class_exists( 'KaliCart_Bridge_Checkout' ) ? KaliCart_Bridge_Checkout::get_funnel_report() : null;
@@ -414,10 +414,10 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       </div>
       <div class="kali-stat kali-stat--green">
         <span class="kali-stat__value"><?php echo wp_kses_post( wc_price( $kalicart_bridge_funnel['net_paid_value'], [ 'currency' => $kalicart_bridge_funnel['currency'] ] ) ); ?></span>
-        <span class="kali-stat__label"><?php esc_html_e( 'Net value, paid', 'kalicart-bridge' ); ?></span>
+        <span class="kali-stat__label"><?php esc_html_e( 'Net value, payment confirmed', 'kalicart-bridge' ); ?></span>
       </div>
     </div>
-    <p class="kali-hint"><?php esc_html_e( 'Cash on delivery, bank transfer and cheque orders are counted in "Orders linked" but excluded from the net value until WooCommerce records an actual payment confirmation — reaching "processing" is not proof of payment for these methods.', 'kalicart-bridge' ); ?></p>
+    <p class="kali-hint"><?php esc_html_e( 'Cash on delivery, bank transfer and cheque orders are included in “Orders linked”, but excluded from net value unless WooCommerce records a payment date. Reaching “processing” is not proof of payment for these methods.', 'kalicart-bridge' ); ?></p>
     <?php endif; ?>
   </div>
 

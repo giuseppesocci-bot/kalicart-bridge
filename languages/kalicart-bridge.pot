@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-12T16:55:55+02:00\n"
+"POT-Creation-Date: 2026-07-12T21:16:17+02:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: kalicart-bridge\n"
@@ -80,11 +80,11 @@ msgid "Check external visibility"
 msgstr ""
 
 #: admin/admin-page.php:63
-msgid "Shows KaliCart Global's last periodic observation of your discovery endpoint \\u2014 not a live scan. Covers discovery reachability only, not MCP, the ChatGPT feed, or checkout."
+msgid "Shows KaliCart Global’s latest periodic observation of your discovery endpoint — not a live scan. It checks discovery reachability only, not MCP, the ChatGPT feed, or checkout."
 msgstr ""
 
 #: admin/admin-page.php:69
-#: includes/class-admin.php:166
+#: includes/class-admin.php:172
 msgid "Heads up"
 msgstr ""
 
@@ -100,301 +100,305 @@ msgstr ""
 msgid "Keep my catalog federated"
 msgstr ""
 
-#: admin/admin-page.php:87
-msgid "Agent checkout"
-msgstr ""
-
-#: admin/admin-page.php:88
-msgid "Last 30 days, local counters only — no cloud."
-msgstr ""
-
-#: admin/admin-page.php:92
-msgid "Sessions created"
-msgstr ""
-
-#: admin/admin-page.php:96
-msgid "Carts loaded"
-msgstr ""
-
-#: admin/admin-page.php:100
-msgid "Orders linked"
-msgstr ""
-
-#: admin/admin-page.php:104
-msgid "Net value, payment confirmed"
-msgstr ""
-
-#: admin/admin-page.php:107
-msgid "Cash on delivery, bank transfer and cheque orders are counted in \"Orders linked\" but excluded from the net value until payment is actually confirmed — reaching \"processing\" is not proof of payment for these methods."
-msgstr ""
-
-#: admin/admin-page.php:114
+#: admin/admin-page.php:81
 msgid "Overview"
 msgstr ""
 
-#: admin/admin-page.php:115
+#: admin/admin-page.php:82
 msgid "Quality Signals"
 msgstr ""
 
-#: admin/admin-page.php:116
+#: admin/admin-page.php:83
 msgid "Endpoints"
 msgstr ""
 
-#: admin/admin-page.php:118
+#: admin/admin-page.php:85
 msgid "Settings"
 msgstr ""
 
-#: admin/admin-page.php:119
+#: admin/admin-page.php:86
 msgid "Coupons"
 msgstr ""
 
-#: admin/admin-page.php:126
+#: admin/admin-page.php:87
+msgid "Stats"
+msgstr ""
+
+#: admin/admin-page.php:94
 msgid "Analysing catalog…"
 msgstr ""
 
-#: admin/admin-page.php:136
+#: admin/admin-page.php:104
 msgid "quality score"
 msgstr ""
 
-#: admin/admin-page.php:139
+#: admin/admin-page.php:107
 msgid "Catalog coverage"
 msgstr ""
 
-#: admin/admin-page.php:141
-#: admin/admin-page.php:179
+#: admin/admin-page.php:109
+#: admin/admin-page.php:147
 msgid "In stock"
 msgstr ""
 
-#: admin/admin-page.php:146
+#: admin/admin-page.php:114
 msgid "Images"
 msgstr ""
 
-#: admin/admin-page.php:151
+#: admin/admin-page.php:119
 msgid "Description"
 msgstr ""
 
-#: admin/admin-page.php:167
+#: admin/admin-page.php:135
 msgid "Total products"
 msgstr ""
 
-#: admin/admin-page.php:171
+#: admin/admin-page.php:139
 msgid "Healthy"
 msgstr ""
 
-#: admin/admin-page.php:175
+#: admin/admin-page.php:143
 msgid "Quality signals"
 msgstr ""
 
-#: admin/admin-page.php:183
-#: includes/class-admin.php:161
+#: admin/admin-page.php:151
+#: includes/class-admin.php:167
 #: includes/class-quarantine.php:382
 msgid "Out of stock"
 msgstr ""
 
-#: admin/admin-page.php:187
-#: includes/class-admin.php:160
+#: admin/admin-page.php:155
+#: includes/class-admin.php:166
 msgid "No SKU"
 msgstr ""
 
-#: admin/admin-page.php:192
+#: admin/admin-page.php:160
 msgid "Catalog issues"
 msgstr ""
 
-#: admin/admin-page.php:196
+#: admin/admin-page.php:164
 msgid "Bad title"
 msgstr ""
 
-#: admin/admin-page.php:200
-#: includes/class-admin.php:159
+#: admin/admin-page.php:168
+#: includes/class-admin.php:165
 msgid "No image"
 msgstr ""
 
-#: admin/admin-page.php:204
-#: includes/class-admin.php:156
+#: admin/admin-page.php:172
+#: includes/class-admin.php:162
 msgid "No description"
 msgstr ""
 
-#: admin/admin-page.php:208
-#: includes/class-admin.php:157
+#: admin/admin-page.php:176
+#: includes/class-admin.php:163
 #: includes/class-quarantine.php:299
 msgid "No category"
 msgstr ""
 
-#: admin/admin-page.php:212
+#: admin/admin-page.php:180
 msgid "Zero price"
 msgstr ""
 
-#: admin/admin-page.php:217
+#: admin/admin-page.php:185
 msgid "Suggestions"
 msgstr ""
 
-#: admin/admin-page.php:223
+#: admin/admin-page.php:191
 msgid "Refresh"
 msgstr ""
 
-#: admin/admin-page.php:232
+#: admin/admin-page.php:200
 msgid "Products with quality signals"
 msgstr ""
 
-#: admin/admin-page.php:235
+#: admin/admin-page.php:203
 msgid "Nothing here is blocked or hidden: these products stay fully served to agents in catalog, search and MCP. Their issues travel with the data as declared quality flags and a lower score, and agents can weigh them. Fix the signals to raise computability - use the filters below to work each problem in the native Products list."
 msgstr ""
 
-#: admin/admin-page.php:241
+#: admin/admin-page.php:209
 msgid "API Endpoints"
 msgstr ""
 
 #. translators: %s: the /health endpoint path, shown as code
-#: admin/admin-page.php:242
+#: admin/admin-page.php:210
 #, php-format
 msgid "Read-only REST surfaces. No authentication required except %s."
 msgstr ""
 
-#: admin/admin-page.php:281
+#: admin/admin-page.php:249
 msgid "Refund and Returns Policy URL"
 msgstr ""
 
-#: admin/admin-page.php:283
+#: admin/admin-page.php:251
 msgid "Add your refund and returns policy page so AI agents can inform buyers about your return conditions. Without this, the catalog health score is reduced by 10 points."
 msgstr ""
 
-#: admin/admin-page.php:295
-#: includes/class-admin.php:167
+#: admin/admin-page.php:263
+#: includes/class-admin.php:173
 msgid "Test link:"
 msgstr ""
 
-#: admin/admin-page.php:300
+#: admin/admin-page.php:268
 msgid "Signal settings"
 msgstr ""
 
-#: admin/admin-page.php:306
+#: admin/admin-page.php:274
 msgid "AI catalog badge"
 msgstr ""
 
-#: admin/admin-page.php:307
+#: admin/admin-page.php:275
 msgid "Speaking HTML badge visible on the storefront — machine-readable anchor for AI agents."
 msgstr ""
 
-#: admin/admin-page.php:315
+#: admin/admin-page.php:283
 msgid "Position"
 msgstr ""
 
-#: admin/admin-page.php:318
+#: admin/admin-page.php:286
 msgid "Top left"
 msgstr ""
 
-#: admin/admin-page.php:318
+#: admin/admin-page.php:286
 msgid "Top right"
 msgstr ""
 
-#: admin/admin-page.php:318
+#: admin/admin-page.php:286
 msgid "Bottom left"
 msgstr ""
 
-#: admin/admin-page.php:318
+#: admin/admin-page.php:286
 msgid "Bottom right"
 msgstr ""
 
-#: admin/admin-page.php:331
+#: admin/admin-page.php:299
 msgid "robots.txt directive"
 msgstr ""
 
 #. translators: %s: a robots.txt Allow directive, shown as code
-#: admin/admin-page.php:332
+#: admin/admin-page.php:300
 #, php-format
 msgid "Adds %s to robots.txt."
 msgstr ""
 
-#: admin/admin-page.php:339
+#: admin/admin-page.php:307
 msgid "Checkout sessions"
 msgstr ""
 
-#: admin/admin-page.php:339
+#: admin/admin-page.php:307
 msgid "optional"
 msgstr ""
 
 #. translators: %s: the POST /checkout/session endpoint, shown as code
-#: admin/admin-page.php:340
+#: admin/admin-page.php:308
 #, php-format
 msgid "Enables %s — agent creates a session, merchant gets a checkout URL, human completes payment on WooCommerce. No OAuth, no PII, no payment on the agent side."
 msgstr ""
 
-#: admin/admin-page.php:347
+#: admin/admin-page.php:315
 msgid "Agentic sitemap"
 msgstr ""
 
 #. translators: %s: a link to the agentic sitemap file
-#: admin/admin-page.php:348
+#: admin/admin-page.php:316
 #, php-format
 msgid "Serves %s with annotated catalog endpoints."
 msgstr ""
 
-#: admin/admin-page.php:355
+#: admin/admin-page.php:323
 msgid "Agent discovery files"
 msgstr ""
 
 #. translators: %1$s and %2$s: .well-known discovery file paths, shown as code
-#: admin/admin-page.php:356
+#: admin/admin-page.php:324
 #, php-format
 msgid "Writes %1$s and %2$s — standard discovery points for AI agents that probe the site before navigating it."
 msgstr ""
 
-#: admin/admin-page.php:361
+#: admin/admin-page.php:329
 msgid "Agent discovery hints"
 msgstr ""
 
-#: admin/admin-page.php:365
+#: admin/admin-page.php:333
 msgid "Search form link"
 msgstr ""
 
-#: admin/admin-page.php:366
+#: admin/admin-page.php:334
 msgid "Appends a visible \"Structured catalog for AI agents\" link after every search form."
 msgstr ""
 
-#: admin/admin-page.php:373
+#: admin/admin-page.php:341
 msgid "Search results link"
 msgstr ""
 
-#: admin/admin-page.php:374
+#: admin/admin-page.php:342
 msgid "Shows a minimal \"Machine-readable catalog\" link at the bottom of search pages — both on zero-results and when results are ambiguous or partial."
 msgstr ""
 
-#: admin/admin-page.php:381
+#: admin/admin-page.php:349
 msgid "Category & product page links"
 msgstr ""
 
-#: admin/admin-page.php:382
+#: admin/admin-page.php:350
 msgid "Shows a \"Machine-readable category data\" link on category pages and a \"Machine-readable product data\" link above the product meta on single product pages — both pointing to the structured API endpoint."
 msgstr ""
 
-#: admin/admin-page.php:390
-#: admin/admin-page.php:420
+#: admin/admin-page.php:358
+#: admin/admin-page.php:388
 msgid "Save settings"
 msgstr ""
 
-#: admin/admin-page.php:391
-#: admin/admin-page.php:421
+#: admin/admin-page.php:359
+#: admin/admin-page.php:389
 msgid "Saved"
 msgstr ""
 
-#: admin/admin-page.php:398
+#: admin/admin-page.php:366
 msgid "Agent coupon exposure"
 msgstr ""
 
-#: admin/admin-page.php:400
+#: admin/admin-page.php:368
 msgid "By default the catalog tells agents nothing about your coupons. Turn this on and pick exactly which active coupons agents may see. Selected coupons are presented to agents as conditional savings — WooCommerce checkout always has the final say on whether a coupon actually applies. Private, targeted or newsletter codes you leave unticked are never exposed."
 msgstr ""
 
-#: admin/admin-page.php:406
+#: admin/admin-page.php:374
 msgid "Expose coupons to agents"
 msgstr ""
 
-#: admin/admin-page.php:407
+#: admin/admin-page.php:375
 msgid "Master switch. When off, active_coupons is always empty regardless of selection below."
 msgstr ""
 
-#: admin/admin-page.php:414
+#: admin/admin-page.php:382
 msgid "Eligible coupons"
+msgstr ""
+
+#: admin/admin-page.php:395
+msgid "Agent checkout"
+msgstr ""
+
+#: admin/admin-page.php:396
+msgid "Last 30 days. Local counters only — no cloud. Orders created from a Bridge checkout session, through either classic checkout or Checkout Block, are linked back to that session."
+msgstr ""
+
+#: admin/admin-page.php:405
+msgid "Sessions created"
+msgstr ""
+
+#: admin/admin-page.php:409
+msgid "Carts loaded"
+msgstr ""
+
+#: admin/admin-page.php:413
+msgid "Orders linked"
+msgstr ""
+
+#: admin/admin-page.php:417
+msgid "Net value, payment confirmed"
+msgstr ""
+
+#: admin/admin-page.php:420
+msgid "Cash on delivery, bank transfer and cheque orders are included in “Orders linked”, but excluded from net value unless WooCommerce records a payment date. Reaching “processing” is not proof of payment for these methods."
 msgstr ""
 
 #: includes/class-acp-feed.php:514
@@ -446,8 +450,8 @@ msgid "%d rows are in the feed without the brand field. Brand is required by the
 msgstr ""
 
 #: includes/class-acp-feed.php:668
-#: includes/class-acp-feed.php:682
-#: includes/class-acp-feed.php:716
+#: includes/class-acp-feed.php:690
+#: includes/class-acp-feed.php:724
 msgid "Complete"
 msgstr ""
 
@@ -463,317 +467,321 @@ msgstr ""
 msgid "Name used as description"
 msgstr ""
 
-#. translators: %d: feed rows sent with the product name as description
-#: includes/class-acp-feed.php:680
+#. translators: %d: feed rows that use the product name as description
+#: includes/class-acp-feed.php:681
 #, php-format
-msgid "%d feed rows have no product description and were sent with the product name instead. Add a product description to provide complete product information."
+msgid "%d feed row has no product description and uses the product name instead. Add a product description to provide complete product information."
+msgid_plural "%d feed rows have no product description and use the product name instead. Add a product description to provide complete product information."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-acp-feed.php:691
+msgid "Every feed row uses a product description from WooCommerce."
 msgstr ""
 
-#: includes/class-acp-feed.php:683
-msgid "Every feed row carries a real product description."
-msgstr ""
-
-#: includes/class-acp-feed.php:687
+#: includes/class-acp-feed.php:695
 msgid "ChatGPT Product Feed (OpenAI)"
 msgstr ""
 
-#: includes/class-acp-feed.php:688
+#: includes/class-acp-feed.php:696
 msgid "This optional export follows OpenAI’s direct product feed specification. Application and approval are required; after approval, OpenAI provides the delivery channel. Checkout stays on your storefront."
 msgstr ""
 
-#: includes/class-acp-feed.php:689
+#: includes/class-acp-feed.php:697
 msgid "ChatGPT feed only:"
 msgstr ""
 
-#: includes/class-acp-feed.php:689
+#: includes/class-acp-feed.php:697
 msgid "Every status and setting in this section refers only to the optional file delivered to OpenAI. It does not enable, disable or limit KaliCart search, REST API, MCP, UCP or the federated catalog."
 msgstr ""
 
-#: includes/class-acp-feed.php:693
+#: includes/class-acp-feed.php:701
 msgid "Last generation blocked:"
 msgstr ""
 
-#: includes/class-acp-feed.php:693
+#: includes/class-acp-feed.php:701
 msgid "The previous valid feed, if any, was preserved."
 msgstr ""
 
-#: includes/class-acp-feed.php:696
+#: includes/class-acp-feed.php:704
 msgid "Feed readiness has not been checked with the current settings. Save and generate a snapshot to run the validator."
 msgstr ""
 
-#: includes/class-acp-feed.php:699
+#: includes/class-acp-feed.php:707
 msgid "Rows submitted without brand."
 msgstr ""
 
-#: includes/class-acp-feed.php:699
+#: includes/class-acp-feed.php:707
 msgid "Brand is required by OpenAI’s direct product feed specification. These rows are included in the file without the brand field: OpenAI may accept or reject them - by submitting the feed you knowingly assume that responsibility. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API, MCP and UCP surfaces."
 msgstr ""
 
-#: includes/class-acp-feed.php:702
+#: includes/class-acp-feed.php:710
 msgid "Merchant brand fallback applied."
 msgstr ""
 
-#: includes/class-acp-feed.php:702
+#: includes/class-acp-feed.php:710
 msgid "These rows do not contain a product-level brand in WooCommerce. The merchant is responsible for declaring that the fallback is accurate for every affected product."
 msgstr ""
 
-#: includes/class-acp-feed.php:705
-msgid "Products sent without a description."
+#: includes/class-acp-feed.php:713
+msgid "Products using the name as description."
 msgstr ""
 
-#: includes/class-acp-feed.php:705
-msgid "These feed rows have no product description in WooCommerce and were sent with the product name in its place. Add a product description to provide complete product information. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API, MCP and UCP surfaces."
+#: includes/class-acp-feed.php:713
+msgid "These feed rows have no product description in WooCommerce and use the product name in its place. Add a product description to provide complete product information. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API, MCP and UCP surfaces."
 msgstr ""
 
-#: includes/class-acp-feed.php:708
+#: includes/class-acp-feed.php:716
 msgid "Missing primary product image."
 msgstr ""
 
-#: includes/class-acp-feed.php:708
+#: includes/class-acp-feed.php:716
 msgid "A primary product image is required by OpenAI’s direct product feed specification. Affected feed rows remain available in the agent-readable catalog but are excluded from the ChatGPT product feed."
 msgstr ""
 
-#: includes/class-acp-feed.php:712
+#: includes/class-acp-feed.php:720
 msgid "Return policy"
 msgstr ""
 
-#: includes/class-acp-feed.php:712
+#: includes/class-acp-feed.php:720
 msgid "Configured in the Settings tab: "
 msgstr ""
 
-#: includes/class-acp-feed.php:712
+#: includes/class-acp-feed.php:720
 msgid "Configure it once in the Settings tab; feed generation is blocked when missing."
 msgstr ""
 
-#: includes/class-acp-feed.php:713
-#: includes/class-acp-feed.php:766
+#: includes/class-acp-feed.php:721
+#: includes/class-acp-feed.php:781
 msgid "Target countries"
 msgstr ""
 
-#: includes/class-acp-feed.php:713
+#: includes/class-acp-feed.php:721
 msgid "Use ISO 3166-1 alpha-2 country codes."
 msgstr ""
 
-#: includes/class-acp-feed.php:714
+#: includes/class-acp-feed.php:722
 msgid "Product brand"
 msgstr ""
 
-#: includes/class-acp-feed.php:715
+#: includes/class-acp-feed.php:723
 msgid "Product description"
 msgstr ""
 
-#: includes/class-acp-feed.php:716
+#: includes/class-acp-feed.php:724
 msgid "Primary image"
 msgstr ""
 
-#: includes/class-acp-feed.php:716
+#: includes/class-acp-feed.php:724
 msgid "Missing rows"
 msgstr ""
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:716
-#: includes/class-acp-feed.php:717
+#: includes/class-acp-feed.php:724
+#: includes/class-acp-feed.php:725
 msgid "Run feed generation to check."
 msgstr ""
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:716
+#: includes/class-acp-feed.php:724
 #, php-format
 msgid "%d feed rows excluded in the last run."
 msgstr ""
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:717
+#: includes/class-acp-feed.php:725
 msgid "Schema validation"
 msgstr ""
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:717
+#: includes/class-acp-feed.php:725
 msgid "Passed"
 msgstr ""
 
 #. translators: %d: rows excluded for missing image
-#: includes/class-acp-feed.php:717
+#: includes/class-acp-feed.php:725
 msgid "Invalid rows"
 msgstr ""
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:717
+#: includes/class-acp-feed.php:725
 #, php-format
 msgid "%d invalid rows in the last run."
 msgstr ""
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:718
+#: includes/class-acp-feed.php:726
 msgid "Daily ChatGPT feed refresh"
 msgstr ""
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:718
+#: includes/class-acp-feed.php:726
 msgid "Enabled"
 msgstr ""
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:718
+#: includes/class-acp-feed.php:726
 msgid "Manual only"
 msgstr ""
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:718
+#: includes/class-acp-feed.php:726
 msgid "Regenerates the validated ChatGPT feed file once per day; delivery to OpenAI is a separate step."
 msgstr ""
 
 #. translators: %d: invalid rows
-#: includes/class-acp-feed.php:718
+#: includes/class-acp-feed.php:726
 msgid "The ChatGPT feed changes only when generated manually and may become outdated after catalog changes."
 msgstr ""
 
-#: includes/class-acp-feed.php:719
+#: includes/class-acp-feed.php:727
 msgid "OpenAI feed delivery"
 msgstr ""
 
-#: includes/class-acp-feed.php:719
+#: includes/class-acp-feed.php:727
 msgid "Connected"
 msgstr ""
 
-#: includes/class-acp-feed.php:719
+#: includes/class-acp-feed.php:727
 msgid "Application required"
 msgstr ""
 
-#: includes/class-acp-feed.php:719
+#: includes/class-acp-feed.php:727
 msgid "This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials."
 msgstr ""
 
-#: includes/class-acp-feed.php:723
+#: includes/class-acp-feed.php:732
 msgid "Last validated ChatGPT feed snapshot:"
 msgstr ""
 
-#: includes/class-acp-feed.php:723
+#: includes/class-acp-feed.php:732
 msgid "conformant rows from"
 msgstr ""
 
-#: includes/class-acp-feed.php:723
+#: includes/class-acp-feed.php:732
 msgid "products."
 msgstr ""
 
 #. translators: %d: rows excluded by the validator
-#: includes/class-acp-feed.php:723
+#: includes/class-acp-feed.php:735
 #, php-format
-msgid "%d rows excluded by the validator."
-msgstr ""
+msgid "%d row excluded by the validator."
+msgid_plural "%d rows excluded by the validator."
+msgstr[0] ""
+msgstr[1] ""
 
-#: includes/class-acp-feed.php:727
+#: includes/class-acp-feed.php:742
 msgid "Download JSONL"
 msgstr ""
 
-#: includes/class-acp-feed.php:727
+#: includes/class-acp-feed.php:742
 msgid "Download JSONL.GZ"
 msgstr ""
 
-#: includes/class-acp-feed.php:740
+#: includes/class-acp-feed.php:755
 msgid "ChatGPT feed data gaps"
 msgstr ""
 
-#: includes/class-acp-feed.php:741
+#: includes/class-acp-feed.php:756
 msgid "Live counts on your current catalog. Products without a primary image are excluded from the ChatGPT feed; products without a brand are submitted without that field, at your responsibility. None of this affects the agent-readable catalog, search, REST API, MCP or UCP surfaces."
 msgstr ""
 
-#: includes/class-acp-feed.php:744
+#: includes/class-acp-feed.php:759
 msgid "Missing brand (submitted without it)"
 msgstr ""
 
-#: includes/class-acp-feed.php:744
+#: includes/class-acp-feed.php:759
 msgid "These rows enter the feed without the brand field; OpenAI may reject them. Assign a brand (WooCommerce Brands taxonomy or a brand attribute) to make them fully conformant."
 msgstr ""
 
-#: includes/class-acp-feed.php:745
+#: includes/class-acp-feed.php:760
 msgid "Missing primary image"
 msgstr ""
 
-#: includes/class-acp-feed.php:745
+#: includes/class-acp-feed.php:760
 msgid "Set a featured image in the product editor."
 msgstr ""
 
-#: includes/class-acp-feed.php:754
+#: includes/class-acp-feed.php:769
 msgid "Open in Products list"
 msgstr ""
 
-#: includes/class-acp-feed.php:754
+#: includes/class-acp-feed.php:769
 msgid "Export CSV"
 msgstr ""
 
-#: includes/class-acp-feed.php:760
+#: includes/class-acp-feed.php:775
 msgid "ChatGPT feed generation settings"
 msgstr ""
 
-#: includes/class-acp-feed.php:763
+#: includes/class-acp-feed.php:778
 msgid "Generate the ChatGPT feed daily"
 msgstr ""
 
-#: includes/class-acp-feed.php:763
+#: includes/class-acp-feed.php:778
 msgid "Refreshes the local validated file only. Automatic delivery can be configured after OpenAI approves the merchant and supplies credentials."
 msgstr ""
 
-#: includes/class-acp-feed.php:765
+#: includes/class-acp-feed.php:780
 msgid "Brand fallback (optional)"
 msgstr ""
 
-#: includes/class-acp-feed.php:765
+#: includes/class-acp-feed.php:780
 msgid "Your merchant-owned brand"
 msgstr ""
 
-#: includes/class-acp-feed.php:765
+#: includes/class-acp-feed.php:780
 msgid "Leave empty unless every otherwise brandless product is genuinely sold under this merchant-owned brand. By entering a value, the merchant declares it accurate and accepts responsibility for applying it to every missing-brand feed row. Multi-brand retailers should leave this empty."
 msgstr ""
 
-#: includes/class-acp-feed.php:766
+#: includes/class-acp-feed.php:781
 msgid "Comma-separated ISO 3166-1 alpha-2 codes. Defaults to WooCommerce selling locations."
 msgstr ""
 
-#: includes/class-acp-feed.php:768
+#: includes/class-acp-feed.php:783
 msgid "Save and generate/validate now"
 msgstr ""
 
-#: includes/class-acp-feed.php:771
+#: includes/class-acp-feed.php:786
 msgid "What to do with this file (OpenAI guidelines)"
 msgstr ""
 
-#: includes/class-acp-feed.php:772
+#: includes/class-acp-feed.php:787
 msgid "The file is a complete snapshot of your feed-eligible products, regenerated in full every time: products removed from your catalog disappear from the next snapshot automatically. OpenAI recommends refreshing it at least daily and always keeping the same filename."
 msgstr ""
 
-#: includes/class-acp-feed.php:774
+#: includes/class-acp-feed.php:789
 msgid "Generate and validate here."
 msgstr ""
 
-#: includes/class-acp-feed.php:774
+#: includes/class-acp-feed.php:789
 msgid "Every row is checked against the OpenAI Product Feed specification before it enters the file."
 msgstr ""
 
-#: includes/class-acp-feed.php:775
+#: includes/class-acp-feed.php:790
 msgid "Apply for direct-feed access."
 msgstr ""
 
 #. translators: %s: link to chatgpt.com/merchants
-#: includes/class-acp-feed.php:777
+#: includes/class-acp-feed.php:792
 #, php-format
 msgid "Submit your store at %s with your business contact. Approval is decided entirely by OpenAI; being on the waitlist costs nothing."
 msgstr ""
 
-#: includes/class-acp-feed.php:780
+#: includes/class-acp-feed.php:795
 msgid "Deliver after approval."
 msgstr ""
 
-#: includes/class-acp-feed.php:780
+#: includes/class-acp-feed.php:795
 msgid "OpenAI assigns your delivery channel and credentials (SFTP push or API). Upload the JSONL.GZ file there on every refresh. OpenAI does not fetch any URL from your site: the download buttons above are for you, not for them."
 msgstr ""
 
-#: includes/class-acp-feed.php:782
+#: includes/class-acp-feed.php:797
 msgid "The feed format is region-neutral. Merchant eligibility and shopping-surface availability are determined by OpenAI and may vary by market."
 msgstr ""
 
 #. translators: %s: link to OpenAI commerce documentation
-#: includes/class-acp-feed.php:784
+#: includes/class-acp-feed.php:799
 #, php-format
 msgid "Official documentation: %s."
 msgstr ""
@@ -827,252 +835,268 @@ msgid "Never checked"
 msgstr ""
 
 #: includes/class-admin.php:136
-msgid "This observation is more than 7 days old \\u2014 consider re-activating to refresh it."
+msgid "This observation is more than 7 days old."
 msgstr ""
 
-#: includes/class-admin.php:137
-msgid "days ago"
-msgstr ""
-
+#. translators: %d: number of days since the last external observation
 #: includes/class-admin.php:138
-msgid "hours ago"
+#, php-format
+msgid "%d day ago"
 msgstr ""
 
-#: includes/class-admin.php:139
-msgid "just now"
-msgstr ""
-
+#. translators: %d: number of days since the last external observation
 #: includes/class-admin.php:140
-msgid "Yes"
+#, php-format
+msgid "%d days ago"
 msgstr ""
 
-#: includes/class-admin.php:141
-msgid "No"
-msgstr ""
-
+#. translators: %d: number of hours since the last external observation
 #: includes/class-admin.php:142
-msgid "Error:"
+#, php-format
+msgid "%d hour ago"
 msgstr ""
 
-#: includes/class-admin.php:143
-msgid "Loading…"
-msgstr ""
-
+#. translators: %d: number of hours since the last external observation
 #: includes/class-admin.php:144
-msgid "No issues. Catalog looks great!"
+#, php-format
+msgid "%d hours ago"
 msgstr ""
 
 #: includes/class-admin.php:145
-msgid "products"
+msgid "just now"
 msgstr ""
 
 #: includes/class-admin.php:146
-msgid "Configure"
+msgid "Yes"
 msgstr ""
 
 #: includes/class-admin.php:147
-msgid "Updated:"
+msgid "No"
 msgstr ""
 
 #: includes/class-admin.php:148
-msgid "No products for"
+msgid "Error:"
 msgstr ""
 
 #: includes/class-admin.php:149
-msgid "No products in quarantine."
+msgid "Loading…"
 msgstr ""
 
 #: includes/class-admin.php:150
+msgid "No issues. Catalog looks great!"
+msgstr ""
+
+#: includes/class-admin.php:151
+msgid "products"
+msgstr ""
+
+#: includes/class-admin.php:152
+msgid "Configure"
+msgstr ""
+
+#: includes/class-admin.php:153
+msgid "Updated:"
+msgstr ""
+
+#: includes/class-admin.php:154
+msgid "No products for"
+msgstr ""
+
+#: includes/class-admin.php:155
+msgid "No products in quarantine."
+msgstr ""
+
+#: includes/class-admin.php:156
 msgid "Showing"
 msgstr ""
 
 #. translators: 1: number of items shown, 2: total number of items
-#: includes/class-admin.php:152
+#: includes/class-admin.php:158
 #, php-format
 msgid "Showing the most recent %1$s of %2$s - use the filters below for the full list."
 msgstr ""
 
-#: includes/class-admin.php:153
+#: includes/class-admin.php:159
 msgid "Critical signals"
 msgstr ""
 
-#: includes/class-admin.php:154
+#: includes/class-admin.php:160
 msgid "Improvements"
 msgstr ""
 
-#: includes/class-admin.php:155
+#: includes/class-admin.php:161
 msgid "Short titles"
 msgstr ""
 
-#: includes/class-admin.php:158
+#: includes/class-admin.php:164
 msgid "No price"
 msgstr ""
 
-#: includes/class-admin.php:162
+#: includes/class-admin.php:168
 msgid "Clear filter"
 msgstr ""
 
-#: includes/class-admin.php:163
+#: includes/class-admin.php:169
 msgid "Open product"
 msgstr ""
 
-#: includes/class-admin.php:164
+#: includes/class-admin.php:170
 msgid "admin only"
 msgstr ""
 
-#: includes/class-admin.php:165
+#: includes/class-admin.php:171
 msgid "Preview"
 msgstr ""
 
-#: includes/class-admin.php:168
+#: includes/class-admin.php:174
 msgid "CONFIGURED"
 msgstr ""
 
-#: includes/class-admin.php:169
+#: includes/class-admin.php:175
 msgid "REQUIRED"
 msgstr ""
 
-#: includes/class-admin.php:170
+#: includes/class-admin.php:176
 msgid "Why product titles matter"
 msgstr ""
 
-#: includes/class-admin.php:171
+#: includes/class-admin.php:177
 msgid "Agents use the title as the first matching signal. Titles should contain at least three useful words, usually product type, brand and model or variant."
 msgstr ""
 
-#: includes/class-admin.php:172
+#: includes/class-admin.php:178
 msgid "Why descriptions matter"
 msgstr ""
 
-#: includes/class-admin.php:173
+#: includes/class-admin.php:179
 msgid "Descriptions give agents the extra attributes that are often missing from filters, such as fit, material, use case, style and compatibility."
 msgstr ""
 
-#: includes/class-admin.php:174
+#: includes/class-admin.php:180
 msgid "Why categories matter"
 msgstr ""
 
-#: includes/class-admin.php:175
+#: includes/class-admin.php:181
 msgid "Categories let agents browse and narrow the catalog even when the user does not know the exact product name used by the merchant."
 msgstr ""
 
-#: includes/class-admin.php:176
+#: includes/class-admin.php:182
 msgid "Why price matters"
 msgstr ""
 
-#: includes/class-admin.php:177
+#: includes/class-admin.php:183
 msgid "Price is required for budget checks, comparisons and purchase decisions. Products without a valid price cannot be trusted in commerce-intent results."
 msgstr ""
 
-#: includes/class-admin.php:178
+#: includes/class-admin.php:184
 msgid "Why images matter"
 msgstr ""
 
-#: includes/class-admin.php:179
+#: includes/class-admin.php:185
 msgid "Images do not block agent queries, but they improve visual verification and reduce ambiguity when products have similar names or variants."
 msgstr ""
 
-#: includes/class-admin.php:180
+#: includes/class-admin.php:186
 msgid "Why SKUs matter"
 msgstr ""
 
-#: includes/class-admin.php:181
+#: includes/class-admin.php:187
 msgid "SKUs do not block agent queries, but they help identify, deduplicate and reconcile exact products across syncs, variants and downstream systems."
 msgstr ""
 
-#: includes/class-admin.php:182
+#: includes/class-admin.php:188
 msgid "Why stock matters"
 msgstr ""
 
-#: includes/class-admin.php:183
+#: includes/class-admin.php:189
 msgid "Availability tells agents whether a product can be proposed now or should be excluded from purchase-ready results."
 msgstr ""
 
-#: includes/class-admin.php:184
+#: includes/class-admin.php:190
 msgid "UCP profile — dev.ucp.shopping.catalog.search + catalog.lookup (v2026-04-08)"
 msgstr ""
 
-#: includes/class-admin.php:185
+#: includes/class-admin.php:191
 msgid "KaliCart Bridge discovery entry point for agents probing well-known paths"
 msgstr ""
 
-#: includes/class-admin.php:186
+#: includes/class-admin.php:192
 msgid "Discovery document — entry point for every agent, full capability map"
 msgstr ""
 
-#: includes/class-admin.php:187
+#: includes/class-admin.php:193
 msgid "Model Context Protocol (MCP) server — JSON-RPC 2.0 over POST; the catalog as agent tools (search_products, get_product, list_products, list_categories, get_meta)"
 msgstr ""
 
-#: includes/class-admin.php:188
+#: includes/class-admin.php:194
 msgid "Accepted filter values, category slugs, price range"
 msgstr ""
 
-#: includes/class-admin.php:189
+#: includes/class-admin.php:195
 msgid "Full-text + filtered search — supports q, category, on_sale, in_stock, price"
 msgstr ""
 
-#: includes/class-admin.php:190
+#: includes/class-admin.php:196
 msgid "Browse products by filters (no text query needed)"
 msgstr ""
 
-#: includes/class-admin.php:191
+#: includes/class-admin.php:197
 msgid "Single product — price, stock, variants[], barcodes, purchase_readiness"
 msgstr ""
 
-#: includes/class-admin.php:192
+#: includes/class-admin.php:198
 msgid "Full merchant category tree with has_products flag"
 msgstr ""
 
-#: includes/class-admin.php:193
+#: includes/class-admin.php:199
 msgid "Catalog quality report — quarantine list, suggestions, scores"
 msgstr ""
 
-#: includes/class-admin.php:194
+#: includes/class-admin.php:200
 msgid "POST — agent creates cart session, returns cart_url and checkout_url for buyer"
 msgstr ""
 
-#: includes/class-admin.php:195
-msgid "The AI catalog badge is an optional body-DOM discovery anchor and is off by default. Head-reading agents, the REST API, MCP and the ChatGPT feed do not depend on it."
-msgstr ""
-
-#: includes/class-admin.php:196
-msgid "Disabling the robots.txt directive removes the crawl permission for AI agents. Some agents check robots.txt before querying any endpoint."
-msgstr ""
-
-#: includes/class-admin.php:197
-msgid "Disabling Global indexing consent removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Direct agent access to this store stays active."
-msgstr ""
-
-#: includes/class-admin.php:198
-msgid "Disabling the agentic sitemap removes the structured endpoint map that agents use to enumerate your catalog surfaces."
-msgstr ""
-
-#: includes/class-admin.php:199
-msgid "Disabling .well-known discovery files removes the first-probe signal used by agents that check standard discovery paths before loading your storefront."
-msgstr ""
-
-#: includes/class-admin.php:200
-msgid "When enabled, only the coupons you tick below are exposed to agents. Selected coupons appear in catalog results as conditional checkout savings; WooCommerce checkout remains the final authority on validity. Coupons you do not tick — including private or targeted codes — are never sent to agents."
-msgstr ""
-
 #: includes/class-admin.php:201
-msgid "No active coupons available to expose."
+msgid "The AI catalog badge is an optional discovery anchor in the storefront body DOM and is disabled by default. Agents that inspect the document head can discover the catalog without it; the REST API, MCP and the ChatGPT feed do not depend on it."
 msgstr ""
 
 #: includes/class-admin.php:202
+msgid "Disabling the robots.txt directive removes the crawl permission for AI agents. Some agents check robots.txt before querying any endpoint."
+msgstr ""
+
+#: includes/class-admin.php:203
+msgid "Disabling Global indexing consent removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Direct agent access to this store stays active."
+msgstr ""
+
+#: includes/class-admin.php:204
+msgid "Disabling the agentic sitemap removes the structured endpoint map that agents use to enumerate your catalog surfaces."
+msgstr ""
+
+#: includes/class-admin.php:205
+msgid "Disabling .well-known discovery files removes the first-probe signal used by agents that check standard discovery paths before loading your storefront."
+msgstr ""
+
+#: includes/class-admin.php:206
+msgid "When enabled, only the coupons you tick below are exposed to agents. Selected coupons appear in catalog results as conditional checkout savings; WooCommerce checkout remains the final authority on validity. Coupons you do not tick — including private or targeted codes — are never sent to agents."
+msgstr ""
+
+#: includes/class-admin.php:207
+msgid "No active coupons available to expose."
+msgstr ""
+
+#: includes/class-admin.php:208
 msgid "Tick the coupons you want agents to see. Expired or used-up coupons are not listed."
 msgstr ""
 
-#: includes/class-admin.php:218
+#: includes/class-admin.php:224
 msgid "Documentation"
 msgstr ""
 
-#: includes/class-checkout.php:303
+#: includes/class-checkout.php:304
 msgid "This checkout link has already been used and cannot be reused."
 msgstr ""
 
-#: includes/class-checkout.php:304
+#: includes/class-checkout.php:305
 msgid "Link already used"
 msgstr ""
 

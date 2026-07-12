@@ -596,14 +596,22 @@
           // Eta' relativa + soglia di staleness a 7 giorni (stesso valore che Global usa
           // internamente, LIVENESS_STALE_DAYS, per decidere quando un merchant e' "sospeso"
           // per staleness - qui solo per avvisare, non per nascondere il dato).
-          let ago = '\u2014', staleWarning = '';
+          let ago = '—', staleWarning = '';
           if ( d.last_probed_at ) {
             const ms = Date.now() - new Date( d.last_probed_at ).getTime();
             const days = ms / 86400000;
             if ( days >= 1 ) {
-              ago = Math.floor( days ) + ' ' + ( KaliBridge.i18n?.external_check_ago_days || 'days ago' );
+              const dayCount = Math.floor( days );
+              const dayTemplate = dayCount === 1
+                ? ( KaliBridge.i18n?.external_check_ago_day || '%d day ago' )
+                : ( KaliBridge.i18n?.external_check_ago_days || '%d days ago' );
+              ago = dayTemplate.replace( '%d', dayCount );
             } else if ( ms >= 3600000 ) {
-              ago = Math.floor( ms / 3600000 ) + ' ' + ( KaliBridge.i18n?.external_check_ago_hours || 'hours ago' );
+              const hourCount = Math.floor( ms / 3600000 );
+              const hourTemplate = hourCount === 1
+                ? ( KaliBridge.i18n?.external_check_ago_hour || '%d hour ago' )
+                : ( KaliBridge.i18n?.external_check_ago_hours || '%d hours ago' );
+              ago = hourTemplate.replace( '%d', hourCount );
             } else {
               ago = KaliBridge.i18n?.external_check_ago_now || 'just now';
             }
@@ -611,7 +619,7 @@
               staleWarning = '<div style="margin-top:4px;color:#b26b00">&#9888; ' + ( KaliBridge.i18n?.external_check_stale || 'This observation is more than 7 days old.' ) + '</div>';
             }
           }
-          const when = d.last_probed_at ? new Date( d.last_probed_at ).toLocaleString() + ' (' + ago + ')' : '\u2014';
+          const when = d.last_probed_at ? new Date( d.last_probed_at ).toLocaleString() + ' (' + ago + ')' : '—';
 
           out.innerHTML = ''
             + '<div><span style="color:' + dotColor + '">&#9679;</span> ' + ( KaliBridge.i18n?.external_check_label_reachable || 'Discovery reachable from outside:' ) + ' <strong>' + reachable + '</strong></div>'

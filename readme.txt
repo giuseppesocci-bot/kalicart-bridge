@@ -163,9 +163,9 @@ This plugin works fully standalone. It connects to one external service **only i
 == Changelog ==
 
 = 1.0.118 =
-* New: checkout attribution. Orders created from a Bridge checkout session — through either classic checkout or Checkout Block — are linked back to that session. A local 30-day funnel (sessions created, carts loaded, orders linked and net paid value) is shown in the Agent checkout card in the Bridge dashboard. No data is sent to the cloud.
+* New: checkout attribution. Orders created from a Bridge checkout session — through either classic checkout or Checkout Block — are linked back to that session. A local 30-day funnel (sessions created, carts loaded, orders linked and net paid value) is shown in the Stats tab of the Bridge dashboard. No data is sent to the cloud.
 * Accuracy: net paid value includes only linked orders for which WooCommerce has recorded a payment date, net of refunds. Cash on delivery, bank transfer and cheque orders are excluded unless WooCommerce records an actual payment confirmation.
-* Hardening: POST /checkout/session now has per-client and short global rate limits with filterable thresholds. X-Forwarded-For is honored only when the direct connection comes from a configurable trusted-proxy allowlist. Each checkout session can produce at most one attributed conversion, enforced atomically. Reused session links return a generic HTTP 410 response without revealing details about the original order. Requested quantities are validated against WooCommerce’s maximum purchasable quantity before creating a session.
+* Hardening: POST /checkout/session now has per-client and short global rate limits with filterable thresholds. X-Forwarded-For is parsed from the nearest hop and honored only when the direct connection comes from a configurable trusted-proxy allowlist. Each checkout session can produce at most one attributed conversion, enforced atomically. Reused session links return a generic HTTP 410 response throughout the claim-retention window without revealing details about the original order. Requested quantities are validated against the effective WooCommerce product or variation’s maximum purchasable quantity before creating a session.
 * Maintenance: checkout-session claim records are removed automatically by a daily cleanup with filterable retention, and during plugin uninstall.
 
 = 1.0.117 =

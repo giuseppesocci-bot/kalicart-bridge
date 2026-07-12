@@ -2,9 +2,10 @@
 
 2026-07-12 - version 1.0.118
 
-* New: checkout attribution. Orders completed via a Bridge checkout session (classic checkout and Checkout Block) are linked back to that session, with a local funnel (sessions created, carts loaded, orders linked, net value) shown in the Federated Catalog panel — no cloud. Net value counts only genuinely confirmed payments (date_paid); cash on delivery, bank transfer and cheque orders are excluded until payment is actually confirmed.
-* Hardening: rate limiting on POST /checkout/session (per-client and short global window, proxy-safe — X-Forwarded-For is honored only from a configurable trusted-proxy allowlist, filterable thresholds); one checkout session now yields at most one attributed conversion, enforced atomically; a reused session link is blocked with a generic 410 response, without revealing any detail about the original order; requested quantities are validated against WooCommerce's own purchasable maximum before a session is created.
-* Checkout session claim records are cleaned up automatically (daily, filterable retention) and on uninstall.
+* New: checkout attribution. Orders created from a Bridge checkout session — through either classic checkout or Checkout Block — are linked back to that session. A local 30-day funnel (sessions created, carts loaded, orders linked and net paid value) is shown in the Stats tab of the Bridge dashboard. No data is sent to the cloud.
+* Accuracy: net paid value includes only linked orders for which WooCommerce has recorded a payment date, net of refunds. Cash on delivery, bank transfer and cheque orders are excluded unless WooCommerce records an actual payment confirmation.
+* Hardening: POST /checkout/session now has per-client and short global rate limits with filterable thresholds. X-Forwarded-For is parsed from the nearest hop and honored only when the direct connection comes from a configurable trusted-proxy allowlist. Each checkout session can produce at most one attributed conversion, enforced atomically. Reused session links return a generic HTTP 410 response throughout the claim-retention window without revealing details about the original order. Requested quantities are validated against the effective WooCommerce product or variation’s maximum purchasable quantity before creating a session.
+* Maintenance: checkout-session claim records are removed automatically by a daily cleanup with filterable retention, and during plugin uninstall.
 
 
 2026-07-12 - version 1.0.117

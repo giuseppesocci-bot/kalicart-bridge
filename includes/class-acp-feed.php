@@ -676,11 +676,19 @@ class KaliCart_Bridge_ACP_Feed {
 			$desc_fallback = (int) $stats['fallback_description_rows'];
 			if ( $desc_fallback > 0 ) {
 				$desc_status = '<span class="kali-pill kali-pill--warn">' . esc_html__( 'Name used as description', 'kalicart-bridge' ) . '</span>';
-				/* translators: %d: feed rows sent with the product name as description */
-				$desc_detail = sprintf( __( '%d feed rows have no product description and were sent with the product name instead. Add a product description to provide complete product information.', 'kalicart-bridge' ), $desc_fallback );
+				$desc_detail = sprintf(
+					/* translators: %d: feed rows that use the product name as description */
+					_n(
+						'%d feed row has no product description and uses the product name instead. Add a product description to provide complete product information.',
+						'%d feed rows have no product description and use the product name instead. Add a product description to provide complete product information.',
+						$desc_fallback,
+						'kalicart-bridge'
+					),
+					$desc_fallback
+				);
 			} else {
 				$desc_status = self::readiness_label( true, __( 'Complete', 'kalicart-bridge' ) );
-				$desc_detail = __( 'Every feed row carries a real product description.', 'kalicart-bridge' );
+				$desc_detail = __( 'Every feed row uses a product description from WooCommerce.', 'kalicart-bridge' );
 			}
 		}
 		echo '<div class="kali-acp-card">';
@@ -702,7 +710,7 @@ class KaliCart_Bridge_ACP_Feed {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Merchant brand fallback applied.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'These rows do not contain a product-level brand in WooCommerce. The merchant is responsible for declaring that the fallback is accurate for every affected product.', 'kalicart-bridge' ) . '</p></div>';
 		}
 		if ( $stats && empty( $stats['error'] ) && (int) ( $stats['fallback_description_rows'] ?? 0 ) > 0 ) {
-			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Products sent without a description.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'These feed rows have no product description in WooCommerce and were sent with the product name in its place. Add a product description to provide complete product information. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API, MCP and UCP surfaces.', 'kalicart-bridge' ) . '</p></div>';
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Products using the name as description.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'These feed rows have no product description in WooCommerce and use the product name in its place. Add a product description to provide complete product information. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API, MCP and UCP surfaces.', 'kalicart-bridge' ) . '</p></div>';
 		}
 		if ( $stats && empty( $stats['error'] ) && (int) ( $stats['excluded_no_image'] ?? 0 ) > 0 ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Missing primary product image.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'A primary product image is required by OpenAI’s direct product feed specification. Affected feed rows remain available in the agent-readable catalog but are excluded from the ChatGPT product feed.', 'kalicart-bridge' ) . '</p></div>';
@@ -720,7 +728,14 @@ class KaliCart_Bridge_ACP_Feed {
 		echo '</div>';
 
 		if ( $generated ) {
-			echo '<p><strong>' . esc_html__( 'Last validated ChatGPT feed snapshot:', 'kalicart-bridge' ) . '</strong> ' . esc_html( (string) ( $stats['generated_at'] ?? '' ) ) . ' &mdash; ' . (int) ( $stats['rows'] ?? 0 ) . ' ' . esc_html__( 'conformant rows from', 'kalicart-bridge' ) . ' ' . (int) ( $stats['products'] ?? 0 ) . ' ' . esc_html__( 'products.', 'kalicart-bridge' ) . ' ' . sprintf( /* translators: %d: rows excluded by the validator */ esc_html__( '%d rows excluded by the validator.', 'kalicart-bridge' ), (int) ( $stats['excluded_invalid'] ?? 0 ) ) . '</p>';
+			$excluded_invalid = (int) ( $stats['excluded_invalid'] ?? 0 );
+			echo '<p><strong>' . esc_html__( 'Last validated ChatGPT feed snapshot:', 'kalicart-bridge' ) . '</strong> ' . esc_html( (string) ( $stats['generated_at'] ?? '' ) ) . ' &mdash; ' . (int) ( $stats['rows'] ?? 0 ) . ' ' . esc_html__( 'conformant rows from', 'kalicart-bridge' ) . ' ' . (int) ( $stats['products'] ?? 0 ) . ' ' . esc_html__( 'products.', 'kalicart-bridge' ) . ' ' . sprintf(
+				esc_html(
+					/* translators: %d: rows excluded by the validator */
+					_n( '%d row excluded by the validator.', '%d rows excluded by the validator.', $excluded_invalid, 'kalicart-bridge' )
+				),
+				$excluded_invalid
+			) . '</p>';
 			if ( ! empty( $stats['invalid_examples'] ) ) {
 				echo '<p style="color:#b32d2e"><small>' . esc_html( implode( ' | ', $stats['invalid_examples'] ) ) . '</small></p>';
 			}
