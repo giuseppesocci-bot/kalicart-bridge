@@ -9,6 +9,8 @@ defined( 'ABSPATH' ) || exit;
  */
 class KaliCart_Bridge_Catalog_Engine {
 
+    private const QUERY_CACHE_TRANSIENT = 'kalicart_bridge_catalog_query_cache_v1';
+
     // ── Static lookup tables ────────────────────────────────────────────────
 
     const GENDER_KEYWORDS = [
@@ -37,6 +39,63 @@ class KaliCart_Bridge_Catalog_Engine {
     const SIZE_TYPE_NUMERIC  = [ '34','36','38','40','42','44','46','48','50','52','54','56','58','60' ];
     const SIZE_TYPE_SHOES    = [ '35','35.5','36','36.5','37','37.5','38','38.5','39','39.5','40','40.5','41','41.5','42','42.5','43','43.5','44','44.5','45','45.5','46','47','48' ];
 
+    /**
+     * Register cache invalidation hooks. The cache is a single bounded bucket,
+     * therefore invalidation is one delete rather than a transient-prefix scan.
+     */
+    public static function init_cache_hooks(): void {
+        foreach ( [
+            'woocommerce_new_product',
+            'woocommerce_update_product',
+            'woocommerce_delete_product',
+            'woocommerce_new_product_variation',
+            'woocommerce_update_product_variation',
+            'woocommerce_delete_product_variation',
+            'woocommerce_product_set_stock',
+            'woocommerce_variation_set_stock',
+            'woocommerce_new_coupon',
+            'woocommerce_update_coupon',
+            'woocommerce_delete_coupon',
+        ] as $hook ) {
+            add_action( $hook, [ __CLASS__, 'invalidate_query_cache' ] );
+        }
+
+        foreach ( [ 'created_term', 'edited_term', 'delete_term' ] as $hook ) {
+            add_action( $hook, static function( $term_id, $term_taxonomy_id, $taxonomy ): void {
+                if ( self::catalog_taxonomy_affects_cache( (string) $taxonomy ) ) {
+                    self::invalidate_query_cache();
+                }
+            }, 10, 3 );
+        }
+
+        add_action( 'set_object_terms', static function( $object_id, $terms, $term_taxonomy_ids, $taxonomy ): void {
+            if ( in_array( get_post_type( (int) $object_id ), [ 'product', 'product_variation' ], true )
+                 && self::catalog_taxonomy_affects_cache( (string) $taxonomy ) ) {
+                self::invalidate_query_cache();
+            }
+        }, 10, 4 );
+
+        add_action( 'transition_post_status', static function( $new_status, $old_status, $post ): void {
+            if ( $new_status === $old_status || ! ( $post instanceof WP_Post ) ) {
+                return;
+            }
+            if ( in_array( $post->post_type, [ 'product', 'product_variation', 'shop_coupon' ], true ) ) {
+                self::invalidate_query_cache();
+            }
+        }, 10, 3 );
+    }
+
+    /** Public because WooCommerce hooks pass varying argument lists. */
+    public static function invalidate_query_cache( ...$unused ): void {
+        delete_transient( self::QUERY_CACHE_TRANSIENT );
+        delete_transient( 'kalicart_bridge_meta_' . ( KaliCart_Bridge_API::default_language() ?? 'mono' ) );
+    }
+
+    private static function catalog_taxonomy_affects_cache( string $taxonomy ): bool {
+        return in_array( $taxonomy, [ 'product_cat', 'product_tag', 'product_brand', 'pwb-brand' ], true )
+               || strpos( $taxonomy, 'pa_' ) === 0;
+    }
+
     // ── Public API ───────────────────────────────────────────────────────────
 
     /**
@@ -58,48 +117,65 @@ class KaliCart_Bridge_Catalog_Engine {
      */
     public static function query_products( array $args = [] ): array {
         $defaults = [
-            'search'    => '',
-            'category'  => '',
-            'per_page'  => 20,
-            'page'      => 1,
-            'orderby'   => 'date',
-            'order'     => 'DESC',
-            'in_stock'  => null,
-            'on_sale'   => null,
-            'min_price' => null,
-            'max_price' => null,
-            'gender'    => '',
-            'color'     => '',
-            'size'      => '',
+            'search'         => '',
+            'category'       => '',
+            'per_page'       => 20,
+            'page'           => 1,
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+            'in_stock'       => null,
+            'on_sale'        => null,
+            'min_price'      => null,
+            'max_price'      => null,
+            'gender'         => '',
+            'color'          => '',
+            'size'           => '',
             'modified_after' => '',
-            'fields'    => 'full',
+            'fields'         => 'full',
         ];
         $args = wp_parse_args( $args, $defaults );
 
-        // Determine if PHP post-filters are active. When yes, WP_Query must collect all
-        // matching candidates (posts_per_page=-1) so slicing is done on the full filtered set.
+        $cached = self::query_cache_get( $args );
+        if ( $cached !== null ) {
+            return $cached;
+        }
+
+        // Derived fields require a bounded PHP verification pass. Price filters use
+        // WooCommerce's lookup table to reduce candidates, then verify price.current
+        // from the product object so variable-parent _price drift cannot leak through.
         $has_php_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] )
-                              || ! empty( $args['size'] )
-                              || $args['on_sale'] === true
+                              || ! empty( $args['size'] ) || $args['on_sale'] === true
                               || $args['min_price'] !== null || $args['max_price'] !== null;
+        $order = strtoupper( $args['order'] ) === 'ASC' ? 'ASC' : 'DESC';
+		$lookup_price = $args['min_price'] !== null || $args['max_price'] !== null || $args['orderby'] === 'price';
 
         $query_args = [
             'post_type'      => 'product',
             'post_status'    => 'publish',
-            'posts_per_page' => $has_php_postfilter ? -1 : (int) $args['per_page'],
-            'paged'          => $has_php_postfilter ? 1  : (int) $args['page'],
-            'orderby'        => self::map_orderby( $args['orderby'] ),
-            'order'          => strtoupper( $args['order'] ) === 'ASC' ? 'ASC' : 'DESC',
+            'posts_per_page' => $has_php_postfilter ? self::postfilter_batch_size() : (int) $args['per_page'],
+            'paged'          => $has_php_postfilter ? 1 : (int) $args['page'],
+            'orderby'        => $args['orderby'] === 'price' ? 'ID' : self::map_orderby( $args['orderby'] ),
+            'order'          => $order,
         ];
 
-        // B2: orderby=price requires meta_key and must exclude products with no price
-        if ( $args['orderby'] === 'price' ) {
-            $query_args['meta_key'] = '_price';
-            $query_args['meta_query'][] = [
-                'key'     => '_price',
-                'value'   => '',
-                'compare' => '!=',
-            ];
+		if ( $lookup_price ) {
+			$query_args['kalicart_bridge_price_lookup'] = [
+				'min'     => $args['min_price'],
+				'max'     => $args['max_price'],
+				'orderby' => $args['orderby'] === 'price',
+				'order'   => $order,
+			];
+		}
+
+        if ( $has_php_postfilter ) {
+            // Dates, prices and titles are not unique. ID is the deterministic
+            // tiebreaker required to walk a result set in bounded pages.
+			$primary_orderby                           = $args['orderby'] === 'price' ? 'ID' : self::map_orderby( $args['orderby'] );
+            $query_args['orderby']                = [ $primary_orderby => $order, 'ID' => $order ];
+            $query_args['fields']                 = 'ids';
+            $query_args['update_post_meta_cache'] = false;
+            $query_args['update_post_term_cache'] = false;
+            $query_args['lazy_load_term_meta']    = false;
         }
 
         if ( ! empty( $args['search'] ) ) {
@@ -108,174 +184,342 @@ class KaliCart_Bridge_Catalog_Engine {
 
         if ( ! empty( $args['category'] ) ) {
             $query_args['tax_query'][] = [
-                'taxonomy' => 'product_cat',
-                'field'    => is_numeric( $args['category'] ) ? 'term_id' : 'slug',
-                'terms'    => $args['category'],
+                'taxonomy'         => 'product_cat',
+                'field'            => is_numeric( $args['category'] ) ? 'term_id' : 'slug',
+                'terms'            => $args['category'],
                 'include_children' => true,
             ];
         }
 
         if ( $args['in_stock'] === true ) {
-            $query_args['meta_query'][] = [
-                'key'   => '_stock_status',
-                'value' => 'instock',
-            ];
-        }
-
-        if ( $args['min_price'] !== null || $args['max_price'] !== null ) {
-            if ( $args['min_price'] !== null ) {
-                $query_args['meta_query'][] = [
-                    'key'     => '_price',
-                    'value'   => (float) $args['min_price'],
-                    'compare' => '>=',
-                    'type'    => 'NUMERIC',
-                ];
-            }
-            if ( $args['max_price'] !== null ) {
-                $query_args['meta_query'][] = [
-                    'key'     => '_price',
-                    'value'   => (float) $args['max_price'],
-                    'compare' => '<=',
-                    'type'    => 'NUMERIC',
-                ];
-            }
+            $query_args['meta_query'][] = [ 'key' => '_stock_status', 'value' => 'instock' ];
         }
 
         if ( $args['on_sale'] === true ) {
             $sale_ids = wc_get_product_ids_on_sale();
-            if ( ! empty( $sale_ids ) ) {
-                $query_args['post__in'] = empty( $query_args['post__in'] )
-                    ? $sale_ids
-                    : array_intersect( $query_args['post__in'], $sale_ids );
-            } else {
-                $query_args['post__in'] = [ 0 ]; // no sale products
-            }
+            $query_args['post__in'] = ! empty( $sale_ids ) ? $sale_ids : [ 0 ];
         }
 
         if ( isset( $query_args['meta_query'] ) && count( $query_args['meta_query'] ) > 1 ) {
             $query_args['meta_query']['relation'] = 'AND';
         }
 
-        // Incremental sync cursor: restrict to products modified at/after the given
-        // GMT timestamp. Enables federated indexers to pull only the delta.
         if ( ! empty( $args['modified_after'] ) ) {
-            $query_args['date_query'] = [
-                [
-                    'column'    => 'post_modified_gmt',
-                    'after'     => $args['modified_after'],
-                    'inclusive' => true,
-                ],
-            ];
+            $query_args['date_query'] = [ [
+                'column'    => 'post_modified_gmt',
+                'after'     => $args['modified_after'],
+                'inclusive' => true,
+            ] ];
         }
 
-        // Multilingual: pin enumeration to the site default language so translated
-        // products are not enumerated as duplicates. No-op on monolingual sites.
         $default_lang = KaliCart_Bridge_API::default_language();
         if ( $default_lang !== null ) {
-            $query_args['lang'] = $default_lang; // Polylang reads this; harmless otherwise
+            $query_args['lang'] = $default_lang;
         }
 
-        $query    = new WP_Query( $query_args );
+		$query    = self::run_product_query( $query_args );
         $products = [];
 
-        // fields=summary: slim projection for agent triage. With no PHP post-filter the
-        // summary context short-circuits the heavy per-product work entirely. With a
-        // post-filter active the full normalize is required to evaluate it (gender/colors/
-        // sizes/on_sale), so survivors are re-emitted through the summary context below.
-        $want_summary = ( $args['fields'] ?? 'full' ) === 'summary';
-
-        foreach ( $query->posts as $post ) {
-            $wc_product = wc_get_product( $post->ID );
-            if ( ! $wc_product ) continue;
-
-            if ( $want_summary && ! $has_php_postfilter ) {
-                $products[] = self::normalize_product( $wc_product, 'summary' );
-                continue;
+        if ( $has_php_postfilter ) {
+            $candidate_total = (int) $query->found_posts;
+            $candidate_limit = self::postfilter_candidate_limit();
+            if ( $candidate_limit > 0 && $candidate_total > $candidate_limit ) {
+                $result = [ '_error' => [
+                    'code'            => 'KALICART_CATALOG_QUERY_TOO_BROAD',
+                    'status'          => 422,
+                    'message'         => 'This derived-filter query is too broad to evaluate safely. Add q or category and retry.',
+                    'candidate_count' => $candidate_total,
+                    'candidate_limit' => $candidate_limit,
+                    'guidance'        => 'Narrow the candidate set with a bare product noun (q) or a WooCommerce category slug before applying gender, color, size or on_sale.',
+                ] ];
+                self::query_cache_put( $args, $result );
+                return $result;
             }
 
-            $normalized = self::normalize_product( $wc_product );
-
-            // Post-filter by gender/color (computed fields, not storable as meta easily)
-            if ( ! empty( $args['gender'] ) && $normalized['gender'] !== $args['gender'] && $normalized['gender'] !== null ) {
-                continue;
-            }
-            if ( ! empty( $args['color'] ) ) {
-                $color_families = array_column( $normalized['colors'], 'family' );
-                if ( ! in_array( $args['color'], $color_families, true ) ) {
-                    continue;
-                }
-            }
-
-            // Post-filter size: soft filter — returns products where at least one attribute value
-            // matches the requested size string (case-insensitive). Applied after search.
-            if ( ! empty( $args['size'] ) ) {
-                $size_needle = strtolower( trim( $args['size'] ) );
-                $has_size = false;
-                foreach ( $normalized['sizes']['values'] ?? [] as $sv ) {
-                    if ( strtolower( trim( $sv ) ) === $size_needle ) {
-                        $has_size = true;
-                        break;
-                    }
-                }
-                if ( ! $has_size ) continue;
-            }
-
-            // Post-filter on_sale: wc_get_product_ids_on_sale() does not apply the Bridge
-            // 1% discount threshold — exclude products where compute_price() set on_sale=false.
-            if ( $args['on_sale'] === true && ! ( $normalized['price']['on_sale'] ?? false ) ) {
-                continue;
-            }
-
-            // Post-filter price for variable products: WooCommerce _price meta on the parent
-            // may be stale (legacy from before product was converted to variable). Use the
-            // authoritative price.current computed from get_variation_prices() instead.
-            if ( $wc_product->is_type( 'variable' ) ) {
-                $current = $normalized['price']['current'] ?? null;
-                if ( $args['min_price'] !== null && ( $current === null || $current < (float) $args['min_price'] ) ) {
-                    continue;
-                }
-                if ( $args['max_price'] !== null && ( $current === null || $current > (float) $args['max_price'] ) ) {
-                    continue;
-                }
-            }
-
-            $products[] = $want_summary
-                ? self::normalize_product( $wc_product, 'summary' )
-                : $normalized;
-        }
-
-        // B3 + PAGINATION: with post-filters active, $products is the full filtered set
-        // (WP_Query was run with posts_per_page=-1 when post-filters are active — see below).
-        // Slice to the requested page/per_page here.
-        $has_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] )
-                          || ! empty( $args['size'] )
-                          || $args['on_sale'] === true
-                          || ( $args['min_price'] !== null || $args['max_price'] !== null );
-
-        if ( $has_postfilter ) {
-            $filtered_total = count( $products );
-            $per_page       = (int) $args['per_page'];
+            $want_summary   = ( $args['fields'] ?? 'full' ) === 'summary';
+            $per_page       = max( 1, (int) $args['per_page'] );
             $page           = max( 1, (int) $args['page'] );
-            $offset         = ( $page - 1 ) * $per_page;
-            $total_pages    = $per_page > 0 ? (int) ceil( $filtered_total / $per_page ) : 1;
-            $products       = array_slice( $products, $offset, $per_page );
+            $result_start   = ( $page - 1 ) * $per_page;
+            $result_end     = $result_start + $per_page;
+            $filtered_total = 0;
+            $batch_page     = 1;
+            $batch_pages    = (int) $query->max_num_pages;
 
-            return [
+            do {
+                $batch_ids = array_map( 'intval', $query->posts );
+                // WP_Query fields=ids skips normal cache priming. Prime only this
+                // bounded batch to avoid N meta/term queries in wc_get_product().
+                if ( function_exists( '_prime_post_caches' ) && ! empty( $batch_ids ) ) {
+                    _prime_post_caches( $batch_ids, true, true );
+                }
+                foreach ( $batch_ids as $product_id ) {
+                    $wc_product = wc_get_product( (int) $product_id );
+                    if ( ! $wc_product || ! self::matches_derived_filters( $wc_product, $args ) ) {
+                        continue;
+                    }
+
+                    $match_index = $filtered_total;
+                    $filtered_total++;
+                    if ( $match_index < $result_start || $match_index >= $result_end ) {
+                        continue;
+                    }
+
+                    // Full projection cost is paid only for survivors on this page.
+                    $products[] = self::normalize_product( $wc_product, $want_summary ? 'summary' : 'list' );
+                }
+
+                $batch_page++;
+                if ( $batch_page <= $batch_pages ) {
+                    $query_args['paged']         = $batch_page;
+                    $query_args['no_found_rows'] = true;
+					$query = self::run_product_query( $query_args );
+                }
+            } while ( $batch_page <= $batch_pages );
+
+            $result = [
                 'products'    => $products,
                 'total'       => $filtered_total,
                 'page'        => $page,
                 'per_page'    => $per_page,
-                'total_pages' => $total_pages,
+                'total_pages' => (int) ceil( $filtered_total / $per_page ),
             ];
+            self::query_cache_put( $args, $result );
+            return $result;
         }
 
-        return [
+        $want_summary = ( $args['fields'] ?? 'full' ) === 'summary';
+        foreach ( $query->posts as $post ) {
+            $wc_product = wc_get_product( $post->ID );
+            if ( ! $wc_product ) {
+                continue;
+            }
+            $products[] = self::normalize_product( $wc_product, $want_summary ? 'summary' : 'list' );
+        }
+
+        $result = [
             'products'    => $products,
             'total'       => (int) $query->found_posts,
             'page'        => (int) $args['page'],
             'per_page'    => (int) $args['per_page'],
             'total_pages' => (int) $query->max_num_pages,
         ];
+        self::query_cache_put( $args, $result );
+        return $result;
+    }
+
+	/**
+	 * Run only Bridge product queries with the WooCommerce price lookup clause.
+	 * The callback is installed for the duration of the query and also checks a
+	 * private query var, so unrelated queries in the same request are untouched.
+	 */
+	private static function run_product_query( array $query_args ): WP_Query {
+		if ( empty( $query_args['kalicart_bridge_price_lookup'] ) ) {
+			return new WP_Query( $query_args );
+		}
+
+		add_filter( 'posts_clauses', [ __CLASS__, 'apply_price_lookup_clauses' ], 20, 2 );
+		try {
+			return new WP_Query( $query_args );
+		} finally {
+			remove_filter( 'posts_clauses', [ __CLASS__, 'apply_price_lookup_clauses' ], 20 );
+		}
+	}
+
+	/** Public because WordPress invokes filter callbacks outside class scope. */
+	public static function apply_price_lookup_clauses( array $clauses, WP_Query $query ): array {
+		$filter = $query->get( 'kalicart_bridge_price_lookup' );
+		if ( ! is_array( $filter ) ) {
+			return $clauses;
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'wc_product_meta_lookup';
+		$alias = 'kalicart_bridge_price_lookup';
+		if ( strpos( $clauses['join'], " {$alias} " ) === false ) {
+			$clauses['join'] .= " INNER JOIN {$table} AS {$alias} ON ({$wpdb->posts}.ID = {$alias}.product_id)";
+		}
+		$clauses['where'] .= " AND {$alias}.min_price IS NOT NULL";
+		if ( $filter['min'] !== null ) {
+			// Conservative overlap prefilter: price.current is verified from the
+			// product below, so do not discard a variable product whose price range
+			// crosses the requested minimum.
+			$clauses['where'] .= $wpdb->prepare(
+				' AND kalicart_bridge_price_lookup.max_price >= %f',
+				(float) $filter['min']
+			);
+		}
+		if ( $filter['max'] !== null ) {
+			$clauses['where'] .= $wpdb->prepare(
+				' AND kalicart_bridge_price_lookup.min_price <= %f',
+				(float) $filter['max']
+			);
+		}
+		if ( ! empty( $filter['orderby'] ) ) {
+			$order              = 'ASC' === ( $filter['order'] ?? '' ) ? 'ASC' : 'DESC';
+			$clauses['orderby'] = "{$alias}.min_price {$order}, {$wpdb->posts}.ID {$order}";
+		}
+
+		return $clauses;
+	}
+
+    /**
+     * Evaluate only the computed fields requested by the caller. This intentionally
+     * avoids images, shipping, coupons, quarantine and purchase-readiness work for
+     * candidates that will not appear on the requested page.
+     */
+    private static function matches_derived_filters( WC_Product $product, array $args ): bool {
+        $attributes = null;
+        $categories = null;
+        $tags       = null;
+
+        if ( ! empty( $args['gender'] ) ) {
+            $attributes = self::get_normalized_attributes( $product );
+            $categories = self::get_product_categories( $product );
+            $tags       = self::get_product_tags( $product );
+            $gender     = self::infer_gender( $product, $categories, $tags, $attributes );
+            // Preserve the existing soft-gender contract: an explicitly different
+            // value is excluded, while an unclassified product remains a candidate.
+            if ( $gender !== $args['gender'] && $gender !== null ) {
+                return false;
+            }
+        }
+
+        if ( ! empty( $args['color'] ) ) {
+            $attributes = $attributes ?? self::get_normalized_attributes( $product );
+            $tags       = $tags ?? self::get_product_tags( $product );
+            $families   = array_column( self::extract_colors( $attributes, $product->get_name(), $tags ), 'family' );
+            if ( ! in_array( $args['color'], $families, true ) ) {
+                return false;
+            }
+        }
+
+        if ( ! empty( $args['size'] ) ) {
+            $attributes = $attributes ?? self::get_normalized_attributes( $product );
+            $needle     = strtolower( trim( (string) $args['size'] ) );
+            $has_size   = false;
+            foreach ( self::extract_sizes( $attributes )['values'] ?? [] as $value ) {
+                if ( strtolower( trim( $value ) ) === $needle ) {
+                    $has_size = true;
+                    break;
+                }
+            }
+            if ( ! $has_size ) {
+                return false;
+            }
+        }
+
+        // wc_get_product_ids_on_sale() already reduced the SQL candidate set. This
+        // lightweight check preserves Bridge's documented >=1% sale threshold.
+        if ( $args['on_sale'] === true && ! ( self::compute_price( $product )['on_sale'] ?? false ) ) {
+            return false;
+        }
+
+		if ( $args['min_price'] !== null || $args['max_price'] !== null ) {
+			$current = self::compute_price( $product )['current'] ?? null;
+			if ( $current === null
+				|| ( $args['min_price'] !== null && $current < (float) $args['min_price'] )
+				|| ( $args['max_price'] !== null && $current > (float) $args['max_price'] ) ) {
+				return false;
+			}
+		}
+
+        return true;
+    }
+
+    private static function postfilter_batch_size(): int {
+        return min( 500, max( 25, (int) apply_filters( 'kalicart_bridge_catalog_postfilter_batch_size', 100 ) ) );
+    }
+
+    private static function postfilter_candidate_limit(): int {
+        return max( 0, (int) apply_filters( 'kalicart_bridge_catalog_postfilter_candidate_limit', 1500 ) );
+    }
+
+    private static function query_cache_key( array $args ): string {
+        ksort( $args );
+        $identity = [
+            'blog_id'         => get_current_blog_id(),
+            'language'        => KaliCart_Bridge_API::default_language() ?? 'mono',
+            'currency'        => get_woocommerce_currency(),
+            'candidate_limit' => self::postfilter_candidate_limit(),
+            'args'            => $args,
+        ];
+        return hash( 'sha256', (string) wp_json_encode( $identity ) );
+    }
+
+    private static function query_cache_ttl(): int {
+        return min( 300, max( 0, (int) apply_filters( 'kalicart_bridge_catalog_cache_ttl', 60 ) ) );
+    }
+
+    private static function query_cacheable( array $args ): bool {
+        // Cache only compact derived scans. Ordinary SQL pages do not need it; full
+        // records are larger and depend on more mutable shipping/coupon settings.
+        return ( $args['fields'] ?? 'full' ) === 'summary'
+               && ( ! empty( $args['gender'] ) || ! empty( $args['color'] )
+					|| ! empty( $args['size'] ) || ( $args['on_sale'] ?? null ) === true
+					|| $args['min_price'] !== null || $args['max_price'] !== null );
+    }
+
+    private static function query_cache_get( array $args ): ?array {
+        if ( self::query_cache_ttl() === 0 || ! self::query_cacheable( $args ) ) {
+            return null;
+        }
+        $bucket = get_transient( self::QUERY_CACHE_TRANSIENT );
+        if ( ! is_array( $bucket ) || ! isset( $bucket['entries'] ) || ! is_array( $bucket['entries'] ) ) {
+            return null;
+        }
+        $entry = $bucket['entries'][ self::query_cache_key( $args ) ] ?? null;
+        if ( ! is_array( $entry ) || (int) ( $entry['expires'] ?? 0 ) < time() || ! is_array( $entry['value'] ?? null ) ) {
+            return null;
+        }
+        return $entry['value'];
+    }
+
+    /**
+     * A single LRU-like transient prevents attacker-controlled query strings from
+     * creating an unlimited number of database transient rows. Both entry count and
+     * serialized byte size are hard bounded.
+     */
+    private static function query_cache_put( array $args, array $result ): void {
+        $ttl = self::query_cache_ttl();
+        if ( $ttl === 0 || ! self::query_cacheable( $args ) ) {
+            return;
+        }
+
+        $max_entries    = min( 64, max( 1, (int) apply_filters( 'kalicart_bridge_catalog_cache_max_entries', 8 ) ) );
+        $max_total      = min( 8 * MB_IN_BYTES, max( 64 * KB_IN_BYTES, (int) apply_filters( 'kalicart_bridge_catalog_cache_max_bytes', 512 * KB_IN_BYTES ) ) );
+        $max_entry      = min( $max_total, max( 16 * KB_IN_BYTES, (int) apply_filters( 'kalicart_bridge_catalog_cache_max_entry_bytes', 128 * KB_IN_BYTES ) ) );
+        $serialized_len = strlen( maybe_serialize( $result ) );
+        if ( $serialized_len > $max_entry ) {
+            return;
+        }
+
+        $now     = time();
+        $stored  = microtime( true );
+        $bucket  = get_transient( self::QUERY_CACHE_TRANSIENT );
+        $entries = is_array( $bucket ) && is_array( $bucket['entries'] ?? null ) ? $bucket['entries'] : [];
+        foreach ( $entries as $key => $entry ) {
+            if ( ! is_array( $entry ) || (int) ( $entry['expires'] ?? 0 ) < $now ) {
+                unset( $entries[ $key ] );
+            }
+        }
+
+        $entries[ self::query_cache_key( $args ) ] = [
+            'stored'  => $stored,
+            'expires' => $now + $ttl,
+            'bytes'   => $serialized_len,
+            'value'   => $result,
+        ];
+        uasort( $entries, static fn( array $a, array $b ): int => (float) ( $a['stored'] ?? 0 ) <=> (float) ( $b['stored'] ?? 0 ) );
+
+        while ( count( $entries ) > $max_entries || strlen( maybe_serialize( [ 'entries' => $entries ] ) ) > $max_total ) {
+            $oldest = array_key_first( $entries );
+            if ( $oldest === null ) {
+                break;
+            }
+            unset( $entries[ $oldest ] );
+        }
+
+        set_transient( self::QUERY_CACHE_TRANSIENT, [ 'entries' => $entries ], $ttl );
     }
 
     /**

@@ -1674,3 +1674,8 @@ msgstr "WooCommerce requis"
 #~ msgstr ""
 #~ "Cochez d'abord la case de consentement à l'indexation Global dans les "
 #~ "Réglages."
+msgid "Too many checkout link requests. Please retry shortly."
+msgstr "Trop de requêtes vers le lien de paiement. Réessayez dans un instant."
+
+msgid "Too many requests"
+msgstr "Trop de requêtes"

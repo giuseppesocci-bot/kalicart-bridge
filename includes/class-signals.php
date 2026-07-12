@@ -153,14 +153,15 @@ class KaliCart_Bridge_Signals {
 
     /**
      * Traffic that must NOT be counted: server-internal calls (federation sync,
-     * loopback cron — WordPress UA) and known health checkers. Client IP is the
-     * first X-Forwarded-For entry when present (varnish/CDN in front), else
-     * REMOTE_ADDR. Extensible via the kalicart_bridge_ai_traffic_excluded filter.
+     * loopback cron — WordPress UA) and known health checkers. Forwarded addresses
+     * use the same fail-closed trusted-proxy parser as the public rate limiters.
      */
     private static function is_excluded_traffic( string $ua ): bool {
-        $xff = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? (string) $_SERVER['HTTP_X_FORWARDED_FOR'] : '';
-        $ip  = $xff !== '' ? trim( explode( ',', $xff )[0] ) : (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
-        $server_ips = array_filter( [ (string) ( $_SERVER['SERVER_ADDR'] ?? '' ), self::site_public_ip(), '127.0.0.1', '::1' ] );
+        $ip = class_exists( 'KaliCart_Bridge_Rate_Guard' )
+            ? KaliCart_Bridge_Rate_Guard::client_ip()
+			: sanitize_text_field( (string) wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) );
+		$server_addr = sanitize_text_field( (string) wp_unslash( $_SERVER['SERVER_ADDR'] ?? '' ) );
+		$server_ips  = array_filter( [ $server_addr, self::site_public_ip(), '127.0.0.1', '::1' ] );
         $excluded = ( $ip !== '' && in_array( $ip, $server_ips, true ) );
         if ( ! $excluded && $ua !== '' ) {
             foreach ( [ 'WordPress', 'KalicartGlobalBot', 'KaliCart-Scanner', 'UptimeRobot', 'Pingdom', 'StatusCake', 'Site24x7', 'HetrixTools', 'Better Uptime', 'monitoring' ] as $tok ) {
@@ -180,10 +181,19 @@ class KaliCart_Bridge_Signals {
      * as the html/api surfaces.
      */
     public static function count_mcp_event( array $dims ): void {
+        self::count_mcp_events( [ $dims ] );
+    }
+
+    /** Bounded bulk entry retained for tests/internal aggregation. */
+    public static function count_mcp_events( array $events ): void {
         if ( ! get_option( 'kalicart_bridge_ai_traffic_enabled', true ) ) {
             return;
         }
-        self::count_ai_traffic( 'mcp', $dims );
+        $events = array_slice( array_values( array_filter( $events, 'is_array' ) ), 0, 100 );
+        if ( empty( $events ) ) {
+            return;
+        }
+        self::count_ai_traffic_events( 'mcp', $events );
     }
 
     /**
@@ -193,55 +203,146 @@ class KaliCart_Bridge_Signals {
      * cardinality: numeric path segments collapsed to {id}). 31-day retention.
      */
     private static function count_ai_traffic( string $surface, array $extra = [] ): void {
-        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
-        if ( self::is_excluded_traffic( $ua ) ) {
-            return;
-        }
-        [ $class, $bot ] = self::classify_client( $ua );
-        $day   = gmdate( 'Y-m-d' );
-        $stats = get_option( 'kalicart_bridge_ai_traffic', [] );
-        if ( ! is_array( $stats ) ) {
-            $stats = [];
-        }
-        if ( count( $stats ) > 31 ) {
-            ksort( $stats );
-            $stats = array_slice( $stats, -31, null, true );
+        self::count_ai_traffic_events( $surface, [ $extra ] );
+    }
+
+    /** Apply bounded events to one in-memory snapshot. */
+    private static function apply_ai_traffic_events( array $stats, string $surface, array $events, string $class, ?string $bot ): array {
+        $day    = gmdate( 'Y-m-d' );
+        $cutoff = gmdate( 'Y-m-d', time() - ( 30 * DAY_IN_SECONDS ) );
+        foreach ( array_keys( $stats ) as $stored_day ) {
+            if ( ! is_string( $stored_day ) || $stored_day < $cutoff || $stored_day > $day ) {
+                unset( $stats[ $stored_day ] );
+            }
         }
         $bucket = ( isset( $stats[ $day ][ $surface ] ) && is_array( $stats[ $day ][ $surface ] ) )
             ? $stats[ $day ][ $surface ]
             : [ 'total' => 0, 'class' => [], 'bot' => [] ];
-        $bucket['total']            = (int) ( $bucket['total'] ?? 0 ) + 1;
-        $bucket['class'][ $class ]  = (int) ( $bucket['class'][ $class ] ?? 0 ) + 1;
-        if ( $bot ) {
-            $bucket['bot'][ $bot ] = (int) ( $bucket['bot'][ $bot ] ?? 0 ) + 1;
-        }
-        foreach ( $extra as $dim => $val ) {
-            if ( $val === null || $val === '' ) {
+        foreach ( $events as $extra ) {
+            if ( ! is_array( $extra ) ) {
                 continue;
             }
-            $val = (string) $val;
-            if ( isset( $bucket[ $dim ] ) && is_array( $bucket[ $dim ] )
-                && ! isset( $bucket[ $dim ][ $val ] ) && count( $bucket[ $dim ] ) >= 50 ) {
-                $val = '(other)'; // per-dimension cardinality cap
+            $bucket['total']           = (int) ( $bucket['total'] ?? 0 ) + 1;
+            $bucket['class'][ $class ] = (int) ( $bucket['class'][ $class ] ?? 0 ) + 1;
+            if ( $bot ) {
+                $bucket['bot'][ $bot ] = (int) ( $bucket['bot'][ $bot ] ?? 0 ) + 1;
             }
-            $bucket[ $dim ][ $val ] = (int) ( $bucket[ $dim ][ $val ] ?? 0 ) + 1;
+            foreach ( $extra as $dim => $val ) {
+                if ( ! is_scalar( $val ) || '' === $val ) {
+                    continue;
+                }
+                $dim = sanitize_key( (string) $dim );
+                if ( '' === $dim ) {
+                    continue;
+                }
+                $val = substr( sanitize_text_field( (string) $val ), 0, 100 );
+                if ( '' === $val ) {
+                    continue;
+                }
+                if ( ! isset( $bucket[ $dim ] ) || ! is_array( $bucket[ $dim ] ) ) {
+                    $bucket[ $dim ] = [];
+                }
+                if ( ! isset( $bucket[ $dim ][ $val ] ) && count( $bucket[ $dim ] ) >= 49 ) {
+                    $val = '(other)'; // 49 named values + one overflow bucket.
+                }
+                $bucket[ $dim ][ $val ] = (int) ( $bucket[ $dim ][ $val ] ?? 0 ) + 1;
+            }
         }
         $stats[ $day ][ $surface ] = $bucket;
-        update_option( 'kalicart_bridge_ai_traffic', $stats, false );
+        ksort( $stats );
+        return array_slice( $stats, -31, null, true );
+    }
+
+    /** Persist events with optimistic CAS, so concurrent surfaces cannot overwrite each other. */
+    private static function count_ai_traffic_events( string $surface, array $events ): void {
+		$ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( (string) wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
+        if ( self::is_excluded_traffic( $ua ) ) {
+            return;
+        }
+        [ $class, $bot ] = self::classify_client( $ua );
+        global $wpdb;
+        $option_name = 'kalicart_bridge_ai_traffic';
+        for ( $attempt = 0; $attempt < 5; $attempt++ ) {
+            $wpdb->last_error = '';
+            $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- fresh value is required for optimistic concurrency.
+                $wpdb->prepare( "SELECT option_value, autoload FROM {$wpdb->options} WHERE option_name = %s LIMIT 1", $option_name )
+            );
+            if ( '' !== (string) $wpdb->last_error ) {
+                return; // Telemetry must never break the catalog response.
+            }
+            $exists   = null !== $row;
+            $observed = $exists ? (string) $row->option_value : null;
+            $stats    = $exists ? maybe_unserialize( $observed ) : [];
+            $stats    = is_array( $stats ) ? $stats : [];
+            $next     = self::apply_ai_traffic_events( $stats, $surface, $events, $class, $bot );
+            $encoded  = maybe_serialize( $next );
+
+            if ( $exists ) {
+                $written = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- compare-and-swap prevents lost concurrent counters.
+                    $wpdb->prepare(
+                        "UPDATE {$wpdb->options} SET option_value = %s, autoload = 'no' WHERE option_name = %s AND option_value = %s",
+                        $encoded,
+                        $option_name,
+                        $observed
+                    )
+                );
+            } else {
+                $written = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- unique option_name arbitrates first writer.
+                    $wpdb->prepare(
+                        "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+                        $option_name,
+                        $encoded
+                    )
+                );
+            }
+            if ( 1 === (int) $written ) {
+                wp_cache_delete( $option_name, 'options' );
+                if ( ! $exists ) {
+                    wp_cache_delete( 'notoptions', 'options' );
+                } elseif ( ! in_array( (string) $row->autoload, [ 'no', 'off', 'auto-off' ], true ) ) {
+                    wp_cache_delete( 'alloptions', 'options' );
+                }
+                return;
+            }
+            if ( false === $written || '' !== (string) $wpdb->last_error ) {
+                return;
+            }
+            usleep( 500 ); // CAS lost to another request; retry from its fresh value.
+        }
     }
 
     public static function count_ai_traffic_html(): void {
         if ( is_admin() || wp_doing_ajax() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
             return;
         }
+		$ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( (string) wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
+        [ $class ] = self::classify_client( $ua );
+		if ( 'branded_agent' !== $class && ! apply_filters( 'kalicart_bridge_ai_traffic_count_nonbranded_html', false ) ) {
+			return; // Storefront browsers and arbitrary programmatic UAs do not write by default.
+		}
+		$guard = KaliCart_Bridge_Rate_Guard::check( 'telemetry_html', 1, [
+			'client_limit'  => max( 1, (int) apply_filters( 'kalicart_bridge_html_telemetry_rate_limit_per_client', 5 ) ),
+			'client_window' => 60,
+			'global_limit'  => max( 1, (int) apply_filters( 'kalicart_bridge_html_telemetry_rate_limit_global', 20 ) ),
+			'global_window' => 60,
+		] );
+		if ( ! $guard['allowed'] ) {
+			return;
+		}
         self::count_ai_traffic( 'html' );
     }
 
     public static function count_ai_traffic_api( $response, $server, $request ) {
         if ( $request instanceof WP_REST_Request && strpos( (string) $request->get_route(), '/' . KALICART_BRIDGE_API_NS ) === 0 ) {
             $route = substr( (string) $request->get_route(), strlen( '/' . KALICART_BRIDGE_API_NS ) );
-            $route = preg_replace( '#/\d+#', '/{id}', $route );
             $status = ( $response instanceof WP_REST_Response ) ? $response->get_status() : null;
+			if ( $status === null || $status < 200 || $status >= 400 ) {
+				return $response; // Rejected/failed requests must remain write-free telemetry-wise.
+			}
+			if ( '/mcp' === $route || 0 === strpos( $route, '/mcp/' ) || 0 === strpos( $route, '/checkout/' ) ) {
+				return $response; // MCP has richer events; checkout has its own local funnel.
+			}
+			$route = preg_replace( '#/\d+#', '/{id}', $route );
             self::count_ai_traffic( 'api', [ 'route' => $route, 'status' => $status ] );
         }
         return $response;

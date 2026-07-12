@@ -9,8 +9,29 @@ defined( 'ABSPATH' ) || exit;
  */
 class KaliCart_Bridge_API {
 
+    private static int $internal_catalog_depth = 0;
+
     public static function init(): void {
         add_action( 'rest_api_init', [ __CLASS__, 'register_routes' ] );
+        KaliCart_Bridge_Catalog_Engine::init_cache_hooks();
+    }
+
+    /**
+     * Trusted in-process bridge for MCP tool dispatch. The outer MCP request has its
+     * own limiter; counting its internal REST callback again would double-charge it.
+     * No request parameter or header can enter this context.
+     */
+    public static function internal_catalog_call( callable $callback, WP_REST_Request $request ): WP_REST_Response {
+        self::$internal_catalog_depth++;
+        try {
+            $response = call_user_func( $callback, $request );
+            if ( ! ( $response instanceof WP_REST_Response ) ) {
+                return self::error( 'Internal catalog callback returned an invalid response.', 500 );
+            }
+            return $response;
+        } finally {
+            self::$internal_catalog_depth = max( 0, self::$internal_catalog_depth - 1 );
+        }
     }
 
     // ── MULTILINGUAL CANONICALIZATION ─────────────────────────────────────────
@@ -192,6 +213,10 @@ class KaliCart_Bridge_API {
     // ── DISCOVERY ─────────────────────────────────────────────────────────────
 
     public static function discovery( WP_REST_Request $req ): WP_REST_Response {
+		$limited = self::catalog_rate_limit( $req );
+		if ( $limited !== null ) {
+			return $limited;
+		}
         $base        = rest_url( KALICART_BRIDGE_API_NS . '/catalog' );
         $discovery   = rest_url( KALICART_BRIDGE_API_NS . '/discovery' );
         $site_name   = get_bloginfo( 'name' );
@@ -365,7 +390,7 @@ class KaliCart_Bridge_API {
                     'in_stock'   => 'Boolean. true = in_stock products only.',
                     'on_sale'    => 'Boolean. true returns products with an active WooCommerce sale price. Coupon-only savings are not included.',
                     'per_page'   => 'Results per page (1–100, default 20).',
-                    'page'       => 'Page number (default 1).',
+                    'page'       => 'Page number (1–' . self::catalog_max_page() . ', default 1).',
                     'orderby'    => 'Sort: date (default), price, title, popularity.',
                     'order'      => 'ASC or DESC (default DESC).',
                     'fields'     => 'List/search verbosity. summary = slim per-item projection for low-cost triage; full = complete records. Single-product /catalog/product/{id} defaults to compact verification data; append ?fields=full only when description or images are required. per_page 1-100 applies to list/search.',
@@ -525,6 +550,10 @@ class KaliCart_Bridge_API {
      * Served as JSON; the service-desc link declares the application/vnd.oai.openapi+json type.
      */
     public static function openapi( WP_REST_Request $req ): WP_REST_Response {
+		$limited = self::catalog_rate_limit( $req );
+		if ( $limited !== null ) {
+			return $limited;
+		}
         $ns_base = rest_url( KALICART_BRIDGE_API_NS );
 
         $filter_params = [
@@ -538,7 +567,7 @@ class KaliCart_Bridge_API {
             [ 'name' => 'orderby',   'in' => 'query', 'description' => 'Sort field.', 'schema' => [ 'type' => 'string', 'enum' => [ 'date', 'price', 'title', 'popularity' ], 'default' => 'date' ] ],
             [ 'name' => 'order',     'in' => 'query', 'description' => 'Sort direction.', 'schema' => [ 'type' => 'string', 'enum' => [ 'ASC', 'DESC' ], 'default' => 'DESC' ] ],
             [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100). Parameter name is per_page; do not use limit.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
-            [ 'name' => 'page',      'in' => 'query', 'description' => 'Page number.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'default' => 1 ] ],
+            [ 'name' => 'page',      'in' => 'query', 'description' => 'Page number.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => self::catalog_max_page(), 'default' => 1 ] ],
         ];
 
         $fields_param_search = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is summary: a slim per-item projection (id, sku, name, url, price.current/display, stock.in_stock, categories, type, updated_at) for low-cost triage; open /catalog/product/{id} for full detail. Pass fields=full for complete records.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'summary' ] ];
@@ -649,6 +678,10 @@ class KaliCart_Bridge_API {
     }
 
     public static function ucp_profile( WP_REST_Request $req ): WP_REST_Response {
+		$limited = self::catalog_rate_limit( $req );
+		if ( $limited !== null ) {
+			return $limited;
+		}
         $data     = json_decode( KaliCart_Bridge_Signals::ucp_profile_json(), true );
         $response = new WP_REST_Response( is_array( $data ) ? $data : [], 200 );
         $response->header( 'Cache-Control', 'public, max-age=3600' );
@@ -656,6 +689,14 @@ class KaliCart_Bridge_API {
     }
 
     public static function catalog_search( WP_REST_Request $req ): WP_REST_Response {
+		$limited = self::catalog_rate_limit( $req );
+        if ( $limited !== null ) {
+            return $limited;
+        }
+        $bounds_error = self::catalog_pagination_error( $req );
+        if ( $bounds_error !== null ) {
+            return $bounds_error;
+        }
         self::force_default_language();
         $param_error = self::catalog_param_alias_error( $req, 'search' );
         if ( $param_error ) {
@@ -666,7 +707,7 @@ class KaliCart_Bridge_API {
         if ( ! self::query_param_present( $req, 'fields' ) ) {
             $args['fields'] = 'summary';
         }
-        $q    = sanitize_text_field( $req->get_param( 'q' ) ?? '' );
+        $q    = substr( sanitize_text_field( $req->get_param( 'q' ) ?? '' ), 0, 200 );
 
         if ( empty( $q ) && empty( $args['category'] ) && empty( $args['gender'] ) && empty( $args['color'] ) && $args['on_sale'] !== true && $args['in_stock'] !== true ) {
             return self::error( 'At least one of: q, category, gender, color, on_sale, in_stock is required.', 400 );
@@ -674,6 +715,10 @@ class KaliCart_Bridge_API {
 
         $args['search'] = $q;
         $result = KaliCart_Bridge_Catalog_Engine::query_products( $args );
+        $engine_error = self::catalog_engine_error( $result );
+        if ( $engine_error !== null ) {
+            return $engine_error;
+        }
 
         $result['query'] = array_filter( [
             'q'        => $q ?: null,
@@ -698,6 +743,14 @@ class KaliCart_Bridge_API {
     // ── PRODUCTS ──────────────────────────────────────────────────────────────
 
     public static function catalog_products( WP_REST_Request $req ): WP_REST_Response {
+		$limited = self::catalog_rate_limit( $req );
+        if ( $limited !== null ) {
+            return $limited;
+        }
+        $bounds_error = self::catalog_pagination_error( $req );
+        if ( $bounds_error !== null ) {
+            return $bounds_error;
+        }
         self::force_default_language();
         $param_error = self::catalog_param_alias_error( $req, 'products' );
         if ( $param_error ) {
@@ -709,6 +762,10 @@ class KaliCart_Bridge_API {
             $args['fields'] = 'summary';
         }
         $result = KaliCart_Bridge_Catalog_Engine::query_products( $args );
+        $engine_error = self::catalog_engine_error( $result );
+        if ( $engine_error !== null ) {
+            return $engine_error;
+        }
         if ( (int) ( $result['total'] ?? 0 ) > 0 && $args['fields'] === 'summary' ) {
             $result['result_guidance'] = self::summary_triage_guidance();
         }
@@ -718,6 +775,10 @@ class KaliCart_Bridge_API {
     // ── SINGLE PRODUCT ────────────────────────────────────────────────────────
 
     public static function catalog_product( WP_REST_Request $req ): WP_REST_Response {
+		$limited = self::catalog_rate_limit( $req );
+        if ( $limited !== null ) {
+            return $limited;
+        }
         self::force_default_language();
         $full = self::catalog_product_full_response( $req );
         if ( $full->get_status() !== 200 ) {
@@ -755,6 +816,10 @@ class KaliCart_Bridge_API {
     // ── CATEGORIES ────────────────────────────────────────────────────────────
 
     public static function catalog_categories( WP_REST_Request $req ): WP_REST_Response {
+		$limited = self::catalog_rate_limit( $req );
+        if ( $limited !== null ) {
+            return $limited;
+        }
         self::force_default_language();
         $tree = KaliCart_Bridge_Catalog_Engine::get_categories_tree();
 
@@ -782,6 +847,10 @@ class KaliCart_Bridge_API {
     // ── META ──────────────────────────────────────────────────────────────────
 
     public static function catalog_meta( WP_REST_Request $req ): WP_REST_Response {
+		$limited = self::catalog_rate_limit( $req );
+        if ( $limited !== null ) {
+            return $limited;
+        }
         self::force_default_language();
         // Language-aware cache key: a value computed under one language context must
         // never be served under another. Suffix is the default language slug (or
@@ -871,7 +940,7 @@ class KaliCart_Bridge_API {
                     'values'      => [ 'date', 'price', 'title', 'popularity' ],
                     'default'     => 'date',
                     'default_order' => 'DESC',
-                    'note'        => 'price sorts by WooCommerce _price meta. For variable products, the parent _price may differ from variant prices; use price.current in response for authoritative value.',
+					'note'        => 'price sorts by WooCommerce product lookup minimum price with a stable product-ID tiebreaker. Price filters are verified against price.current for authoritative variable-product results.',
                 ],
                 'boolean'  => [
                     'in_stock' => 'true returns in-stock products only',
@@ -901,10 +970,106 @@ class KaliCart_Bridge_API {
 
     // ── HELPERS ───────────────────────────────────────────────────────────────
 
+    private static function catalog_engine_error( array $result ): ?WP_REST_Response {
+        $error = $result['_error'] ?? null;
+        if ( ! is_array( $error ) ) {
+            return null;
+        }
+        $status  = min( 599, max( 400, (int) ( $error['status'] ?? 422 ) ) );
+        $message = (string) ( $error['message'] ?? 'Catalog query could not be completed safely.' );
+        unset( $error['status'], $error['message'] );
+        return self::error( $message, $status, [
+            'error_code' => (string) ( $error['code'] ?? 'KALICART_CATALOG_QUERY_ERROR' ),
+            'details'    => $error,
+        ] );
+    }
+
+    private static function catalog_max_page(): int {
+        return min( 100000, max( 1, (int) apply_filters( 'kalicart_bridge_catalog_max_page', 1000 ) ) );
+    }
+
+    /** Explicit for in-process MCP calls, which do not pass through REST arg validation. */
+    private static function catalog_pagination_error( WP_REST_Request $request ): ?WP_REST_Response {
+        $page_raw = $request->get_param( 'page' );
+        if ( $page_raw !== null ) {
+            $page = filter_var( $page_raw, FILTER_VALIDATE_INT );
+            if ( $page === false || $page < 1 || $page > self::catalog_max_page() ) {
+                return self::error( 'page is outside the safe catalog pagination range.', 422, [
+                    'error_code' => 'KALICART_CATALOG_PAGE_OUT_OF_RANGE',
+                    'details'    => [ 'minimum' => 1, 'maximum' => self::catalog_max_page() ],
+                ] );
+            }
+        }
+
+        $per_page_raw = $request->get_param( 'per_page' );
+        if ( $per_page_raw !== null ) {
+            $per_page = filter_var( $per_page_raw, FILTER_VALIDATE_INT );
+            if ( $per_page === false || $per_page < 1 || $per_page > 100 ) {
+                return self::error( 'per_page must be an integer between 1 and 100.', 422, [
+                    'error_code' => 'KALICART_CATALOG_PER_PAGE_OUT_OF_RANGE',
+                ] );
+            }
+        }
+        return null;
+    }
+
+    private static function catalog_rate_limited_response( int $window ): WP_REST_Response {
+        $response = self::error( 'Too many catalog requests. Please slow down and retry.', 429, [
+            'error_code' => 'KALICART_CATALOG_RATE_LIMITED',
+        ] );
+        $response->header( 'Retry-After', (string) max( 1, $window ) );
+        $response->header( 'Cache-Control', 'no-store' );
+        return $response;
+    }
+
+    private static function catalog_rate_limit( ?WP_REST_Request $request = null ): ?WP_REST_Response {
+        if ( self::$internal_catalog_depth > 0 ) {
+            return null;
+        }
+		$cost = 1;
+		if ( $request instanceof WP_REST_Request ) {
+			$route = (string) $request->get_route();
+			$query = $request->get_query_params();
+			if ( false !== strpos( $route, '/catalog/products' ) || false !== strpos( $route, '/catalog/search' ) ) {
+				$per_page = min( 100, max( 1, absint( $query['per_page'] ?? 20 ) ) );
+				if ( isset( $query['fields'] ) ) {
+					$fields = (string) $query['fields'];
+				} elseif ( false !== strpos( $route, '/catalog/search' ) || self::products_request_has_commerce_filters( $request ) ) {
+					$fields = 'summary';
+				} else {
+					$fields = 'full';
+				}
+				$cost     = 'full' === $fields ? (int) ceil( $per_page / 10 ) : (int) ceil( $per_page / 50 );
+				foreach ( [ 'gender', 'color', 'size', 'on_sale', 'min_price', 'max_price' ] as $derived ) {
+					if ( isset( $query[ $derived ] ) && '' !== (string) $query[ $derived ] && 'false' !== strtolower( (string) $query[ $derived ] ) ) {
+						$cost += 2;
+						break;
+					}
+				}
+			} elseif ( preg_match( '#/catalog/product/\d+$#', $route ) ) {
+				$cost = 3;
+			} elseif ( false !== strpos( $route, '/catalog/meta' ) || false !== strpos( $route, '/catalog/categories' ) ) {
+				$cost = 2;
+			}
+		}
+		$cost = min( 20, max( 1, $cost ) );
+
+		$result = KaliCart_Bridge_Rate_Guard::check( 'catalog', $cost, [
+			'client_limit'  => max( 0, (int) apply_filters( 'kalicart_bridge_catalog_rate_limit_per_client', 60 ) ),
+            'client_window' => min( HOUR_IN_SECONDS, max( 1, (int) apply_filters( 'kalicart_bridge_catalog_rate_limit_per_client_secs', 60 ) ) ),
+			'global_limit'  => max( 0, (int) apply_filters( 'kalicart_bridge_catalog_rate_limit_global', 40 ) ),
+            'global_window' => min( HOUR_IN_SECONDS, max( 1, (int) apply_filters( 'kalicart_bridge_catalog_rate_limit_global_secs', 10 ) ) ),
+        ] );
+        if ( ! $result['allowed'] ) {
+            return self::catalog_rate_limited_response( $result['retry_after'] );
+        }
+        return null;
+    }
+
     private static function extract_query_args( WP_REST_Request $req ): array {
         return [
             'search'    => '',
-            'category'  => sanitize_text_field( $req->get_param( 'category' ) ?? '' ),
+            'category'  => substr( sanitize_text_field( $req->get_param( 'category' ) ?? '' ), 0, 200 ),
             'per_page'  => min( 100, max( 1, absint( $req->get_param( 'per_page' ) ?? 20 ) ) ),
             'page'      => max( 1, absint( $req->get_param( 'page' ) ?? 1 ) ),
             'orderby'   => in_array( $req->get_param( 'orderby' ), [ 'date', 'price', 'title', 'popularity' ], true ) ? $req->get_param( 'orderby' ) : 'date',
@@ -913,9 +1078,9 @@ class KaliCart_Bridge_API {
             'on_sale'   => $req->get_param( 'on_sale' ) !== null ? filter_var( $req->get_param( 'on_sale' ), FILTER_VALIDATE_BOOLEAN ) : null,
             'min_price' => $req->get_param( 'min_price' ) !== null ? (float) $req->get_param( 'min_price' ) : null,
             'max_price' => $req->get_param( 'max_price' ) !== null ? (float) $req->get_param( 'max_price' ) : null,
-            'gender'    => sanitize_text_field( $req->get_param( 'gender' ) ?? '' ),
-            'color'     => sanitize_text_field( $req->get_param( 'color' ) ?? '' ),
-            'size'      => sanitize_text_field( $req->get_param( 'size' ) ?? '' ),
+            'gender'    => substr( sanitize_text_field( $req->get_param( 'gender' ) ?? '' ), 0, 64 ),
+            'color'     => substr( sanitize_text_field( $req->get_param( 'color' ) ?? '' ), 0, 64 ),
+            'size'      => substr( sanitize_text_field( $req->get_param( 'size' ) ?? '' ), 0, 64 ),
             'modified_after' => self::sanitize_iso8601( $req->get_param( 'modified_after' ) ),
             'fields'    => $req->get_param( 'fields' ) === 'summary' ? 'summary' : 'full',
         ];
@@ -927,7 +1092,7 @@ class KaliCart_Bridge_API {
      * Invalid input is dropped (treated as full sync) rather than erroring.
      */
     private static function sanitize_iso8601( $raw ): string {
-        $raw = is_string( $raw ) ? trim( $raw ) : '';
+        $raw = is_string( $raw ) ? substr( trim( $raw ), 0, 64 ) : '';
         if ( $raw === '' ) {
             return '';
         }
@@ -939,24 +1104,29 @@ class KaliCart_Bridge_API {
     }
 
     private static function common_filter_args( bool $with_q ): array {
+        $short_text = static fn( $value ): bool => is_scalar( $value ) && strlen( (string) $value ) <= 200;
+        $facet_text = static fn( $value ): bool => is_scalar( $value ) && strlen( (string) $value ) <= 64;
+        $max_page   = self::catalog_max_page();
         $args = [
-            'category'  => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
-            'per_page'  => [ 'default' => 20, 'sanitize_callback' => 'absint' ],
-            'page'      => [ 'default' => 1,  'sanitize_callback' => 'absint' ],
-            'orderby'   => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field' ],
-            'order'     => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field' ],
+            'category'  => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $short_text ],
+            'per_page'  => [ 'default' => 20, 'sanitize_callback' => 'absint', 'validate_callback' => static fn( $v ): bool => filter_var( $v, FILTER_VALIDATE_INT ) !== false && (int) $v >= 1 && (int) $v <= 100 ],
+            'page'      => [ 'default' => 1,  'sanitize_callback' => 'absint', 'validate_callback' => static fn( $v ): bool => filter_var( $v, FILTER_VALIDATE_INT ) !== false && (int) $v >= 1 && (int) $v <= $max_page ],
+            'orderby'   => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( $v, [ 'date', 'price', 'title', 'popularity' ], true ) ],
+            'order'     => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( strtoupper( (string) $v ), [ 'ASC', 'DESC' ], true ) ],
             'in_stock'  => [ 'default' => null ],
-            'min_price' => [ 'default' => null ],
-            'max_price' => [ 'default' => null ],
-            'gender'    => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
-            'color'     => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
+            'on_sale'   => [ 'default' => null ],
+            'min_price' => [ 'default' => null, 'validate_callback' => static fn( $v ): bool => $v === null || ( is_numeric( $v ) && is_finite( (float) $v ) ) ],
+            'max_price' => [ 'default' => null, 'validate_callback' => static fn( $v ): bool => $v === null || ( is_numeric( $v ) && is_finite( (float) $v ) ) ],
+            'gender'    => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
+            'color'     => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
+            'size'      => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
             // Incremental sync: federated indexers pass an ISO-8601 timestamp to fetch
             // only products modified since their last sync (post_modified_gmt). Read-only.
-            'modified_after' => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
-            'fields'    => [ 'default' => 'full', 'sanitize_callback' => 'sanitize_text_field' ],
+            'modified_after' => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
+            'fields'    => [ 'default' => 'full', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( $v, [ 'full', 'summary' ], true ) ],
         ];
         if ( $with_q ) {
-            $args['q'] = [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ];
+            $args['q'] = [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $short_text ];
         }
         return $args;
     }

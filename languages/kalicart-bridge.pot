@@ -1195,3 +1195,8 @@ msgstr ""
 #: kalicart-bridge.php:143
 msgid "WooCommerce required"
 msgstr ""
+msgid "Too many checkout link requests. Please retry shortly."
+msgstr ""
+
+msgid "Too many requests"
+msgstr ""

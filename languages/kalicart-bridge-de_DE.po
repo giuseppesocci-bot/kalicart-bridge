@@ -1673,3 +1673,8 @@ msgstr "WooCommerce erforderlich"
 #~ msgstr ""
 #~ "Aktiviere zuerst das Kontrollkästchen für die Global-Indexierung in den "
 #~ "Einstellungen."
+msgid "Too many checkout link requests. Please retry shortly."
+msgstr "Zu viele Anfragen an den Checkout-Link. Bitte versuche es in Kürze erneut."
+
+msgid "Too many requests"
+msgstr "Zu viele Anfragen"

@@ -38,6 +38,7 @@ add_action( 'init', function () {
     load_plugin_textdomain( 'kalicart-bridge', false, dirname( plugin_basename( KALICART_BRIDGE_FILE ) ) . '/languages' );
 } );
 
+require_once KALICART_BRIDGE_DIR . 'includes/class-rate-guard.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-catalog-engine.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-quarantine.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-api.php';

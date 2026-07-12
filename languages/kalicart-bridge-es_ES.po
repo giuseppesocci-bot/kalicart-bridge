@@ -1670,3 +1670,8 @@ msgstr "WooCommerce necesario"
 #~ msgstr ""
 #~ "Marca primero la casilla de consentimiento de indexación Global en "
 #~ "Ajustes."
+msgid "Too many checkout link requests. Please retry shortly."
+msgstr "Demasiadas solicitudes al enlace de pago. Vuelve a intentarlo en breve."
+
+msgid "Too many requests"
+msgstr "Demasiadas solicitudes"

@@ -1657,3 +1657,8 @@ msgstr "WooCommerce richiesto"
 #~ msgstr ""
 #~ "Spunta prima la casella di consenso all'indicizzazione Global in "
 #~ "Impostazioni."
+msgid "Too many checkout link requests. Please retry shortly."
+msgstr "Troppe richieste al link di checkout. Riprova tra poco."
+
+msgid "Too many requests"
+msgstr "Troppe richieste"

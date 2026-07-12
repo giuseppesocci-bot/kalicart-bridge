@@ -1,6 +1,9 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
+// Assertions below target source copy; isolate them from the site's admin locale.
+switch_to_locale( 'en_US' );
+
 $failures = [];
 $check = static function ( string $name, bool $condition ) use ( &$failures ): void {
 	echo ( $condition ? 'PASS ' : 'FAIL ' ) . $name . PHP_EOL;
@@ -95,6 +98,8 @@ if ( ! taxonomy_exists( 'product_brand' ) ) {
 	}
 	wp_delete_post( $product_id, true );
 }
+
+restore_previous_locale();
 
 if ( $failures ) {
 	echo PHP_EOL . 'AGENT-COMMERCE: FAIL (' . count( $failures ) . ')' . PHP_EOL;
