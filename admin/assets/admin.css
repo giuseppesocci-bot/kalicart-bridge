@@ -208,6 +208,8 @@
 }
 .kali-stats-grid--6 { grid-template-columns: repeat(6, 1fr); }
 @media (max-width: 900px) { .kali-stats-grid--6 { grid-template-columns: repeat(3, 1fr); } }
+.kali-stats-grid--4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 900px) { .kali-stats-grid--4 { grid-template-columns: repeat(2, 1fr); } }
 .kali-stat {
   background: var(--kb-surface);
   border: 1px solid var(--kb-border);

@@ -2,7 +2,7 @@
 defined( 'ABSPATH' ) || exit;
 
 // Keep the selected tab stable across refreshes and form submissions.
-$kalicart_bridge_allowed_tabs = [ 'overview', 'quarantine', 'endpoints', 'agent-commerce', 'settings', 'coupons' ];
+$kalicart_bridge_allowed_tabs = [ 'overview', 'quarantine', 'endpoints', 'agent-commerce', 'settings', 'coupons', 'stats' ];
 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only UI selection; no state change.
 $kalicart_bridge_active_tab   = sanitize_key( wp_unslash( $_GET['tab'] ?? 'overview' ) );
 if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, true ) ) {
@@ -75,39 +75,6 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     </div>
   </div>
 
-  <!-- AGENT CHECKOUT FUNNEL: local counters only, no cloud. Sessions/carts/orders are
-       point-in-time (WP-Cron-free, always current); net value reflects genuinely
-       confirmed payments only (date_paid), never COD/BACS/cheque orders that merely
-       reached a "paid" status without a real payment_complete(). -->
-  <?php
-  $kalicart_bridge_funnel = class_exists( 'KaliCart_Bridge_Checkout' ) ? KaliCart_Bridge_Checkout::get_funnel_report() : null;
-  if ( $kalicart_bridge_funnel ) :
-  ?>
-  <div style="margin:0 0 4px;padding:14px 16px;border:1px solid var(--kb-border,#e2e4e7);border-radius:10px;background:#fff">
-    <strong style="display:block;margin-bottom:2px"><?php esc_html_e( 'Agent checkout', 'kalicart-bridge' ); ?></strong>
-    <p style="margin:0 0 12px;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Last 30 days, local counters only — no cloud.', 'kalicart-bridge' ); ?></p>
-    <div style="display:flex;flex-wrap:wrap;gap:24px">
-      <div>
-        <div style="font-size:22px;font-weight:600"><?php echo esc_html( number_format_i18n( $kalicart_bridge_funnel['sessions_created'] ) ); ?></div>
-        <div style="font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Sessions created', 'kalicart-bridge' ); ?></div>
-      </div>
-      <div>
-        <div style="font-size:22px;font-weight:600"><?php echo esc_html( number_format_i18n( $kalicart_bridge_funnel['carts_loaded'] ) ); ?></div>
-        <div style="font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Carts loaded', 'kalicart-bridge' ); ?></div>
-      </div>
-      <div>
-        <div style="font-size:22px;font-weight:600"><?php echo esc_html( number_format_i18n( $kalicart_bridge_funnel['orders_linked'] ) ); ?></div>
-        <div style="font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Orders linked', 'kalicart-bridge' ); ?></div>
-      </div>
-      <div>
-        <div style="font-size:22px;font-weight:600"><?php echo wp_kses_post( wc_price( $kalicart_bridge_funnel['net_paid_value'], [ 'currency' => $kalicart_bridge_funnel['currency'] ] ) ); ?></div>
-        <div style="font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Net value, payment confirmed', 'kalicart-bridge' ); ?></div>
-      </div>
-    </div>
-    <p style="margin:12px 0 0;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Cash on delivery, bank transfer and cheque orders are counted in "Orders linked" but excluded from the net value until payment is actually confirmed — reaching "processing" is not proof of payment for these methods.', 'kalicart-bridge' ); ?></p>
-  </div>
-  <?php endif; ?>
-
   <!-- TABS -->
   <div class="kali-tabsrow">
     <div class="kali-tabs">
@@ -117,6 +84,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       <button class="kali-tab<?php echo 'agent-commerce' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="agent-commerce">ChatGPT Feed</button>
       <button class="kali-tab<?php echo 'settings' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="settings"><?php esc_html_e( 'Settings', 'kalicart-bridge' ); ?></button>
       <button class="kali-tab<?php echo 'coupons' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="coupons"><?php esc_html_e( 'Coupons', 'kalicart-bridge' ); ?></button>
+      <button class="kali-tab<?php echo 'stats' === $kalicart_bridge_active_tab ? ' kali-tab--active' : ''; ?>" data-tab="stats"><?php esc_html_e( 'Stats', 'kalicart-bridge' ); ?></button>
     </div>
   </div>
 
@@ -420,6 +388,37 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       <button id="btnSaveCoupons" class="kali-btn kali-btn--primary"><?php esc_html_e( 'Save settings', 'kalicart-bridge' ); ?></button>
       <span id="couponsSaved" class="kali-saved-notice" style="display:none">&#x2713; <?php esc_html_e( 'Saved', 'kalicart-bridge' ); ?></span>
     </div>
+  </div>
+
+  <!-- TAB: STATS -->
+  <div id="kali-tab-stats" class="kali-panel" style="display:<?php echo 'stats' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
+    <div class="kali-section-title"><?php esc_html_e( 'Agent checkout', 'kalicart-bridge' ); ?></div>
+    <p class="kali-hint"><?php esc_html_e( 'Last 30 days, local counters only — no cloud. Orders completed via a Bridge checkout session (classic checkout or Checkout Block) are linked back to that session.', 'kalicart-bridge' ); ?></p>
+
+    <?php
+    $kalicart_bridge_funnel = class_exists( 'KaliCart_Bridge_Checkout' ) ? KaliCart_Bridge_Checkout::get_funnel_report() : null;
+    if ( $kalicart_bridge_funnel ) :
+    ?>
+    <div class="kali-stats-grid kali-stats-grid--4">
+      <div class="kali-stat">
+        <span class="kali-stat__value"><?php echo esc_html( number_format_i18n( $kalicart_bridge_funnel['sessions_created'] ) ); ?></span>
+        <span class="kali-stat__label"><?php esc_html_e( 'Sessions created', 'kalicart-bridge' ); ?></span>
+      </div>
+      <div class="kali-stat">
+        <span class="kali-stat__value"><?php echo esc_html( number_format_i18n( $kalicart_bridge_funnel['carts_loaded'] ) ); ?></span>
+        <span class="kali-stat__label"><?php esc_html_e( 'Carts loaded', 'kalicart-bridge' ); ?></span>
+      </div>
+      <div class="kali-stat kali-stat--green">
+        <span class="kali-stat__value"><?php echo esc_html( number_format_i18n( $kalicart_bridge_funnel['orders_linked'] ) ); ?></span>
+        <span class="kali-stat__label"><?php esc_html_e( 'Orders linked', 'kalicart-bridge' ); ?></span>
+      </div>
+      <div class="kali-stat kali-stat--green">
+        <span class="kali-stat__value"><?php echo wp_kses_post( wc_price( $kalicart_bridge_funnel['net_paid_value'], [ 'currency' => $kalicart_bridge_funnel['currency'] ] ) ); ?></span>
+        <span class="kali-stat__label"><?php esc_html_e( 'Net value, paid', 'kalicart-bridge' ); ?></span>
+      </div>
+    </div>
+    <p class="kali-hint"><?php esc_html_e( 'Cash on delivery, bank transfer and cheque orders are counted in "Orders linked" but excluded from the net value until WooCommerce records an actual payment confirmation — reaching "processing" is not proof of payment for these methods.', 'kalicart-bridge' ); ?></p>
+    <?php endif; ?>
   </div>
 
 </div>
