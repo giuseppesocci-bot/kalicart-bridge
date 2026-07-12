@@ -433,7 +433,7 @@ class KaliCart_Bridge_Checkout {
     }
 
     private static function remote_addr_is_trusted_proxy(): bool {
-        $remote = (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
+        $remote = self::remote_addr();
         if ( $remote === '' ) {
             return false;
         }
@@ -449,10 +449,18 @@ class KaliCart_Bridge_Checkout {
         return false;
     }
 
+    private static function remote_addr(): string {
+        return isset( $_SERVER['REMOTE_ADDR'] )
+            ? trim( sanitize_text_field( wp_unslash( (string) $_SERVER['REMOTE_ADDR'] ) ) )
+            : '';
+    }
+
     private static function client_ip(): string {
-        $remote = trim( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) );
+        $remote = self::remote_addr();
         if ( self::remote_addr_is_trusted_proxy() ) {
-            $xff = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? (string) $_SERVER['HTTP_X_FORWARDED_FOR'] : '';
+            $xff = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] )
+                ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_X_FORWARDED_FOR'] ) )
+                : '';
             if ( $xff !== '' ) {
                 // Trusted proxies normally append to X-Forwarded-For. Walk right-to-left,
                 // discard trusted proxy hops, and use the nearest untrusted valid address.
