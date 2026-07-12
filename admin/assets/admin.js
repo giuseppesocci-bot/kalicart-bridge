@@ -448,6 +448,7 @@
     if ( $( 'toggleRobots' ) )  $( 'toggleRobots' ).checked  = KaliBridge.robots_enabled;
     if ( $( 'toggleSitemap' ) ) $( 'toggleSitemap' ).checked = KaliBridge.sitemap_enabled;
     initFederation();
+    initExternalVisibility();
     initCoupons();
 
     syncPositionWrap();
@@ -556,6 +557,73 @@
       actBtn.disabled = false;
       hintEl.style.display = 'none';
     }
+  }
+
+  function initExternalVisibility() {
+    const btn = $( 'externalVisibilityBtn' );
+    const out = $( 'externalVisibilityResult' );
+    if ( ! btn ) return;
+    btn.addEventListener( 'click', () => {
+      btn.disabled = true;
+      out.textContent = KaliBridge.i18n?.loading || 'Loading\u2026';
+      const fd = new FormData();
+      fd.append( 'action', 'kalicart_external_visibility_check' );
+      fd.append( 'nonce',  KaliBridge.nonce );
+      fetch( KaliBridge.ajax_url, { method: 'POST', body: fd, credentials: 'same-origin' } )
+        .then( r => r.json() )
+        .then( res => {
+          btn.disabled = false;
+          if ( ! res.success ) {
+            out.textContent = KaliBridge.i18n?.external_check_failed || 'Could not reach KaliCart Global.';
+            return;
+          }
+          const d = res.data;
+          if ( ! d.checked ) {
+            // Stato 3 di 3: MAI osservato. Distinto (grigio) da "non raggiungibile" (rosso):
+            // qui Global non ha ancora dati, non e' un fallimento.
+            out.innerHTML = '<div style="color:var(--kb-muted,#888)">&#9679; ' + ( KaliBridge.i18n?.external_check_never || 'Never checked' ) + '</div>'
+              + '<div style="margin-top:2px">' + ( KaliBridge.i18n?.external_check_not_probed || 'Not observed from outside yet.' ) + '</div>';
+            return;
+          }
+          const yes = KaliBridge.i18n?.yes || 'Yes';
+          const no  = KaliBridge.i18n?.no  || 'No';
+          const isReachable = ( d.probe_status === 'ok' );
+          // Stato 1/2 di 3: raggiungibile (verde) vs non raggiungibile (rosso) - mai lo stesso grigio del "mai controllato".
+          const dotColor  = isReachable ? 'var(--kb-ok,#00a32a)' : '#d63638';
+          const reachable = isReachable ? ( KaliBridge.i18n?.external_check_reachable || 'Reachable' ) : ( KaliBridge.i18n?.external_check_unreachable || 'Not reachable' );
+          const detected  = d.bridge_detected ? yes : no;
+
+          // Eta' relativa + soglia di staleness a 7 giorni (stesso valore che Global usa
+          // internamente, LIVENESS_STALE_DAYS, per decidere quando un merchant e' "sospeso"
+          // per staleness - qui solo per avvisare, non per nascondere il dato).
+          let ago = '\u2014', staleWarning = '';
+          if ( d.last_probed_at ) {
+            const ms = Date.now() - new Date( d.last_probed_at ).getTime();
+            const days = ms / 86400000;
+            if ( days >= 1 ) {
+              ago = Math.floor( days ) + ' ' + ( KaliBridge.i18n?.external_check_ago_days || 'days ago' );
+            } else if ( ms >= 3600000 ) {
+              ago = Math.floor( ms / 3600000 ) + ' ' + ( KaliBridge.i18n?.external_check_ago_hours || 'hours ago' );
+            } else {
+              ago = KaliBridge.i18n?.external_check_ago_now || 'just now';
+            }
+            if ( days > 7 ) {
+              staleWarning = '<div style="margin-top:4px;color:#b26b00">&#9888; ' + ( KaliBridge.i18n?.external_check_stale || 'This observation is more than 7 days old.' ) + '</div>';
+            }
+          }
+          const when = d.last_probed_at ? new Date( d.last_probed_at ).toLocaleString() + ' (' + ago + ')' : '\u2014';
+
+          out.innerHTML = ''
+            + '<div><span style="color:' + dotColor + '">&#9679;</span> ' + ( KaliBridge.i18n?.external_check_label_reachable || 'Discovery reachable from outside:' ) + ' <strong>' + reachable + '</strong></div>'
+            + '<div>' + ( KaliBridge.i18n?.external_check_label_detected  || 'Bridge detected:' )                  + ' <strong>' + detected  + '</strong></div>'
+            + '<div>' + ( KaliBridge.i18n?.external_check_label_checked   || 'Last checked:' )                     + ' ' + when + '</div>'
+            + staleWarning;
+        } )
+        .catch( () => {
+          btn.disabled = false;
+          out.textContent = KaliBridge.i18n?.external_check_failed || 'Could not reach KaliCart Global.';
+        } );
+    } );
   }
 
   function initFederation() {

@@ -55,6 +55,15 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     <span id="federationStatus" style="display:none;margin-left:10px;font-size:13px;color:var(--kb-ok,#00a32a)"></span>
     <span id="federationHint" style="display:none;margin-left:10px;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Use the Federated Catalog banner above to manage consent.', 'kalicart-bridge' ); ?></span>
 
+    <!-- External Agent Visibility Check: read-only, shows what KaliCart Global observed
+         from OUTSIDE this site the last time it probed (hosting/cache/CDN/robots can make
+         a correctly-configured Bridge invisible to real agents; this surfaces that gap). -->
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--kb-border,#e2e2e2)">
+      <button type="button" class="kali-btn kali-btn--secondary" id="externalVisibilityBtn"><?php esc_html_e( 'Check external visibility', 'kalicart-bridge' ); ?></button>
+      <p style="margin:6px 0 0;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Shows KaliCart Global\'s last periodic observation of your discovery endpoint \u2014 not a live scan. Covers discovery reachability only, not MCP, the ChatGPT feed, or checkout.', 'kalicart-bridge' ); ?></p>
+      <div id="externalVisibilityResult" style="margin-top:8px;font-size:13px"></div>
+    </div>
+
     <!-- Filtro revoca a due step (stile plugin: kali-warn-alert). Nascosto finche' non si clicca Revoke. -->
     <div id="federationRevokeConfirm" class="kali-warn-alert" style="display:none;margin-top:12px">
       <strong>&#9888; <?php esc_html_e( 'Heads up', 'kalicart-bridge' ); ?></strong>

@@ -16,6 +16,7 @@ class KaliCart_Bridge_Admin {
         add_action( 'wp_ajax_kalicart_save_settings', [ __CLASS__, 'ajax_save_settings' ] );
         add_action( 'wp_ajax_kalicart_federation_activate', [ __CLASS__, 'ajax_federation_activate' ] );
         add_action( 'wp_ajax_kalicart_federation_revoke',   [ __CLASS__, 'ajax_federation_revoke' ] );
+        add_action( 'wp_ajax_kalicart_external_visibility_check', [ __CLASS__, 'ajax_external_visibility_check' ] );
         add_filter( 'plugin_row_meta', [ __CLASS__, 'plugin_row_meta' ], 10, 2 );
     }
 
@@ -124,6 +125,20 @@ class KaliCart_Bridge_Admin {
             'federation_registered'        => __( 'Registered on', 'kalicart-bridge' ),
             'federation_consent_required'  => __( 'Tick the consent box above first.', 'kalicart-bridge' ),
             'federation_activate_failed'   => __( 'Activation failed. Please try again.', 'kalicart-bridge' ),
+            'external_check_failed'        => __( 'Could not reach KaliCart Global. Try again in a moment.', 'kalicart-bridge' ),
+            'external_check_not_probed'    => __( 'Not observed from outside yet. Activate the Federated Catalog above to trigger a check.', 'kalicart-bridge' ),
+            'external_check_label_reachable'   => __( 'Discovery reachable from outside:', 'kalicart-bridge' ),
+            'external_check_label_detected'    => __( 'Bridge detected:', 'kalicart-bridge' ),
+            'external_check_label_checked'     => __( 'Last checked:', 'kalicart-bridge' ),
+            'external_check_reachable'     => __( 'Reachable', 'kalicart-bridge' ),
+            'external_check_unreachable'   => __( 'Not reachable', 'kalicart-bridge' ),
+            'external_check_never'         => __( 'Never checked', 'kalicart-bridge' ),
+            'external_check_stale'         => __( 'This observation is more than 7 days old \u2014 consider re-activating to refresh it.', 'kalicart-bridge' ),
+            'external_check_ago_days'      => __( 'days ago', 'kalicart-bridge' ),
+            'external_check_ago_hours'     => __( 'hours ago', 'kalicart-bridge' ),
+            'external_check_ago_now'       => __( 'just now', 'kalicart-bridge' ),
+            'yes'                           => __( 'Yes', 'kalicart-bridge' ),
+            'no'                            => __( 'No', 'kalicart-bridge' ),
             'error'          => __( 'Error:', 'kalicart-bridge' ),
             'loading'        => __( 'Loading…', 'kalicart-bridge' ),
             'no_issues'      => __( 'No issues. Catalog looks great!', 'kalicart-bridge' ),
@@ -295,6 +310,41 @@ class KaliCart_Bridge_Admin {
         }
         update_option( 'kalicart_bridge_federation_registered_at', gmdate( 'c' ) );
         wp_send_json_success( [ 'registered_at' => get_option( 'kalicart_bridge_federation_registered_at' ), 'consent' => true ] );
+    }
+
+    /**
+     * External Agent Visibility Check (2026-07-12).
+     * Read-only: does NOT trigger a new probe, does NOT touch federation consent.
+     * Surfaces what KaliCart Global's own maintenance/announce probe last observed
+     * from OUTSIDE this site (discovery reachability, Bridge detection) - the same
+     * data an external agent's request would depend on. Trigger for a fresh probe
+     * remains "Activate Federated Catalog" above; this only reads the result.
+     * Server-side wp_remote_get, HTTPS. The ONLY datum sent is the public site URL,
+     * as a query parameter (no body, no credentials).
+     */
+    public static function ajax_external_visibility_check(): void {
+        check_ajax_referer( 'kalicart_bridge', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'Forbidden', 403 );
+
+        $site_url = trailingslashit( get_site_url() );
+        $resp = wp_remote_get( KALICART_BRIDGE_GLOBAL . '/v1/bridge/status?domain=' . rawurlencode( $site_url ), [
+            'timeout'   => 8,
+            'sslverify' => true,
+            'headers'   => [ 'Accept' => 'application/json' ],
+        ] );
+        if ( is_wp_error( $resp ) ) {
+            wp_send_json_error( [ 'reason' => 'status_failed', 'detail' => $resp->get_error_message() ], 502 );
+        }
+        $code = wp_remote_retrieve_response_code( $resp );
+        if ( $code < 200 || $code >= 300 ) {
+            wp_send_json_error( [ 'reason' => 'status_http_' . $code ], 502 );
+        }
+        $data = json_decode( wp_remote_retrieve_body( $resp ), true );
+        if ( ! is_array( $data ) || empty( $data['ok'] ) ) {
+            wp_send_json_error( [ 'reason' => 'status_invalid_response' ], 502 );
+        }
+        update_option( 'kalicart_bridge_last_external_check', $data );
+        wp_send_json_success( $data );
     }
 
     /**
