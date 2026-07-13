@@ -350,6 +350,7 @@ ELSE:
 
 ---
 
-*This guide covers ARC/1.0 as implemented by KaliCart Bridge ≥ 1.0.101 (current release 1.0.109).*  
-*Full specification: [bridge.kalicart.com/spec](https://bridge.kalicart.com/spec/)*  
+*This guide covers ARC/1.0 as implemented by KaliCart Bridge ≥ 1.0.101 (current release 1.0.118).*<br>
+*Full specification: [bridge.kalicart.com/spec](https://bridge.kalicart.com/spec/)*<br>
 *Full documentation: [bridge.kalicart.com/docs](https://bridge.kalicart.com/docs/)*
+*Maintainer release handoff: [docs/RELEASE-1.0.118-HANDOFF.md](docs/RELEASE-1.0.118-HANDOFF.md).*
