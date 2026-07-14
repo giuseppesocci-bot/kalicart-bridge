@@ -439,7 +439,7 @@ class KaliCart_Bridge_MCP {
 					'Read-only WooCommerce catalog for ' . $name . '.',
 					'Call get_meta first to learn valid category slugs, accepted filter values and the price range.',
 					'Use search_products with ONLY a bare product noun in "q"; put every attribute (category, gender, color, price) in its own argument — never inside "q".',
-					'Prices are catalog prices in major currency units. Checkout stays on the merchant storefront; this server never takes payment.',
+					'Prices are catalog prices in major currency units. For variable products, on_sale may apply to only some size/color variants: inspect price.sale_scope and verify the selected variant before quoting a discount. Checkout stays on the merchant storefront; this server never takes payment.',
 				)
 			),
 		);
@@ -674,7 +674,7 @@ class KaliCart_Bridge_MCP {
 			),
 			'on_sale'   => array(
 				'type'        => 'boolean',
-				'description' => 'true returns products with an active WooCommerce sale price (coupon-only savings excluded).',
+				'description' => 'true returns products with an active WooCommerce sale price; for variable products only some variants may be discounted, so verify price.sale_scope and the selected variant (coupon-only savings excluded).',
 			),
 			'per_page'  => array(
 				'type'        => 'integer',

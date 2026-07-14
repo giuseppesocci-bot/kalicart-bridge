@@ -26,6 +26,9 @@ class KaliCart_Bridge_Checkout {
 		// Own checkout POSTs before WordPress parses JSON, so oversized or malformed
 		// request bodies consume bounded work and are charged to the abuse guard.
 		add_filter( 'rest_pre_dispatch', [ __CLASS__, 'pre_dispatch' ], 1, 3 );
+		// Session IDs are bearer tokens. Never allow a reverse proxy or browser cache
+		// to retain POST/GET/DELETE responses, including errors and idempotent replays.
+		add_filter( 'rest_post_dispatch', [ __CLASS__, 'prevent_session_response_caching' ], 20, 3 );
         add_action( 'template_redirect', [ __CLASS__, 'handle_session_redirect' ] );
         // Checkout attribution: classic checkout and Store API (Checkout Block) fire
         // DIFFERENT hooks with different signatures (verified against WooCommerce 10.8.1
@@ -42,6 +45,24 @@ class KaliCart_Bridge_Checkout {
         add_action( 'woocommerce_cart_item_removed', [ __CLASS__, 'invalidate_attribution_marker' ], 10, 0 );
         add_action( 'woocommerce_cart_item_restored', [ __CLASS__, 'invalidate_attribution_marker' ], 10, 0 );
     }
+
+	public static function prevent_session_response_caching( $result, $server, $request ) {
+		if ( ! ( $request instanceof WP_REST_Request ) ) {
+			return $result;
+		}
+		$route = (string) $request->get_route();
+		$base  = '/' . KALICART_BRIDGE_API_NS . '/checkout/session';
+		if ( $route !== $base && 0 !== strpos( $route, $base . '/' ) ) {
+			return $result;
+		}
+		if ( ! ( $result instanceof WP_REST_Response ) ) {
+			return $result;
+		}
+		$result->header( 'Cache-Control', 'private, no-store, max-age=0' );
+		$result->header( 'Pragma', 'no-cache' );
+		$result->header( 'Expires', '0' );
+		return $result;
+	}
 
 	public static function pre_dispatch( $result, $server, $request ) {
 		if ( null !== $result || ! ( $request instanceof WP_REST_Request ) ) {

@@ -241,6 +241,7 @@ class KaliCart_Bridge_Admin {
     public static function ajax_save_settings(): void {
         check_ajax_referer( 'kalicart_bridge', 'nonce' );
         if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'Forbidden', 403 );
+		$previous_sitemap_enabled = (bool) get_option( 'kalicart_bridge_sitemap_enabled', true );
 
         $settings = [
             'badge_enabled'   => filter_input( INPUT_POST, 'badge_enabled',   FILTER_VALIDATE_BOOLEAN ),
@@ -279,8 +280,10 @@ class KaliCart_Bridge_Admin {
             KaliCart_Bridge_Signals::write_well_known_files();
         }
 
-        // Flush rewrite rules if sitemap setting changed
-        flush_rewrite_rules();
+		// Rewrite flushing is expensive and is needed only when the sitemap route changes.
+		if ( $previous_sitemap_enabled !== (bool) $settings['sitemap_enabled'] ) {
+			flush_rewrite_rules();
+		}
 
         wp_send_json_success( [ 'saved' => true ] );
     }

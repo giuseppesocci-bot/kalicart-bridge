@@ -3,7 +3,7 @@
  * Plugin Name:       KaliCart Bridge – Product Feed for ChatGPT & AI Agents
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.118
+ * Version:           1.0.119
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.118' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.119' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
@@ -79,6 +79,7 @@ add_action( 'plugins_loaded', function () {
         } else {
             KaliCart_Bridge_Signals::cleanup_well_known_static_files();
         }
+		KaliCart_Bridge_Catalog_Engine::invalidate_query_cache();
         flush_rewrite_rules();
         update_option( 'kalicart_bridge_wk_version', KALICART_BRIDGE_VERSION );
     }, 20 );
@@ -108,11 +109,13 @@ add_filter( 'rest_post_dispatch', function ( $result, $server, $request ) {
 // ── Catalog facets cron ─────────────────────────────────────────────────────
 // Rebuilds available_genders / available_colors every 6 hours.
 // Heavy computation (O(n) over all products) — must never run inline on web requests.
-add_action( 'kalicart_bridge_facets_rebuild', function () {
+add_action( 'kalicart_bridge_facets_rebuild', function ( $scheduled_lang = null ) {
     if ( ! class_exists( 'KaliCart_Bridge_Catalog_Engine' ) ) return;
-    $lang = KaliCart_Bridge_API::default_language();
+	$lang = is_string( $scheduled_lang ) && '' !== $scheduled_lang
+		? sanitize_key( $scheduled_lang )
+		: KaliCart_Bridge_API::default_language();
     KaliCart_Bridge_Catalog_Engine::compute_catalog_facets( $lang );
-} );
+}, 10, 1 );
 
 if ( ! wp_next_scheduled( 'kalicart_bridge_facets_rebuild' ) ) {
     wp_schedule_event( time(), 'twicedaily', 'kalicart_bridge_facets_rebuild' );
@@ -164,5 +167,8 @@ register_activation_hook( __FILE__, function () {
 } );
 
 register_deactivation_hook( __FILE__, function () {
+	wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
+	wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
+	wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
     flush_rewrite_rules();
 } );

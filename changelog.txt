@@ -1,5 +1,14 @@
 *** KaliCart Bridge Changelog ***
 
+2026-07-14 - version 1.0.119
+
+* Checkout privacy: all checkout-session REST responses now send private no-store headers, preventing reverse proxies from serving stale bearer-session data after cancellation or expiry. Discovery now documents the real pending and cart_loaded states.
+* Variable sales: product summaries distinguish some_variants from all_variants, report discounted and priced variation counts, and require selected-variation verification when only particular sizes or colors are discounted. The calculation reuses WooCommerce's existing variation price matrix and adds no per-variation queries.
+* Sale statistics: catalog metadata now separates product cards on sale from individually discounted variations while retaining on_sale_total as the product-level compatibility field.
+* Catalog accuracy: products without a usable price remain discoverable but sort after priced products, so ascending price pages no longer fill with zero-price placeholders.
+* Performance: a missing facet snapshot queues a background rebuild instead of scanning the full catalog during a public request. Saving unrelated settings no longer flushes rewrite rules.
+* Lifecycle hardening: deactivation clears recurring jobs; uninstall removes all Bridge options, dynamic facets, scheduled feed work, generated catalog feeds and plugin-owned public discovery mirrors.
+
 2026-07-12 - version 1.0.118
 
 * New: checkout attribution. Orders created from a Bridge checkout session — through either classic checkout or Checkout Block — are linked back to that session. A local 30-day funnel (sessions created, carts loaded, orders linked and net paid value) is shown in the Stats tab of the Bridge dashboard. No data is sent to the cloud.

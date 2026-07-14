@@ -58,6 +58,18 @@ $dispatch = static function( $payload, array $headers = [], bool $raw = false ) 
 	return $response instanceof WP_REST_Response ? $response : new WP_REST_Response( [ 'unexpected' => true ], 599 );
 };
 
+// Every checkout session response is private, including errors returned before
+// session creation. This is the regression gate for stale proxy responses.
+$cache_probe_request  = $make_request( (object) [] );
+$cache_probe_response = KaliCart_Bridge_Checkout::prevent_session_response_caching(
+	new WP_REST_Response( [ 'success' => false ], 400 ),
+	null,
+	$cache_probe_request
+);
+$cache_headers = $cache_probe_response->get_headers();
+$check( 'private, no-store, max-age=0' === ( $cache_headers['Cache-Control'] ?? '' ), 'Checkout response is missing the private no-store cache policy.' );
+$check( 'no-cache' === ( $cache_headers['Pragma'] ?? '' ) && '0' === ( $cache_headers['Expires'] ?? '' ), 'Checkout response is missing legacy cache prevention headers.' );
+
 // The public transport is bounded before WordPress's JSON parameter parser.
 $plain = $dispatch( (object) [], [ 'content-type' => 'text/plain' ] );
 $check( 415 === $plain->get_status(), 'Checkout accepted a non-JSON Content-Type.' );

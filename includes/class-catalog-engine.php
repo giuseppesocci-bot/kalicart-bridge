@@ -356,7 +356,10 @@ class KaliCart_Bridge_Catalog_Engine {
 		}
 		if ( ! empty( $filter['orderby'] ) ) {
 			$order              = 'ASC' === ( $filter['order'] ?? '' ) ? 'ASC' : 'DESC';
-			$clauses['orderby'] = "{$alias}.min_price {$order}, {$wpdb->posts}.ID {$order}";
+			// WooCommerce keeps zero-priced placeholder parents in the lookup table.
+			// They remain discoverable, but must sort after products with a usable price
+			// in both directions so an ascending page is not filled with null prices.
+			$clauses['orderby'] = "CASE WHEN {$alias}.min_price <= 0 THEN 1 ELSE 0 END ASC, {$alias}.min_price {$order}, {$wpdb->posts}.ID {$order}";
 		}
 
 		return $clauses;
@@ -548,6 +551,10 @@ class KaliCart_Bridge_Catalog_Engine {
                     'display' => $price['display'] ?? null,
                     'regular' => $price['regular'] ?? $price['min_regular'] ?? null,
                     'on_sale' => (bool) ( $price['on_sale'] ?? false ),
+					'sale_scope' => $price['sale_scope'] ?? ( ! empty( $price['on_sale'] ) ? 'single_product' : 'none' ),
+					'discounted_variations_count' => $price['discounted_variations_count'] ?? null,
+					'priced_variations_count' => $price['priced_variations_count'] ?? null,
+					'variant_selection_required_for_sale' => (bool) ( $price['variant_selection_required_for_sale'] ?? false ),
                 ],
                 'stock'      => [ 'in_stock' => $p->is_in_stock() ],
                 'categories' => $categories,
@@ -1169,29 +1176,65 @@ class KaliCart_Bridge_Catalog_Engine {
         return null;
     }
 
+	/** Pure in-memory summary of WooCommerce's already-cached variation price matrix. */
+	private static function summarize_variable_prices( array $prices ): array {
+		$regular_prices   = array_filter( array_map( 'floatval', $prices['regular_price'] ?? [] ), static fn( float $value ): bool => $value > 0 );
+		$current_prices   = array_filter( array_map( 'floatval', $prices['price'] ?? [] ), static fn( float $value ): bool => $value > 0 );
+		$discounted       = [];
+		$discount_pcts    = [];
+		$discount_amounts = [];
+		foreach ( $current_prices as $variation_id => $current_price ) {
+			$regular_price = isset( $regular_prices[ $variation_id ] ) ? (float) $regular_prices[ $variation_id ] : 0.0;
+			if ( $regular_price <= 0 || $current_price >= $regular_price ) {
+				continue;
+			}
+			$pct = ( ( $regular_price - $current_price ) / $regular_price ) * 100;
+			if ( $pct < 1 ) {
+				continue; // Preserve Bridge's documented >=1% active-sale threshold.
+			}
+			$discounted[ $variation_id ]       = $current_price;
+			$discount_pcts[ $variation_id ]    = $pct;
+			$discount_amounts[ $variation_id ] = $regular_price - $current_price;
+		}
+
+		$priced_count     = count( $current_prices );
+		$discounted_count = count( $discounted );
+		return [
+			'min_regular'      => $regular_prices ? (float) min( $regular_prices ) : null,
+			'max_regular'      => $regular_prices ? (float) max( $regular_prices ) : null,
+			'min_current'      => $current_prices ? (float) min( $current_prices ) : null,
+			'max_current'      => $current_prices ? (float) max( $current_prices ) : null,
+			'min_sale'         => $discounted ? (float) min( $discounted ) : null,
+			'max_sale'         => $discounted ? (float) max( $discounted ) : null,
+			'on_sale'          => $discounted_count > 0,
+			'sale_scope'       => 0 === $discounted_count
+				? 'none'
+				: ( $discounted_count === $priced_count ? 'all_variants' : 'some_variants' ),
+			'discounted_count' => $discounted_count,
+			'priced_count'     => $priced_count,
+			'discount_pct'     => $discount_pcts ? round( (float) max( $discount_pcts ), 1 ) : null,
+			'discount_amount'  => $discount_amounts ? round( (float) max( $discount_amounts ), 2 ) : null,
+		];
+	}
+
     private static function compute_price( WC_Product $p ): array {
         $currency = get_woocommerce_currency();
 
         if ( $p->is_type( 'variable' ) ) {
             /** @var WC_Product_Variable $p */
             $prices = $p->get_variation_prices( true );
-            $min_regular = ! empty( $prices['regular_price'] ) ? (float) min( $prices['regular_price'] ) : null;
-            $max_regular = ! empty( $prices['regular_price'] ) ? (float) max( $prices['regular_price'] ) : null;
-            $min_sale    = ! empty( $prices['sale_price'] ) ? (float) min( array_filter( $prices['sale_price'] ) ) : null;
-            $max_sale    = ! empty( $prices['sale_price'] ) ? (float) max( array_filter( $prices['sale_price'] ) ) : null;
-
-            $on_sale = $p->is_on_sale();
-            $discount_pct = null;
-            if ( $on_sale && $min_regular && $min_sale ) {
-                $discount_pct = round( ( ( $min_regular - $min_sale ) / $min_regular ) * 100, 1 );
-                if ( $discount_pct < 1 ) {
-                    $on_sale      = false;
-                    $discount_pct = null;
-                }
-            }
-
-            $display_min = $min_sale ?? $min_regular;
-            $display_max = $max_sale ?? $max_regular;
+			$sale             = self::summarize_variable_prices( $prices );
+			$min_regular      = $sale['min_regular'];
+			$max_regular      = $sale['max_regular'];
+			$min_sale         = $sale['min_sale'];
+			$max_sale         = $sale['max_sale'];
+			$on_sale          = $sale['on_sale'];
+			$sale_scope       = $sale['sale_scope'];
+			$discounted_count = $sale['discounted_count'];
+			$priced_count     = $sale['priced_count'];
+			$discount_pct     = $sale['discount_pct'];
+			$display_min      = $sale['min_current'];
+			$display_max      = $sale['max_current'];
             $display = $display_min !== null
                 ? ( $display_min === $display_max ? wc_price( $display_min ) : wc_price( $display_min ) . ' – ' . wc_price( $display_max ) )
                 : null;
@@ -1201,11 +1244,9 @@ class KaliCart_Bridge_Catalog_Engine {
             $tax_enabled  = wc_tax_enabled();
 
             // current: lowest active price — canonical readable field for all product types
-            $current_range = $min_sale ?? $min_regular;
+			$current_range = $display_min;
 
-            $discount_amount_range = ( $on_sale && $min_regular !== null && $min_sale !== null )
-                ? round( $min_regular - $min_sale, 2 )
-                : null;
+			$discount_amount_range = $sale['discount_amount'];
 
             return [
                 'type'            => 'range',
@@ -1220,7 +1261,15 @@ class KaliCart_Bridge_Catalog_Engine {
                 'min_sale'        => $min_sale,
                 'max_sale'        => $max_sale,
                 'on_sale'         => $on_sale,
+				'sale_scope'       => $sale_scope,
+				'discounted_variations_count' => $discounted_count,
+				'priced_variations_count' => $priced_count,
+				'variant_selection_required_for_sale' => 'some_variants' === $sale_scope,
+				'sale_note'        => 'some_variants' === $sale_scope
+					? 'Only some priced variants are on sale. Verify the selected size/color variation before quoting the discounted price.'
+					: null,
                 'discount_pct'    => $discount_pct,
+				'discount_pct_scope' => $discount_pct !== null ? 'maximum_variant_discount' : null,
                 'discount_amount' => $discount_amount_range,
                 'display'         => $display,
             ];
@@ -1258,6 +1307,7 @@ class KaliCart_Bridge_Catalog_Engine {
             'sale'            => $sale,
             'current'         => $current,
             'on_sale'         => $on_sale,
+			'sale_scope'       => $on_sale ? 'single_product' : 'none',
             'discount_pct'    => $discount_pct,
             'discount_amount' => $discount_amount_fixed,
             'display'         => $current !== null ? str_replace( "\xc2\xa0", ' ', html_entity_decode( wp_strip_all_tags( wc_price( $current ) ), ENT_QUOTES ) ) : null,
@@ -1637,6 +1687,9 @@ class KaliCart_Bridge_Catalog_Engine {
         // Persist result so meta endpoint can read it without re-computing.
         $option_key = 'kalicart_bridge_catalog_facets_' . ( $lang ?? 'mono' );
         update_option( $option_key, $result, false ); // autoload=false
+		// A first-request placeholder must disappear as soon as the background build
+		// completes, rather than hiding fresh facets for the full five-minute meta TTL.
+		delete_transient( 'kalicart_bridge_meta_' . ( $lang ?? 'mono' ) );
 
         return $result;
     }

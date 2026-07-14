@@ -388,7 +388,7 @@ class KaliCart_Bridge_API {
                     'min_price'  => 'Minimum current price (numeric, merchant currency).',
                     'max_price'  => 'Maximum current price (numeric, merchant currency).',
                     'in_stock'   => 'Boolean. true = in_stock products only.',
-                    'on_sale'    => 'Boolean. true returns products with an active WooCommerce sale price. Coupon-only savings are not included.',
+					'on_sale'    => 'Boolean. true returns products with an active WooCommerce sale price. For variable products this can mean only some size/color variants; verify price.sale_scope and the selected variation. Coupon-only savings are not included.',
                     'per_page'   => 'Results per page (1–100, default 20).',
                     'page'       => 'Page number (1–' . self::catalog_max_page() . ', default 1).',
                     'orderby'    => 'Sort: date (default), price, title, popularity.',
@@ -419,7 +419,8 @@ class KaliCart_Bridge_API {
                     'checkout_url'  => 'URL to proceed directly to WooCommerce checkout',
                     'subtotal'      => 'Cart subtotal (catalog prices, pre-checkout)',
                     'expires_at'    => 'Session expiry timestamp',
-                    'status'        => 'created | error',
+					'status'        => 'pending | cart_loaded | error',
+					'status_note'   => 'pending after creation; cart_loaded after the buyer successfully opens a Bridge cart or checkout URL.',
                 ],
                 'authority_note' => 'No payment is processed. No order is created. Checkout remains WooCommerce authority. Final total (with shipping, coupons, taxes) is confirmed only at checkout.',
             ],
@@ -455,7 +456,7 @@ class KaliCart_Bridge_API {
             'variation_discovery' => [
                 'required_for_variable_products' => true,
                 'source'     => 'product verification endpoint: /catalog/product/{id} exposes purchasable attributes and available variations by default',
-                'agent_rule' => 'Do not quote exact final price until a variation is selected. Price may differ per variant. Use purchase_readiness.blocking_fields to know which attributes are required.',
+				'agent_rule' => 'Do not quote exact final price or promise a sale until a variation is selected. Price and sale eligibility may differ per size/color. Use price.sale_scope and purchase_readiness.blocking_fields before handoff.',
                 'list_context_note' => 'In list and search responses, variants is an empty array for variable products (performance). Fetch /catalog/product/{id} for the compact verification record and variants list. variants is always an array, never null.',
             ],
 
@@ -877,8 +878,13 @@ class KaliCart_Bridge_API {
         // If not yet available (first install, cron not yet run), schedule an immediate rebuild.
         $facets = KaliCart_Bridge_Catalog_Engine::get_cached_catalog_facets( $flat_lang ?? null );
         if ( $facets === null ) {
-            // First request after install — compute synchronously once, then cron takes over.
-            $facets = KaliCart_Bridge_Catalog_Engine::compute_catalog_facets( $flat_lang ?? null );
+			// Never scan the full catalog inside a public request. The recurring job may
+			// still be hours away, so queue one language-specific rebuild immediately.
+			$cron_args = [ $flat_lang ?? null ];
+			if ( ! wp_next_scheduled( 'kalicart_bridge_facets_rebuild', $cron_args ) ) {
+				wp_schedule_single_event( time(), 'kalicart_bridge_facets_rebuild', $cron_args );
+			}
+			$facets = [ 'genders' => [], 'colors' => [] ];
         }
         $available_genders = $facets['genders'] ?? [];
         $available_colors  = $facets['colors']  ?? [];
@@ -891,7 +897,8 @@ class KaliCart_Bridge_API {
 
         // deal_statistics: pre-computed signals so agents know if it's worth filtering on_sale
         $on_sale_ids    = wc_get_product_ids_on_sale();
-        $on_sale_total  = count( $on_sale_ids );
+		$sale_counts    = self::sale_entity_counts( $on_sale_ids );
+		$on_sale_total  = $sale_counts['products_on_sale'];
         global $wpdb;
         $discount_row = $on_sale_total > 0
             ? $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient in catalog_meta()
@@ -902,9 +909,12 @@ class KaliCart_Bridge_API {
               )
             : null;
         $deal_statistics = [
-            'on_sale_total'       => $on_sale_total,
+			'on_sale_total'       => $on_sale_total, // Backward-compatible product-level field.
+			'products_on_sale'    => $sale_counts['products_on_sale'],
+			'variations_on_sale'  => $sale_counts['variations_on_sale'],
+			'sale_entities_total' => $sale_counts['sale_entities_total'],
             'lowest_sale_price'   => $discount_row ? (float) $discount_row->lowest_sale_price : null,
-            'note'                => 'on_sale_total = products with an active WooCommerce sale price. Use ?on_sale=true in search to filter.',
+			'note'                => 'products_on_sale/on_sale_total count published product-level entities flagged on sale by WooCommerce. variations_on_sale counts individually discounted size/color variants. Bridge search also applies its documented >=1% verification. A variable product can have only some variants on sale; verify price.sale_scope and the selected variation.',
         ];
 
         $meta = [
@@ -944,7 +954,7 @@ class KaliCart_Bridge_API {
                 ],
                 'boolean'  => [
                     'in_stock' => 'true returns in-stock products only',
-                    'on_sale'  => 'true returns products with an active WooCommerce sale price only. Coupon-only savings not included.',
+					'on_sale'  => 'true returns products with an active WooCommerce sale price. A variable product may have only some variants discounted; price.sale_scope and the selected variation are authoritative. Coupon-only savings not included.',
                 ],
                 'size_note' => 'size is not a search filter. Use product detail /catalog/product/{id} variations field after candidate selection.',
             ],
@@ -987,6 +997,40 @@ class KaliCart_Bridge_API {
     private static function catalog_max_page(): int {
         return min( 100000, max( 1, (int) apply_filters( 'kalicart_bridge_catalog_max_page', 1000 ) ) );
     }
+
+	/** Count WooCommerce's active sale IDs by public entity type without loading products one by one. */
+	private static function sale_entity_counts( array $on_sale_ids ): array {
+		$counts = [
+			'products_on_sale'    => 0,
+			'variations_on_sale'  => 0,
+			'sale_entities_total' => 0,
+		];
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', $on_sale_ids ) ) ) );
+		if ( empty( $ids ) ) {
+			return $counts;
+		}
+
+		global $wpdb;
+		foreach ( array_chunk( $ids, 500 ) as $chunk ) {
+			$placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%d' ) );
+			$sql = "SELECT post_type, COUNT(*) AS entity_count
+				FROM {$wpdb->posts}
+				WHERE ID IN ({$placeholders})
+				  AND post_status = 'publish'
+				  AND post_type IN ('product', 'product_variation')
+				GROUP BY post_type";
+			$rows = $wpdb->get_results( $wpdb->prepare( $sql, ...$chunk ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- bounded classification of trusted WooCommerce sale IDs; catalog_meta caches the result.
+			foreach ( (array) $rows as $row ) {
+				if ( 'product' === (string) $row->post_type ) {
+					$counts['products_on_sale'] += max( 0, (int) $row->entity_count );
+				} elseif ( 'product_variation' === (string) $row->post_type ) {
+					$counts['variations_on_sale'] += max( 0, (int) $row->entity_count );
+				}
+			}
+		}
+		$counts['sale_entities_total'] = $counts['products_on_sale'] + $counts['variations_on_sale'];
+		return $counts;
+	}
 
     /** Explicit for in-process MCP calls, which do not pass through REST arg validation. */
     private static function catalog_pagination_error( WP_REST_Request $request ): ?WP_REST_Response {

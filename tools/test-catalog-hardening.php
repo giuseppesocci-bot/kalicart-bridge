@@ -22,7 +22,9 @@ $api_ref      = new ReflectionClass( 'KaliCart_Bridge_API' );
 $engine_ref   = new ReflectionClass( 'KaliCart_Bridge_Catalog_Engine' );
 $rate_limit   = $api_ref->getMethod( 'catalog_rate_limit' );
 $cache_put    = $engine_ref->getMethod( 'query_cache_put' );
-foreach ( [ $rate_limit, $cache_put ] as $private_method ) {
+$sale_summary = $engine_ref->getMethod( 'summarize_variable_prices' );
+$sale_counts  = $api_ref->getMethod( 'sale_entity_counts' );
+foreach ( [ $rate_limit, $cache_put, $sale_summary, $sale_counts ] as $private_method ) {
     $private_method->setAccessible( true );
 }
 $cache_key    = 'kalicart_bridge_catalog_query_cache_v1';
@@ -88,6 +90,34 @@ $check( $page_error->get_status() === 422, 'Oversized page was not rejected expl
 
 // Cache is one bounded bucket, not one transient per attacker-controlled query.
 KaliCart_Bridge_Catalog_Engine::invalidate_query_cache();
+
+// Variable-sale semantics are derived from the price matrix already loaded by
+// compute_price(): no product/variation object reads and no additional queries.
+$mixed_sale = $sale_summary->invoke( null, [
+	'regular_price' => [ 101 => '100', 102 => '120', 103 => '80' ],
+	'price'         => [ 101 => '70', 102 => '120', 103 => '80' ],
+] );
+$all_sale = $sale_summary->invoke( null, [
+	'regular_price' => [ 201 => '100', 202 => '50' ],
+	'price'         => [ 201 => '80', 202 => '40' ],
+] );
+$check( 'some_variants' === $mixed_sale['sale_scope'] && 1 === $mixed_sale['discounted_count'] && 3 === $mixed_sale['priced_count'], 'Mixed variant discounts were not classified as some_variants.' );
+$check( 70.0 === $mixed_sale['min_current'] && 120.0 === $mixed_sale['max_current'], 'Variable current price range does not include both discounted and full-price variants.' );
+$check( 'all_variants' === $all_sale['sale_scope'] && 2 === $all_sale['discounted_count'], 'Fully discounted variants were not classified as all_variants.' );
+
+// Price sorting keeps zero-price placeholder parents at the end in both sort directions.
+$price_query = new WP_Query();
+$price_query->set( 'kalicart_bridge_price_lookup', [ 'min' => null, 'max' => null, 'orderby' => true, 'order' => 'ASC' ] );
+$clauses = KaliCart_Bridge_Catalog_Engine::apply_price_lookup_clauses( [
+	'join' => '', 'where' => '', 'orderby' => '', 'groupby' => '', 'distinct' => '', 'fields' => '', 'limits' => '',
+], $price_query );
+$check( false !== strpos( $clauses['orderby'], 'CASE WHEN kalicart_bridge_price_lookup.min_price <= 0 THEN 1 ELSE 0 END ASC' ), 'Zero/null catalog prices are not sorted after usable prices.' );
+
+// Global sale counters distinguish product cards from discounted variants.
+$live_sale_ids = wc_get_product_ids_on_sale();
+$live_counts   = $sale_counts->invoke( null, $live_sale_ids );
+$check( $live_counts['sale_entities_total'] === $live_counts['products_on_sale'] + $live_counts['variations_on_sale'], 'Sale entity totals do not reconcile.' );
+$report['sale_counts'] = $live_counts;
 for ( $i = 0; $i < 12; $i++ ) {
     $cache_put->invoke( null, [ 'gender' => 'male', 'fields' => 'summary', 'page' => $i + 1 ], [
         'products' => [ [ 'id' => $i, 'payload' => str_repeat( 'x', 70 * KB_IN_BYTES ) ] ],
