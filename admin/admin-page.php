@@ -339,7 +339,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       <label class="kali-toggle-row">
         <div class="kali-toggle-info">
           <strong><?php esc_html_e( 'Search results link', 'kalicart-bridge' ); ?></strong>
-          <span><?php esc_html_e( 'Shows a minimal "Machine-readable catalog" link at the bottom of search pages — both on zero-results and when results are ambiguous or partial.', 'kalicart-bridge' ); ?></span>
+          <span><?php esc_html_e( 'Shows a minimal "Machine-readable catalog" link at the bottom of search pages, with or without results.', 'kalicart-bridge' ); ?></span>
         </div>
         <div class="kali-toggle"><input type="checkbox" id="toggleHintZero"><span class="kali-toggle__slider"></span></div>
       </label>

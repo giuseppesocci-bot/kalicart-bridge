@@ -129,7 +129,6 @@ class KaliCart_Bridge_Catalog_Engine {
             'max_price'      => null,
             'gender'         => '',
             'color'          => '',
-            'size'           => '',
             'modified_after' => '',
             'fields'         => 'full',
         ];
@@ -144,7 +143,7 @@ class KaliCart_Bridge_Catalog_Engine {
         // WooCommerce's lookup table to reduce candidates, then verify price.current
         // from the product object so variable-parent _price drift cannot leak through.
         $has_php_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] )
-                              || ! empty( $args['size'] ) || $args['on_sale'] === true
+                              || $args['on_sale'] === true
                               || $args['min_price'] !== null || $args['max_price'] !== null;
         $order = strtoupper( $args['order'] ) === 'ASC' ? 'ASC' : 'DESC';
 		$lookup_price = $args['min_price'] !== null || $args['max_price'] !== null || $args['orderby'] === 'price';
@@ -230,7 +229,7 @@ class KaliCart_Bridge_Catalog_Engine {
                     'message'         => 'This derived-filter query is too broad to evaluate safely. Add q or category and retry.',
                     'candidate_count' => $candidate_total,
                     'candidate_limit' => $candidate_limit,
-                    'guidance'        => 'Narrow the candidate set with a bare product noun (q) or a WooCommerce category slug before applying gender, color, size or on_sale.',
+                    'guidance'        => 'Narrow the candidate set with a bare product noun (q) or a WooCommerce category slug before applying gender, color or on_sale. Verify size only in the selected product variations.',
                 ] ];
                 self::query_cache_put( $args, $result );
                 return $result;
@@ -396,21 +395,6 @@ class KaliCart_Bridge_Catalog_Engine {
             }
         }
 
-        if ( ! empty( $args['size'] ) ) {
-            $attributes = $attributes ?? self::get_normalized_attributes( $product );
-            $needle     = strtolower( trim( (string) $args['size'] ) );
-            $has_size   = false;
-            foreach ( self::extract_sizes( $attributes )['values'] ?? [] as $value ) {
-                if ( strtolower( trim( $value ) ) === $needle ) {
-                    $has_size = true;
-                    break;
-                }
-            }
-            if ( ! $has_size ) {
-                return false;
-            }
-        }
-
         // wc_get_product_ids_on_sale() already reduced the SQL candidate set. This
         // lightweight check preserves Bridge's documented >=1% sale threshold.
         if ( $args['on_sale'] === true && ! ( self::compute_price( $product )['on_sale'] ?? false ) ) {
@@ -458,7 +442,7 @@ class KaliCart_Bridge_Catalog_Engine {
         // records are larger and depend on more mutable shipping/coupon settings.
         return ( $args['fields'] ?? 'full' ) === 'summary'
                && ( ! empty( $args['gender'] ) || ! empty( $args['color'] )
-					|| ! empty( $args['size'] ) || ( $args['on_sale'] ?? null ) === true
+					|| ( $args['on_sale'] ?? null ) === true
 					|| $args['min_price'] !== null || $args['max_price'] !== null );
     }
 

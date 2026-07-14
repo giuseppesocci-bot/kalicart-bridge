@@ -5,7 +5,7 @@
  * Run with:
  *   wp eval-file wp-content/plugins/kalicart-bridge/tools/test-catalog-hardening.php
  *
- * It changes only short-lived test transients and restores/removes them before exit.
+ * It changes only short-lived test state and restores/removes it before exit.
  */
 
 defined( 'ABSPATH' ) || exit( 1 );
@@ -24,7 +24,8 @@ $rate_limit   = $api_ref->getMethod( 'catalog_rate_limit' );
 $cache_put    = $engine_ref->getMethod( 'query_cache_put' );
 $sale_summary = $engine_ref->getMethod( 'summarize_variable_prices' );
 $sale_counts  = $api_ref->getMethod( 'sale_entity_counts' );
-foreach ( [ $rate_limit, $cache_put, $sale_summary, $sale_counts ] as $private_method ) {
+$lowest_sale  = $api_ref->getMethod( 'lowest_active_sale_price' );
+foreach ( [ $rate_limit, $cache_put, $sale_summary, $sale_counts, $lowest_sale ] as $private_method ) {
     $private_method->setAccessible( true );
 }
 $cache_key    = 'kalicart_bridge_catalog_query_cache_v1';
@@ -88,6 +89,15 @@ $too_deep->set_param( 'page', 1001 );
 $page_error = KaliCart_Bridge_API::internal_catalog_call( [ 'KaliCart_Bridge_API', 'catalog_products' ], $too_deep );
 $check( $page_error->get_status() === 422, 'Oversized page was not rejected explicitly.' );
 
+// Size availability belongs to purchasable variations, never parent attributes.
+$size_request = new WP_REST_Request( 'GET', '/kalicart/v1/catalog/search' );
+$size_request->set_query_params( [ 'q' => 'test', 'size' => 'XXL' ] );
+$size_error = KaliCart_Bridge_API::internal_catalog_call( [ 'KaliCart_Bridge_API', 'catalog_search' ], $size_request );
+$check(
+    $size_error->get_status() === 400 && 'size' === ( $size_error->get_data()['unsupported_filter'] ?? null ),
+    'Unsupported public size filtering was not rejected explicitly.'
+);
+
 // Cache is one bounded bucket, not one transient per attacker-controlled query.
 KaliCart_Bridge_Catalog_Engine::invalidate_query_cache();
 
@@ -118,6 +128,44 @@ $live_sale_ids = wc_get_product_ids_on_sale();
 $live_counts   = $sale_counts->invoke( null, $live_sale_ids );
 $check( $live_counts['sale_entities_total'] === $live_counts['products_on_sale'] + $live_counts['variations_on_sale'], 'Sale entity totals do not reconcile.' );
 $report['sale_counts'] = $live_counts;
+$expected_lowest_sale = null;
+foreach ( array_unique( array_map( 'absint', $live_sale_ids ) ) as $sale_id ) {
+    $post = get_post( $sale_id );
+    if ( ! $post || 'publish' !== $post->post_status || ! in_array( $post->post_type, [ 'product', 'product_variation' ], true ) ) {
+        continue;
+    }
+    if ( 'product_variation' === $post->post_type && 'publish' !== get_post_status( $post->post_parent ) ) {
+        continue;
+    }
+    $sale_product = wc_get_product( $sale_id );
+    $sale_price   = $sale_product ? $sale_product->get_sale_price() : '';
+    if ( $sale_price !== '' && (float) $sale_price > 0 && ( $expected_lowest_sale === null || (float) $sale_price < $expected_lowest_sale ) ) {
+        $expected_lowest_sale = (float) $sale_price;
+    }
+}
+$actual_lowest_sale = $lowest_sale->invoke( null, $live_sale_ids );
+$check( $actual_lowest_sale === $expected_lowest_sale, 'Lowest sale metadata does not match active public WooCommerce sale entities.' );
+$report['lowest_active_sale_price'] = $actual_lowest_sale;
+
+// OpenAPI explicitly documents variant-level sale semantics and meta statistics.
+$openapi = KaliCart_Bridge_API::openapi( new WP_REST_Request( 'GET', '/kalicart/v1/openapi' ) )->get_data();
+$schemas = $openapi['components']['schemas'] ?? [];
+$price_properties = $schemas['CatalogPrice']['properties'] ?? [];
+$check( isset( $price_properties['sale_scope'], $price_properties['variant_selection_required_for_sale'] ), 'OpenAPI CatalogPrice omits variant sale semantics.' );
+$check( isset( $schemas['DealStatistics']['properties']['lowest_sale_price'] ), 'OpenAPI omits typed deal statistics.' );
+$check( '#/components/schemas/CatalogMetaResponse' === ( $openapi['paths']['/catalog/meta']['get']['responses']['200']['content']['application/json']['schema']['$ref'] ?? null ), 'Catalog meta response is not typed in OpenAPI.' );
+
+// Activation defaults must never overwrite merchant choices on reactivation.
+$option_name = 'kalicart_bridge_hint_search';
+$old_option  = get_option( $option_name, '__kalicart_missing__' );
+update_option( $option_name, true );
+kalicart_bridge_ensure_default_options();
+$check( true === (bool) get_option( $option_name ), 'Activation defaults overwrote an existing merchant setting.' );
+if ( '__kalicart_missing__' === $old_option ) {
+    delete_option( $option_name );
+} else {
+    update_option( $option_name, $old_option );
+}
 for ( $i = 0; $i < 12; $i++ ) {
     $cache_put->invoke( null, [ 'gender' => 'male', 'fields' => 'summary', 'page' => $i + 1 ], [
         'products' => [ [ 'id' => $i, 'payload' => str_repeat( 'x', 70 * KB_IN_BYTES ) ] ],

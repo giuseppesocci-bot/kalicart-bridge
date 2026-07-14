@@ -278,6 +278,8 @@ class KaliCart_Bridge_Admin {
         update_option( 'kalicart_bridge_coupons_agent_whitelist', $coupon_ids );
         if ( $settings['well_known_enabled'] ) {
             KaliCart_Bridge_Signals::write_well_known_files();
+        } else {
+            KaliCart_Bridge_Signals::remove_well_known_files();
         }
 
 		// Rewrite flushing is expensive and is needed only when the sitemap route changes.

@@ -3,7 +3,7 @@
  * Plugin Name:       KaliCart Bridge – Product Feed for ChatGPT & AI Agents
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.119
+ * Version:           1.0.120
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.119' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.120' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
@@ -77,7 +77,7 @@ add_action( 'plugins_loaded', function () {
         if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
             KaliCart_Bridge_Signals::write_well_known_files();
         } else {
-            KaliCart_Bridge_Signals::cleanup_well_known_static_files();
+            KaliCart_Bridge_Signals::remove_well_known_files();
         }
 		KaliCart_Bridge_Catalog_Engine::invalidate_query_cache();
         flush_rewrite_rules();
@@ -136,6 +136,20 @@ if ( ! wp_next_scheduled( 'kalicart_bridge_cleanup_claims' ) ) {
     wp_schedule_event( time(), 'daily', 'kalicart_bridge_cleanup_claims' );
 }
 
+function kalicart_bridge_ensure_default_options(): void {
+    add_option( 'kalicart_bridge_badge_enabled',       false );
+    add_option( 'kalicart_bridge_badge_position',      'bottom-right' );
+    add_option( 'kalicart_bridge_robots_enabled',      true );
+    add_option( 'kalicart_bridge_sitemap_enabled',     true );
+    add_option( 'kalicart_bridge_checkout_enabled',    false );
+    add_option( 'kalicart_bridge_well_known_enabled',  true );
+    // Agent hints (DOM signals): opt-in, default OFF.
+    add_option( 'kalicart_bridge_agent_hints_enabled', false );
+    add_option( 'kalicart_bridge_hint_search',         false );
+    add_option( 'kalicart_bridge_hint_zero',           false );
+    add_option( 'kalicart_bridge_hint_category',       false );
+}
+
 register_activation_hook( __FILE__, function () {
     // Hard dependency guard: refuse activation when WooCommerce is not active.
     // Covers WordPress < 6.5, where the "Requires Plugins" header is ignored.
@@ -149,20 +163,12 @@ register_activation_hook( __FILE__, function () {
         );
     }
 
-    add_option( 'kalicart_bridge_badge_enabled',   false );
-    update_option( 'kalicart_bridge_badge_position',  'bottom-right' );
-    update_option( 'kalicart_bridge_robots_enabled',  true );
-    update_option( 'kalicart_bridge_sitemap_enabled', true );
-    update_option( 'kalicart_bridge_checkout_enabled', false );
-    update_option( 'kalicart_bridge_well_known_enabled', true );
-    // Agent hints (DOM signals): opt-in, default OFF — merchant activates when desired
-    update_option( 'kalicart_bridge_agent_hints_enabled', false );
-    update_option( 'kalicart_bridge_hint_search',      false );
-    update_option( 'kalicart_bridge_hint_zero',        false );
-    update_option( 'kalicart_bridge_hint_category',    false );
+    kalicart_bridge_ensure_default_options();
     // Flush rewrite rules per registrare sitemap-agentic-bridge.xml
     flush_rewrite_rules();
-    KaliCart_Bridge_Signals::write_well_known_files();
+    if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
+        KaliCart_Bridge_Signals::write_well_known_files();
+    }
 
 } );
 
@@ -170,5 +176,6 @@ register_deactivation_hook( __FILE__, function () {
 	wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
 	wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
 	wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
+    KaliCart_Bridge_Signals::remove_well_known_files();
     flush_rewrite_rules();
 } );

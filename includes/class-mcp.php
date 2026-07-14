@@ -305,7 +305,7 @@ class KaliCart_Bridge_MCP {
 		}
 		$per_page = is_int( $args['per_page'] ?? null ) ? min( 100, max( 1, $args['per_page'] ) ) : 10;
 		$cost     = (int) ceil( $per_page / 50 ); // MCP list/search always request summary fields.
-		foreach ( [ 'gender', 'color', 'size', 'on_sale', 'min_price', 'max_price' ] as $derived ) {
+		foreach ( [ 'gender', 'color', 'on_sale', 'min_price', 'max_price' ] as $derived ) {
 			if ( array_key_exists( $derived, $args ) && null !== $args[ $derived ] && false !== $args[ $derived ] && '' !== $args[ $derived ] ) {
 				$cost += 2;
 				break;

@@ -573,7 +573,7 @@ class KaliCart_Bridge_API {
 
         $fields_param_search = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is summary: a slim per-item projection (id, sku, name, url, price.current/display, stock.in_stock, categories, type, updated_at) for low-cost triage; open /catalog/product/{id} for full detail. Pass fields=full for complete records.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'summary' ] ];
 
-        $fields_param_products = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is full (complete records); when any filter parameter (category, gender, color, size, min_price, max_price, in_stock, on_sale, orderby, order) is present and fields is omitted, the response switches to summary for low-cost triage. Pass fields explicitly to override.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'full' ] ];
+        $fields_param_products = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is full (complete records); when any filter parameter (category, gender, color, min_price, max_price, in_stock, on_sale, orderby, order) is present and fields is omitted, the response switches to summary for low-cost triage. Pass fields explicitly to override.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'full' ] ];
 
         $q_param = [ 'name' => 'q', 'in' => 'query', 'description' => 'Full-text search query. Parameter name is exactly q; do not use query. Use only on /catalog/search, never on /catalog/products.', 'schema' => [ 'type' => 'string' ] ];
 
@@ -634,10 +634,76 @@ class KaliCart_Bridge_API {
                 '/catalog/meta' => [ 'get' => [
                     'operationId' => 'getMeta',
                     'summary'     => 'Filter vocabulary: categories, genders, colors and price range available in this catalog.',
-                    'responses'   => [ '200' => [ 'description' => 'Catalog filter vocabulary.' ] ],
+                    'responses'   => [ '200' => [
+                        'description' => 'Catalog filter vocabulary.',
+                        'content'     => [ 'application/json' => [ 'schema' => [ '$ref' => '#/components/schemas/CatalogMetaResponse' ] ] ],
+                    ] ],
                 ] ],
             ],
             'components' => [ 'schemas' => [
+                'CatalogPrice' => [
+                    'type'                 => 'object',
+                    'additionalProperties' => true,
+                    'properties'           => [
+                        'type'            => [ 'type' => 'string', 'enum' => [ 'fixed', 'range' ] ],
+                        'currency'        => [ 'type' => 'string' ],
+                        'encoding'        => [ 'type' => 'string' ],
+                        'price_type'      => [ 'type' => 'string' ],
+                        'vat_included'    => [ 'type' => 'boolean' ],
+                        'tax_enabled'     => [ 'type' => 'boolean' ],
+                        'regular'         => [ 'type' => [ 'number', 'null' ] ],
+                        'sale'            => [ 'type' => [ 'number', 'null' ] ],
+                        'current'         => [ 'type' => [ 'number', 'null' ] ],
+                        'min_regular'     => [ 'type' => [ 'number', 'null' ] ],
+                        'max_regular'     => [ 'type' => [ 'number', 'null' ] ],
+                        'min_sale'        => [ 'type' => [ 'number', 'null' ] ],
+                        'max_sale'        => [ 'type' => [ 'number', 'null' ] ],
+                        'on_sale'         => [ 'type' => 'boolean' ],
+                        'sale_scope'      => [ 'type' => 'string', 'enum' => [ 'none', 'single_product', 'some_variants', 'all_variants' ] ],
+                        'discounted_variations_count'       => [ 'type' => [ 'integer', 'null' ] ],
+                        'priced_variations_count'           => [ 'type' => [ 'integer', 'null' ] ],
+                        'variant_selection_required_for_sale' => [ 'type' => 'boolean' ],
+                        'discount_pct'       => [ 'type' => [ 'number', 'null' ] ],
+                        'discount_amount'    => [ 'type' => [ 'number', 'null' ] ],
+                        'discount_pct_scope' => [ 'type' => [ 'string', 'null' ] ],
+                        'sale_note'          => [ 'type' => [ 'string', 'null' ] ],
+                        'display'            => [ 'type' => [ 'string', 'null' ] ],
+                    ],
+                ],
+                'DealStatistics' => [
+                    'type'                 => 'object',
+                    'additionalProperties' => false,
+                    'properties'           => [
+                        'on_sale_total'       => [ 'type' => 'integer' ],
+                        'products_on_sale'    => [ 'type' => 'integer' ],
+                        'variations_on_sale'  => [ 'type' => 'integer' ],
+                        'sale_entities_total' => [ 'type' => 'integer' ],
+                        'lowest_sale_price'   => [ 'type' => [ 'number', 'null' ] ],
+                        'note'                => [ 'type' => 'string' ],
+                    ],
+                ],
+                'CatalogMetaResponse' => [
+                    'type'                 => 'object',
+                    'additionalProperties' => true,
+                    'properties'           => [
+                        'success'           => [ 'type' => 'boolean' ],
+                        'total_products'    => [ 'type' => 'integer' ],
+                        'currency'          => [ 'type' => 'string' ],
+                        'categories'        => [ 'type' => 'array', 'items' => [ 'type' => 'object', 'additionalProperties' => true ] ],
+                        'available_genders' => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
+                        'available_colors'  => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
+                        'deal_statistics'   => [ '$ref' => '#/components/schemas/DealStatistics' ],
+                        'price_range'       => [
+                            'type'       => 'object',
+                            'properties' => [
+                                'min' => [ 'type' => [ 'number', 'null' ] ],
+                                'max' => [ 'type' => [ 'number', 'null' ] ],
+                            ],
+                        ],
+                        'accepted_filters'  => [ 'type' => 'object', 'additionalProperties' => true ],
+                        'generated_at'      => [ 'type' => 'string', 'format' => 'date-time' ],
+                    ],
+                ],
                 'Product' => [
                     'type'                 => 'object',
                     'description'          => 'Normalized catalog product. Read price.current for the catalog price and stock.in_stock for availability.',
@@ -647,7 +713,7 @@ class KaliCart_Bridge_API {
                         'name'       => [ 'type' => 'string' ],
                         'brand'      => [ 'type' => [ 'string', 'null' ], 'description' => 'Merchant-declared brand (Woo brand taxonomies); null when the merchant has not set one.' ],
                         'url'        => [ 'type' => 'string', 'format' => 'uri' ],
-                        'price'      => [ 'type' => 'object', 'additionalProperties' => true ],
+                        'price'      => [ '$ref' => '#/components/schemas/CatalogPrice' ],
                         'stock'      => [ 'type' => 'object', 'additionalProperties' => true ],
                         'categories' => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
                     ],
@@ -662,7 +728,7 @@ class KaliCart_Bridge_API {
                         'name'               => [ 'type' => 'string' ],
                         'brand'              => [ 'type' => [ 'string', 'null' ], 'description' => 'Merchant-declared brand (Woo brand taxonomies); null when the merchant has not set one.' ],
                         'url'                => [ 'type' => 'string', 'format' => 'uri' ],
-                        'price'              => [ 'type' => 'object', 'additionalProperties' => true ],
+                        'price'              => [ '$ref' => '#/components/schemas/CatalogPrice' ],
                         'stock'              => [ 'type' => 'object', 'additionalProperties' => true ],
                         'categories'         => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
                         'type'               => [ 'type' => 'string' ],
@@ -702,6 +768,10 @@ class KaliCart_Bridge_API {
         $param_error = self::catalog_param_alias_error( $req, 'search' );
         if ( $param_error ) {
             return $param_error;
+        }
+        $unsupported_filter = self::catalog_unsupported_filter_error( $req );
+        if ( $unsupported_filter ) {
+            return $unsupported_filter;
         }
 
         $args = self::extract_query_args( $req );
@@ -756,6 +826,10 @@ class KaliCart_Bridge_API {
         $param_error = self::catalog_param_alias_error( $req, 'products' );
         if ( $param_error ) {
             return $param_error;
+        }
+        $unsupported_filter = self::catalog_unsupported_filter_error( $req );
+        if ( $unsupported_filter ) {
+            return $unsupported_filter;
         }
 
         $args   = self::extract_query_args( $req );
@@ -889,31 +963,30 @@ class KaliCart_Bridge_API {
         $available_genders = $facets['genders'] ?? [];
         $available_colors  = $facets['colors']  ?? [];
 
-        // Price range — language-agnostic by design: translations carry identical
-        // _price meta, so MIN/MAX over all rows equals MIN/MAX over the default
-        // language alone. No language join needed.
+        // Public parent lookup values are WooCommerce's canonical catalog range.
+        // Raw _price rows can include stale, private or non-purchasable variations.
         global $wpdb;
-        $price_range = $wpdb->get_row( "SELECT MIN(CAST(meta_value AS DECIMAL(10,2))) as min_price, MAX(CAST(meta_value AS DECIMAL(10,2))) as max_price FROM {$wpdb->postmeta} WHERE meta_key='_price' AND meta_value != '' AND meta_value != '0'" );  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient in catalog_meta()
+        // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- WordPress owns and validates $wpdb->prefix; identifiers cannot be values in a prepared statement on the minimum supported WP version.
+        $price_range  = $wpdb->get_row(
+            "SELECT MIN(lookup.min_price) AS min_price, MAX(lookup.max_price) AS max_price
+             FROM {$wpdb->prefix}wc_product_meta_lookup lookup
+             INNER JOIN {$wpdb->posts} product ON product.ID = lookup.product_id
+             WHERE product.post_type = 'product'
+               AND product.post_status = 'publish'
+               AND lookup.min_price > 0"
+        ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- fixed table names; catalog_meta caches the bounded aggregate.
 
         // deal_statistics: pre-computed signals so agents know if it's worth filtering on_sale
         $on_sale_ids    = wc_get_product_ids_on_sale();
 		$sale_counts    = self::sale_entity_counts( $on_sale_ids );
 		$on_sale_total  = $sale_counts['products_on_sale'];
-        global $wpdb;
-        $discount_row = $on_sale_total > 0
-            ? $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient in catalog_meta()
-                "SELECT MAX( CAST( (SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = pm.post_id AND meta_key = '_regular_price' LIMIT 1) AS DECIMAL(10,2)) - CAST(meta_value AS DECIMAL(10,2))) as highest_discount_amount,
-                        MIN( CAST(meta_value AS DECIMAL(10,2))) as lowest_sale_price
-                 FROM {$wpdb->postmeta} pm
-                 WHERE meta_key = '_sale_price' AND meta_value != '' AND CAST(meta_value AS DECIMAL(10,2)) > 0"
-              )
-            : null;
+        $lowest_sale_price = self::lowest_active_sale_price( $on_sale_ids );
         $deal_statistics = [
 			'on_sale_total'       => $on_sale_total, // Backward-compatible product-level field.
 			'products_on_sale'    => $sale_counts['products_on_sale'],
 			'variations_on_sale'  => $sale_counts['variations_on_sale'],
 			'sale_entities_total' => $sale_counts['sale_entities_total'],
-            'lowest_sale_price'   => $discount_row ? (float) $discount_row->lowest_sale_price : null,
+            'lowest_sale_price'   => $lowest_sale_price,
 			'note'                => 'products_on_sale/on_sale_total count published product-level entities flagged on sale by WooCommerce. variations_on_sale counts individually discounted size/color variants. Bridge search also applies its documented >=1% verification. A variable product can have only some variants on sale; verify price.sale_scope and the selected variation.',
         ];
 
@@ -934,8 +1007,8 @@ class KaliCart_Bridge_API {
                 'authority'                => 'woocommerce_checkout',
             ],
             'price_range'    => [
-                'min' => $price_range ? (float) $price_range->min_price : null,
-                'max' => $price_range ? (float) $price_range->max_price : null,
+                'min' => $price_range && $price_range->min_price !== null ? (float) $price_range->min_price : null,
+                'max' => $price_range && $price_range->max_price !== null ? (float) $price_range->max_price : null,
             ],
             'accepted_filters' => [
                 'gender' => [
@@ -1032,6 +1105,36 @@ class KaliCart_Bridge_API {
 		return $counts;
 	}
 
+    /** Lowest positive sale price among WooCommerce's currently active public sale entities. */
+    private static function lowest_active_sale_price( array $on_sale_ids ): ?float {
+        $ids = array_values( array_unique( array_filter( array_map( 'absint', $on_sale_ids ) ) ) );
+        if ( empty( $ids ) ) {
+            return null;
+        }
+
+        global $wpdb;
+        $lowest = null;
+        foreach ( array_chunk( $ids, 500 ) as $chunk ) {
+            $placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%d' ) );
+            $sql = "SELECT MIN(CAST(sale.meta_value AS DECIMAL(19,4))) AS lowest_sale_price
+                FROM {$wpdb->posts} entity
+                INNER JOIN {$wpdb->postmeta} sale
+                    ON sale.post_id = entity.ID AND sale.meta_key = '_sale_price'
+                LEFT JOIN {$wpdb->posts} parent ON parent.ID = entity.post_parent
+                WHERE entity.ID IN ({$placeholders})
+                  AND entity.post_status = 'publish'
+                  AND entity.post_type IN ('product', 'product_variation')
+                  AND (entity.post_type = 'product' OR (parent.post_type = 'product' AND parent.post_status = 'publish'))
+                  AND sale.meta_value <> ''
+                  AND CAST(sale.meta_value AS DECIMAL(19,4)) > 0";
+            $value = $wpdb->get_var( $wpdb->prepare( $sql, ...$chunk ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- bounded aggregate over trusted active sale IDs; catalog_meta caches the result.
+            if ( $value !== null && ( $lowest === null || (float) $value < $lowest ) ) {
+                $lowest = (float) $value;
+            }
+        }
+        return $lowest;
+    }
+
     /** Explicit for in-process MCP calls, which do not pass through REST arg validation. */
     private static function catalog_pagination_error( WP_REST_Request $request ): ?WP_REST_Response {
         $page_raw = $request->get_param( 'page' );
@@ -1084,7 +1187,7 @@ class KaliCart_Bridge_API {
 					$fields = 'full';
 				}
 				$cost     = 'full' === $fields ? (int) ceil( $per_page / 10 ) : (int) ceil( $per_page / 50 );
-				foreach ( [ 'gender', 'color', 'size', 'on_sale', 'min_price', 'max_price' ] as $derived ) {
+				foreach ( [ 'gender', 'color', 'on_sale', 'min_price', 'max_price' ] as $derived ) {
 					if ( isset( $query[ $derived ] ) && '' !== (string) $query[ $derived ] && 'false' !== strtolower( (string) $query[ $derived ] ) ) {
 						$cost += 2;
 						break;
@@ -1124,7 +1227,6 @@ class KaliCart_Bridge_API {
             'max_price' => $req->get_param( 'max_price' ) !== null ? (float) $req->get_param( 'max_price' ) : null,
             'gender'    => substr( sanitize_text_field( $req->get_param( 'gender' ) ?? '' ), 0, 64 ),
             'color'     => substr( sanitize_text_field( $req->get_param( 'color' ) ?? '' ), 0, 64 ),
-            'size'      => substr( sanitize_text_field( $req->get_param( 'size' ) ?? '' ), 0, 64 ),
             'modified_after' => self::sanitize_iso8601( $req->get_param( 'modified_after' ) ),
             'fields'    => $req->get_param( 'fields' ) === 'summary' ? 'summary' : 'full',
         ];
@@ -1163,7 +1265,6 @@ class KaliCart_Bridge_API {
             'max_price' => [ 'default' => null, 'validate_callback' => static fn( $v ): bool => $v === null || ( is_numeric( $v ) && is_finite( (float) $v ) ) ],
             'gender'    => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
             'color'     => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
-            'size'      => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
             // Incremental sync: federated indexers pass an ISO-8601 timestamp to fetch
             // only products modified since their last sync (post_modified_gmt). Read-only.
             'modified_after' => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
@@ -1187,8 +1288,24 @@ class KaliCart_Bridge_API {
         return array_key_exists( $name, $req->get_query_params() );
     }
 
+    private static function catalog_unsupported_filter_error( WP_REST_Request $req ): ?WP_REST_Response {
+        $size = $req->get_param( 'size' );
+        if ( $size === null || ! is_scalar( $size ) || trim( (string) $size ) === '' ) {
+            return null;
+        }
+        return self::error(
+            'size is not a catalog search filter. Fetch /catalog/product/{id} and inspect purchasable variants for size availability.',
+            400,
+            [
+                'error_code'         => 'KALICART_UNSUPPORTED_FILTER',
+                'unsupported_filter' => 'size',
+                'next_step'          => 'Select candidate products first, then verify the requested size in /catalog/product/{id}.variants.',
+            ]
+        );
+    }
+
     private static function products_request_has_commerce_filters( WP_REST_Request $req ): bool {
-        foreach ( [ 'category', 'gender', 'color', 'size', 'min_price', 'max_price', 'in_stock', 'on_sale', 'orderby', 'order' ] as $name ) {
+        foreach ( [ 'category', 'gender', 'color', 'min_price', 'max_price', 'in_stock', 'on_sale', 'orderby', 'order' ] as $name ) {
             if ( self::query_param_present( $req, $name ) ) {
                 return true;
             }

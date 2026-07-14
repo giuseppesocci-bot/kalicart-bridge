@@ -395,13 +395,8 @@ msgid "Search results link"
 msgstr "Link in den Suchergebnissen"
 
 #: admin/admin-page.php:342
-msgid ""
-"Shows a minimal \"Machine-readable catalog\" link at the bottom of search "
-"pages — both on zero-results and when results are ambiguous or partial."
-msgstr ""
-"Zeigt am unteren Rand der Suchseiten einen minimalen Link „Maschinenlesbarer "
-"Katalog“ — sowohl bei null Ergebnissen als auch wenn die Ergebnisse "
-"mehrdeutig oder unvollständig sind."
+msgid "Shows a minimal \"Machine-readable catalog\" link at the bottom of search pages, with or without results."
+msgstr "Zeigt am unteren Rand der Suchseiten einen minimalen Link „Maschinenlesbarer Katalog“, mit oder ohne Ergebnisse."
 
 #: admin/admin-page.php:349
 msgid "Category & product page links"

@@ -518,9 +518,9 @@ class KaliCart_Bridge_Signals {
         $search_ep  = rest_url( KALICART_BRIDGE_API_NS . '/catalog/search' );
         $cat_ep     = rest_url( KALICART_BRIDGE_API_NS . '/catalog/products' );
         $product_ep = rest_url( KALICART_BRIDGE_API_NS . '/catalog/product' );
-        $hint_search   = get_option( 'kalicart_bridge_hint_search',   false ) ? 'true' : 'false';
-        $hint_zero     = get_option( 'kalicart_bridge_hint_zero',     false ) ? 'true' : 'false';
-        $hint_category = get_option( 'kalicart_bridge_hint_category', false ) ? 'true' : 'false';
+        $hint_search   = (bool) get_option( 'kalicart_bridge_hint_search', false );
+        $hint_zero     = (bool) get_option( 'kalicart_bridge_hint_zero', false );
+        $hint_category = (bool) get_option( 'kalicart_bridge_hint_category', false );
         ?>
         <script id="kalicart-honey">
         (function(){
@@ -551,9 +551,9 @@ class KaliCart_Bridge_Signals {
               });
             }
 
-            // 2. Search results pages — catalog API link always visible (zero-results and with-results)
+            // 2. Search pages — controlled only by the dedicated results-page toggle.
             var isSearchNoResults = showZero && (document.body.classList.contains('search-no-results') || document.body.classList.contains('woocommerce-no-products-found'));
-            var isSearchWithResults = showSearch && document.body.classList.contains('search-results') && !!document.querySelector('.products,.woocommerce ul.products,article.product');
+            var isSearchWithResults = showZero && document.body.classList.contains('search-results') && !!document.querySelector('.products,.woocommerce ul.products,article.product');
             if(isSearchNoResults || isSearchWithResults){
               var q=new URLSearchParams(window.location.search).get('s')||'';
               var titleAttr = q
@@ -715,6 +715,13 @@ class KaliCart_Bridge_Signals {
         // Accept both the extension-less convention path and the .json mirror form.
         $file = sanitize_key( preg_replace( '/\.json$/', '', $raw ) );
         if ( ! $file ) return;
+        if ( ! get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
+            status_header( 404 );
+            nocache_headers();
+            header( 'Content-Type: application/json; charset=utf-8' );
+            echo wp_json_encode( [ 'success' => false, 'message' => 'Not found.' ] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON payload
+            exit;
+        }
 
         $content_type = 'application/json; charset=utf-8';
         if ( $file === 'ucp' ) {
@@ -754,6 +761,42 @@ class KaliCart_Bridge_Signals {
             if ( ! file_exists( $path ) ) continue;
             $body = (string) @file_get_contents( $path );
             if ( strpos( $body, 'kalicart' ) !== false ) {
+                wp_delete_file( $path );
+            }
+        }
+
+        // Legacy Apache-only .htaccess: remove only if byte-identical to ours.
+        $htaccess = $dir . '.htaccess';
+        $legacy   = "<Files 'kalicart-bridge'>\n  ForceType application/json\n</Files>\n<Files 'agent-catalog'>\n  ForceType application/json\n</Files>\n<Files 'ucp'>\n  ForceType application/json\n</Files>\n";
+        if ( file_exists( $htaccess ) && @file_get_contents( $htaccess ) === $legacy ) {
+            wp_delete_file( $htaccess );
+        }
+    }
+
+    /**
+     * Removes every discovery file owned by this plugin when discovery is disabled
+     * or the plugin is deactivated. Merchant-managed files are never touched.
+     */
+    public static function remove_well_known_files(): void {
+        $dir = rtrim( ABSPATH, '/' ) . '/.well-known/';
+        if ( ! is_dir( $dir ) ) return;
+
+        $owned_names = [
+            'agent.json',
+            'kalicart-bridge.json',
+            'agent-catalog.json',
+            'ucp.json',
+            'api-catalog.json',
+            'kalicart-bridge',
+            'agent-catalog',
+            'api-catalog',
+            'ucp',
+        ];
+        foreach ( $owned_names as $name ) {
+            $path = $dir . $name;
+            if ( ! file_exists( $path ) ) continue;
+            $body = (string) @file_get_contents( $path );
+            if ( stripos( $body, 'kalicart' ) !== false ) {
                 wp_delete_file( $path );
             }
         }

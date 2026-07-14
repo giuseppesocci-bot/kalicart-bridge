@@ -332,7 +332,7 @@ msgid "Search results link"
 msgstr ""
 
 #: admin/admin-page.php:342
-msgid "Shows a minimal \"Machine-readable catalog\" link at the bottom of search pages — both on zero-results and when results are ambiguous or partial."
+msgid "Shows a minimal \"Machine-readable catalog\" link at the bottom of search pages, with or without results."
 msgstr ""
 
 #: admin/admin-page.php:349

@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.119
+Stable tag: 1.0.120
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,13 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.120 =
+* Discovery controls: the three storefront-link toggles are independent, accurately described and remain off by default on new installations.
+* Catalog accuracy: size is explicitly detail-only and unsupported as a parent-product search filter; agents must verify purchasable product variations.
+* Price metadata: catalog ranges use WooCommerce's public product lookup and lowest-sale statistics include only currently active, public sale entities.
+* Lifecycle: reactivation preserves merchant settings; disabling or deactivating discovery removes only Bridge-owned .well-known files and disabled routes return 404.
+* OpenAPI: price sale scope, variant discount counts and catalog deal statistics are now explicitly typed.
 
 = 1.0.119 =
 * Checkout privacy: all checkout-session REST responses now send private no-store headers, preventing reverse proxies from serving stale bearer-session data after cancellation or expiry. Discovery now documents the real pending and cart_loaded states.
