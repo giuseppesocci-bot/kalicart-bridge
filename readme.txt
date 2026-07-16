@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.120
+Stable tag: 1.0.121
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -54,7 +54,7 @@ Documentation: https://bridge.kalicart.com/docs/
 
 * No LLM calls
 * No cloud dependency for core functionality
-* No data sent anywhere outside your server by default — the only optional exception is the Federated Catalog feature (see "External services" below), which you turn on explicitly
+* No catalog, customer, order or credential data is sent anywhere by default. Standalone builds contact bridge.kalicart.com for normal plugin update checks; the Federated Catalog remains a separate explicit opt-in (see "External services" below)
 * No API key required for public endpoints
 
 **Normalization engine:**
@@ -107,7 +107,7 @@ No, by design. The feed is discovery-only (`is_eligible_checkout=false`): custom
 
 = Does this share my data with KaliCart or any third party? =
 
-Not unless you choose to. By default the plugin runs entirely on your server and sends nothing externally. The only exception is the optional Federated Catalog feature: if you explicitly activate it, the plugin sends your store's public URL (and nothing else) to KaliCart Global so your public catalog can be included in federated agent search. No customer, order, or private data is ever sent. See "External services" below, and the privacy notice at https://bridge.kalicart.com/privacy/.
+The standalone distribution performs ordinary update checks against bridge.kalicart.com. These checks do not include the store URL, catalog, customers, orders, credentials or API keys. The optional Federated Catalog is separate: only if you explicitly activate it does the plugin send the store's public URL to KaliCart Global. See "External services" below and the privacy notice at https://bridge.kalicart.com/privacy/.
 
 = Do I need a KaliCart account? =
 
@@ -147,11 +147,19 @@ The benefit is practical: chatbot builders can read a structured, machine-readab
 
 == External services ==
 
-This plugin works fully standalone. It connects to one external service **only if you explicitly opt in** by activating the optional Federated Catalog feature in WP Admin → KaliCart Bridge.
+This plugin works without a KaliCart account or cloud runtime. The standalone distribution uses one automatic service for software update checks, and offers a separate optional Federated Catalog service.
 
-**Service:** KaliCart Global (https://dashboard.kalicart.com)
+**Update service:** KaliCart Bridge Updates (https://bridge.kalicart.com/updates/kalicart-bridge.json)
 
-**When data is sent:** Only when an administrator clicks "Activate Federated Catalog" (and, symmetrically, "Revoke consent"). Nothing is sent automatically, on activation, or in the background. With the feature off, the plugin makes no external requests.
+**When contacted:** When WordPress performs its normal plugin update check. The versioned ZIP is downloaded only when an administrator or WordPress automatic updates starts an upgrade.
+
+**What is sent:** No store URL, catalog data, customer data, orders, credentials or API keys. The request User-Agent contains the installed KaliCart Bridge version. Normal HTTPS request metadata, including the server IP, is visible to the service host.
+
+**What the service does:** Returns the current version, compatibility fields and HTTPS package URL required by the native WordPress updater.
+
+**Optional service:** KaliCart Global (https://dashboard.kalicart.com)
+
+**When federation data is sent:** Only when an administrator clicks "Activate Federated Catalog" (and, symmetrically, "Revoke consent"). Nothing is sent automatically for federation, on plugin activation, or in the background.
 
 **What is sent:** A single value — your site's public URL (e.g. https://yourstore.com). On revoke, the same URL is sent to withdraw. No customer data, orders, personal data, credentials, or API keys are ever transmitted.
 
@@ -161,6 +169,11 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.121 =
+* Distribution: adds the self-contained KaliCart HTTPS update channel for standalone installs.
+* Reversibility: updater code is isolated so a WordPress.org build can remove it without affecting plugin features.
+* Privacy: update checks send no store URL, catalog, customer, order or credential data.
 
 = 1.0.120 =
 * Discovery controls: the three storefront-link toggles are independent, accurately described and remain off by default on new installations.

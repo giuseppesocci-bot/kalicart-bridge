@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-07-16 - version 1.0.121
+
+* Distribution: adds a self-contained KaliCart update channel for standalone installs. WordPress reads the HTTPS manifest on bridge.kalicart.com and can install the versioned ZIP without relying on the WordPress.org directory.
+* Reversibility: the standalone updater is isolated in one class, one marked bootstrap block and the Update URI header, so a future WordPress.org build can remove it without touching catalog, MCP, feed or checkout behavior.
+* Privacy: update checks send no store URL, catalog data, customer data or credentials. The request identifies only the installed plugin version in its User-Agent; normal network metadata such as the server IP is visible to the download host.
+
 2026-07-14 - version 1.0.120
 
 * Discovery controls: the three storefront-link toggles are independent, accurately described and remain off by default on new installations.
