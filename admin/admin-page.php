@@ -25,35 +25,28 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     <span class="kali-header__tagline"><?php esc_html_e( 'Agent-readable catalog', 'kalicart-bridge' ); ?></span>
   </div>
 
-  <!-- FEDERATION (sempre visibile, sotto l'header): announce + revoca consensuale -->
+  <!-- FEDERATION (built-in lifecycle: automatic announce, uninstall deregisters) -->
   <div class="kali-federation-block" style="margin:0 0 4px;padding:14px 16px;border:1px solid var(--kb-border,#e2e4e7);border-radius:10px;background:var(--kb-acc-bg,#f6f9ff)">
-    <?php $kalicart_bridge_is_federated = (bool) get_option( 'kalicart_bridge_federation_registered_at', '' ); ?>
-    <strong style="display:block;margin-bottom:6px"><?php
-      echo esc_html( $kalicart_bridge_is_federated
-        ? __( 'Great choice! Your catalog is going global.', 'kalicart-bridge' )
-        : __( 'Increase your catalog\'s visibility', 'kalicart-bridge' )
-      ); ?></strong>
+    <?php $kalicart_bridge_registered_at = get_option( 'kalicart_bridge_federation_registered_at', '' ); ?>
+    <strong style="display:block;margin-bottom:6px"><?php esc_html_e( 'Your catalog is included in KaliCart Global', 'kalicart-bridge' ); ?></strong>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--kb-muted,#555)">
-      <?php if ( $kalicart_bridge_is_federated ) : ?>
-        <?php echo wp_kses_post( sprintf(
-          /* translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag */
-          __( 'AI assistants can now find your products across the KaliCart global network. Only public catalog data is shared, and you can deactivate it anytime. %1$sSee what is shared%2$s.', 'kalicart-bridge' ),
-          '<a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">',
-          '</a>'
-        ) ); ?>
-      <?php else : ?>
-        <?php echo wp_kses_post( sprintf(
-          /* translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag */
-          __( 'Activate the Federated Catalog for free: your products join a global network where AI assistants can find them. It only takes one click, and you can deactivate it anytime. %1$sSee what is shared%2$s.', 'kalicart-bridge' ),
-          '<a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">',
-          '</a>'
-        ) ); ?>
-      <?php endif; ?>
+      <?php echo wp_kses_post( sprintf(
+        /* translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag */
+        __( 'Bridge automatically announces this store\'s public URL to KaliCart Global so AI assistants can discover its public products. No customers, orders or credentials are sent. Removing the plugin removes the store from the federation. %1$sSee what is shared%2$s.', 'kalicart-bridge' ),
+        '<a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">',
+        '</a>'
+      ) ); ?>
     </p>
-    <button type="button" class="kali-btn kali-btn--primary" id="federationActivateBtn"><?php esc_html_e( 'Activate Federated Catalog', 'kalicart-bridge' ); ?></button>
-    <button type="button" class="kali-btn kali-btn--secondary" id="federationRevokeBtn" style="display:none"><?php esc_html_e( 'Revoke consent', 'kalicart-bridge' ); ?></button>
-    <span id="federationStatus" style="display:none;margin-left:10px;font-size:13px;color:var(--kb-ok,#00a32a)"></span>
-    <span id="federationHint" style="display:none;margin-left:10px;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Use the Federated Catalog banner above to manage consent.', 'kalicart-bridge' ); ?></span>
+    <span style="font-size:13px;color:var(--kb-ok,#00a32a)"><?php
+      echo esc_html( $kalicart_bridge_registered_at
+        ? sprintf(
+          /* translators: %s: federation registration date */
+          __( 'Automatically registered on %s', 'kalicart-bridge' ),
+          wp_date( get_option( 'date_format' ), strtotime( $kalicart_bridge_registered_at ) )
+        )
+        : __( 'Automatic registration scheduled', 'kalicart-bridge' )
+      );
+    ?></span>
 
     <!-- External Agent Visibility Check: read-only, shows what KaliCart Global observed
          from OUTSIDE this site the last time it probed (hosting/cache/CDN/robots can make
@@ -64,15 +57,6 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       <div id="externalVisibilityResult" style="margin-top:8px;font-size:13px"></div>
     </div>
 
-    <!-- Filtro revoca a due step (stile plugin: kali-warn-alert). Nascosto finche' non si clicca Revoke. -->
-    <div id="federationRevokeConfirm" class="kali-warn-alert" style="display:none;margin-top:12px">
-      <strong>&#9888; <?php esc_html_e( 'Heads up', 'kalicart-bridge' ); ?></strong>
-      <span><?php esc_html_e( 'Revoking removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Your data is parked, not deleted, and restored if you re-activate.', 'kalicart-bridge' ); ?></span>
-      <div style="margin-top:10px">
-        <button type="button" class="kali-btn kali-btn--secondary" id="federationRevokeConfirmBtn"><?php esc_html_e( 'Yes, revoke consent', 'kalicart-bridge' ); ?></button>
-        <button type="button" class="kali-btn kali-btn--primary" id="federationRevokeCancelBtn"><?php esc_html_e( 'Keep my catalog federated', 'kalicart-bridge' ); ?></button>
-      </div>
-    </div>
   </div>
 
   <!-- TABS -->

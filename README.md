@@ -1,9 +1,9 @@
 # KaliCart Bridge
 
 > **Free WooCommerce plugin that makes your product catalog machine-readable for AI shopping agents.**  
-> ARC/1.0 reference implementation · No LLM · No cloud · No API key
+> ARC/1.0 reference implementation · No LLM · Automatic federation · No API key
 
-[![WordPress.org](https://img.shields.io/badge/WordPress.org-plugin-blue)](https://wordpress.org/plugins/kalicart-bridge/)
+[![Download](https://img.shields.io/badge/download-Bridge-blue)](https://bridge.kalicart.com/download/kalicart-bridge-latest.zip)
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 [![ARC/1.0](https://img.shields.io/badge/spec-ARC%2F1.0-green)](https://bridge.kalicart.com/spec/)
 
@@ -37,7 +37,7 @@ KaliCart Bridge installs on any WooCommerce store and exposes five things:
 
 4. **UCP interoperability** — `/.well-known/ucp.json` declares `catalog.search` and `catalog.lookup` capabilities for UCP-compliant agents (ChatGPT, Copilot, Gemini).
 
-5. **Federated catalog opt-in** — one toggle publishes eligible products into [KaliCart Global](https://global.kalicart.com), a read-only multi-merchant index that AI agents can query across stores without knowing any individual merchant in advance.
+5. **Automatic federated discovery** — activation announces the public store URL to [KaliCart Global](https://global.kalicart.com), a read-only multi-merchant index that AI agents can query without knowing an individual merchant in advance.
 
 ---
 
@@ -47,7 +47,7 @@ KaliCart Bridge installs on any WooCommerce store and exposes five things:
 AI agent
     │
     ├─ 1. GET global.kalicart.com/v1/global-catalog/search?q=...  ← find merchants + products
-    │       (federated index — optional first step)
+    │       (federated index — automatic discovery path)
     │
     ├─ 2. GET {merchant}/wp-json/kalicart/v1/discovery             ← read contract
     │
@@ -69,10 +69,10 @@ AI agent
 
 ## Quick start for merchants
 
-1. Download [`kalicart-bridge-latest.zip`](https://bridge.kalicart.com/download/kalicart-bridge-latest.zip) or install from [WordPress.org](https://wordpress.org/plugins/kalicart-bridge/)
+1. Download [`kalicart-bridge-latest.zip`](https://bridge.kalicart.com/download/kalicart-bridge-latest.zip)
 2. Upload and activate from **WP Admin → Plugins → Add New → Upload**
 3. WooCommerce must be active
-4. All discovery signals are injected automatically on activation
+4. Discovery signals are injected and the public store URL is announced to KaliCart Global automatically
 5. Visit **WP Admin → KaliCart** for the catalog health dashboard
 
 That's it. Your catalog is now machine-readable.
@@ -231,7 +231,7 @@ As agentic commerce grows, the aggregate cost of the scraping default — comput
 - **Federated catalog**: [global.kalicart.com](https://global.kalicart.com)
 - **WordPress MCP plugin**: [mcp.kalicart.com](https://mcp.kalicart.com)
 - **Institutional**: [kalicart.com](https://kalicart.com)
-- **WordPress.org**: [wordpress.org/plugins/kalicart-bridge](https://wordpress.org/plugins/kalicart-bridge/)
+- **Download**: [bridge.kalicart.com/download/kalicart-bridge-latest.zip](https://bridge.kalicart.com/download/kalicart-bridge-latest.zip)
 
 ---
 

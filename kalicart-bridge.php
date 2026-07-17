@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       KaliCart Bridge – Product Feed for ChatGPT & AI Agents
  * Plugin URI:        https://bridge.kalicart.com
- * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.121
+ * Description:       Makes your WooCommerce catalog machine-readable and discoverable by AI agents through local APIs and the KaliCart Global federated catalog.
+ * Version:           1.0.122
  * Update URI:        https://bridge.kalicart.com/plugin/kalicart-bridge/
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
@@ -21,7 +21,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.121' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.122' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
@@ -50,10 +50,13 @@ require_once KALICART_BRIDGE_DIR . 'includes/class-quarantine.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-api.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-mcp.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-signals.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-federation.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-acp-feed.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-admin.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-checkout.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-shortcodes.php';
+
+KaliCart_Bridge_Federation::init();
 
 add_action( 'before_woocommerce_init', function () {
     if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
@@ -175,6 +178,8 @@ register_activation_hook( __FILE__, function () {
     if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
         KaliCart_Bridge_Signals::write_well_known_files();
     }
+
+    KaliCart_Bridge_Federation::activate();
 
 } );
 

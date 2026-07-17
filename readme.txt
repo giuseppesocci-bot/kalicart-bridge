@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 1.0.121
+Stable tag: 1.0.122
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -17,7 +17,7 @@ Make your WooCommerce catalog ready to be read and verified by AI shopping syste
 
 KaliCart Bridge gives you an immediate catalog-readiness report inside WooCommerce: it identifies products with missing images, brand, usable description, category, price or SKU, and links you directly to the native Products screen to fix them. It then exposes your live catalog in a structured form for AI agents and can generate a validated product feed ready for ChatGPT merchant submission.
 
-No LLM runs on your site. No cloud service or customer data is sent anywhere by default. Prices, availability and product changes remain live on your WooCommerce store.
+No LLM runs on your site. On activation, Bridge sends only the store's public URL to KaliCart Global so its public products can be discovered in federated search. No customer, order or credential data is sent. Prices, availability and product changes remain live on your WooCommerce store.
 
 The plugin does not promise traffic, ChatGPT placement or merchant approval. It prepares and exposes your catalog; OpenAI controls access to its own shopping surfaces and delivery channel.
 
@@ -26,7 +26,7 @@ The plugin does not promise traffic, ChatGPT placement or merchant approval. It 
 * A catalog-readiness report with actionable product fixes.
 * A current, structured catalog API for agents that reach your store.
 * An optional ChatGPT feed, validated before export.
-* Optional inclusion in KaliCart's federated catalog, only with explicit consent.
+* Automatic inclusion in KaliCart's federated catalog for cross-store agent discovery.
 
 Documentation: https://bridge.kalicart.com/docs/
 
@@ -53,8 +53,8 @@ Documentation: https://bridge.kalicart.com/docs/
 **What it does NOT do:**
 
 * No LLM calls
-* No cloud dependency for core functionality
-* No catalog, customer, order or credential data is sent anywhere by default. Standalone builds contact bridge.kalicart.com for normal plugin update checks; the Federated Catalog remains a separate explicit opt-in (see "External services" below)
+* Local catalog, REST, MCP and checkout functionality remains merchant-hosted
+* Activation sends only the public store URL to KaliCart Global; no catalog payload, customer, order, credential or API-key data is pushed (see "External services" below)
 * No API key required for public endpoints
 
 **Normalization engine:**
@@ -92,6 +92,7 @@ No acceptance or visibility is guaranteed by the plugin: approval, delivery acce
 3. Navigate to **KaliCart** in the admin menu
 4. The catalog is immediately accessible at `yourdomain.com/wp-json/kalicart/v1/discovery`
 5. MCP-capable agents can connect to the MCP server at `yourdomain.com/wp-json/kalicart/v1/mcp`
+6. The store is announced automatically to KaliCart Global for federated discovery
 
 Full operational documentation is always available at `https://bridge.kalicart.com/docs/`.
 
@@ -107,7 +108,7 @@ No, by design. The feed is discovery-only (`is_eligible_checkout=false`): custom
 
 = Does this share my data with KaliCart or any third party? =
 
-The standalone distribution performs ordinary update checks against bridge.kalicart.com. These checks do not include the store URL, catalog, customers, orders, credentials or API keys. The optional Federated Catalog is separate: only if you explicitly activate it does the plugin send the store's public URL to KaliCart Global. See "External services" below and the privacy notice at https://bridge.kalicart.com/privacy/.
+The standalone distribution performs ordinary update checks against bridge.kalicart.com without sending the store URL or commerce data. On activation, the plugin sends the store's public URL to KaliCart Global for federated discovery. Global then reads only the same public catalog exposed to agents. No customers, orders, credentials or API keys are sent. See "External services" below and https://bridge.kalicart.com/privacy/.
 
 = Do I need a KaliCart account? =
 
@@ -115,11 +116,11 @@ No. This plugin is fully standalone and free.
 
 = What is the Federated Catalog? =
 
-The Federated Catalog is an optional discovery network operated by KaliCart Global. The Bridge makes your catalog readable by agents that already reach your domain; the Federated Catalog makes it discoverable by agents that do not know your store yet. It is opt-in, separate from the local Bridge endpoints, and revocable at any time.
+The Federated Catalog is the cross-store discovery network operated by KaliCart Global. Installing Bridge makes the catalog readable on the merchant domain and automatically announces the public store URL to Global, allowing agents that do not yet know the store to discover its public products.
 
-There are two discovery paths. Local signals — `.well-known` files, robots.txt entries, the `rel="kalicart-agent"` head link and the badge — help an agent that lands on your own domain find the Bridge. They do not feed the federated index by themselves. The federated index is a separate cross-merchant index: after you activate it, KaliCart Global reads your already-public `/discovery` and `/catalog/*` endpoints and lets agents search across participating stores.
+There are two discovery paths. Local signals — `.well-known` files, robots.txt entries, the `rel="kalicart-agent"` head link and the badge — help an agent that lands on your domain. KaliCart Global provides the cross-merchant path and reads the already-public `/discovery` and `/catalog/*` endpoints after the automatic announcement.
 
-End to end: from WP Admin → KaliCart Bridge you activate the Federated Catalog; the plugin sends only your public site URL; KaliCart Global pulls the public catalog read-only; matching results route agents back to your store. Authoritative price, availability and checkout stay on your WooCommerce site, served live by your Bridge. If you revoke consent, your catalog leaves federated results while direct agent access to your store remains active.
+End to end: activating Bridge sends only the public site URL; KaliCart Global pulls the public catalog read-only; matching results route agents back to the store. Authoritative price, availability and checkout stay on WooCommerce. Deleting the plugin requests immediate deregistration, while Global's liveness checks suspend stores whose Bridge endpoints disappear.
 
 = Who can access the catalog endpoints? =
 
@@ -147,7 +148,7 @@ The benefit is practical: chatbot builders can read a structured, machine-readab
 
 == External services ==
 
-This plugin works without a KaliCart account or cloud runtime. The standalone distribution uses one automatic service for software update checks, and offers a separate optional Federated Catalog service.
+This plugin works without a KaliCart account. The standalone distribution uses the KaliCart update service and automatically joins the KaliCart Global federated catalog.
 
 **Update service:** KaliCart Bridge Updates (https://bridge.kalicart.com/updates/kalicart-bridge.json)
 
@@ -157,18 +158,24 @@ This plugin works without a KaliCart account or cloud runtime. The standalone di
 
 **What the service does:** Returns the current version, compatibility fields and HTTPS package URL required by the native WordPress updater.
 
-**Optional service:** KaliCart Global (https://dashboard.kalicart.com)
+**Federation service:** KaliCart Global (https://dashboard.kalicart.com)
 
-**When federation data is sent:** Only when an administrator clicks "Activate Federated Catalog" (and, symmetrically, "Revoke consent"). Nothing is sent automatically for federation, on plugin activation, or in the background.
+**When federation data is sent:** Activation and the 1.0.122 migration queue one automatic announcement. Failed announcements are retried up to five times with bounded backoff. Deleting the plugin sends one deregistration request. No federation call runs on ordinary storefront, catalog, MCP or checkout requests.
 
-**What is sent:** A single value — your site's public URL (e.g. https://yourstore.com). On revoke, the same URL is sent to withdraw. No customer data, orders, personal data, credentials, or API keys are ever transmitted.
+**What is sent:** A single value — the site's public URL (e.g. https://yourstore.com). The same URL is sent on uninstall. No customer data, orders, credentials or API keys are transmitted.
 
-**What the service does:** The URL tells KaliCart Global your store wishes to be discovered. KaliCart Global then periodically reads your already-public catalog (the same data exposed by the Bridge's public REST endpoints) and includes it in federated agent search. It only reads; it never writes to your store. Revoking stops this and parks your catalog.
+**What the service does:** KaliCart Global periodically reads the already-public catalog exposed by Bridge and includes it in federated agent search. It only reads and never writes to the store. Uninstall requests immediate removal; liveness checks suspend unreachable stores.
 
 **Privacy notice:** https://bridge.kalicart.com/privacy/
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.122 =
+* Federation lifecycle: installing or updating Bridge automatically announces the store's public URL to KaliCart Global; no catalog payload, customer, order or credential data is pushed.
+* Performance: announcements run outside normal requests through a one-time scheduled task with at most five bounded retries.
+* Removal: deleting the plugin requests immediate deregistration; Global liveness remains the fallback when a host disappears without running uninstall.
+* Interface: removes the activation and revoke controls because federation is now an intrinsic Bridge capability.
 
 = 1.0.121 =
 * Distribution: adds the self-contained KaliCart HTTPS update channel for standalone installs.

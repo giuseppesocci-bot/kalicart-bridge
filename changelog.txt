@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-07-17 - version 1.0.122
+
+* Federation lifecycle: installing or updating Bridge automatically announces the store's public URL to KaliCart Global. Global then reads the public Bridge catalog; no catalog payload, customer data, orders, credentials or API keys are pushed.
+* Performance: the announcement runs outside normal storefront, REST, MCP and checkout requests through a one-time WP-Cron task. Network failures use at most five retries with bounded exponential backoff.
+* Removal: deleting the plugin requests immediate deregistration. Global liveness remains the eventual fallback when a host disappears, files are removed manually or the uninstall request cannot reach the service.
+* Interface: removes the activation and revoke controls because federation is now an intrinsic Bridge capability. The dashboard keeps the external-visibility observation.
+
 2026-07-16 - version 1.0.121
 
 * Distribution: adds a self-contained KaliCart update channel for standalone installs. WordPress reads the HTTPS manifest on bridge.kalicart.com and can install the versioned ZIP without relying on the WordPress.org directory.

@@ -8,6 +8,22 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
+// Federation is part of the product lifecycle. Request immediate parking before
+// local state is removed. Global's liveness policy remains the eventual fallback
+// when a host disappears or cannot make this best-effort HTTPS request.
+wp_remote_post(
+	'https://dashboard.kalicart.com/v1/bridge/deregister',
+	array(
+		'timeout'     => 5,
+		'redirection' => 0,
+		'sslverify'   => true,
+		'headers'     => array( 'Content-Type' => 'application/json' ),
+		'body'        => wp_json_encode( array( 'domain' => trailingslashit( get_site_url() ) ) ),
+	)
+);
+
+wp_clear_scheduled_hook( 'kalicart_bridge_federation_announce' );
+
 // Capture the token before deleting its option so the generated public feed can
 // be removed without scanning or recursively deleting anything in uploads.
 $kalicart_bridge_acp_options = get_option( 'kalicart_bridge_acp_feed', [] );
@@ -37,6 +53,9 @@ $kalicart_bridge_options = [
 	'kalicart_bridge_coupons_agent_enabled',
 	'kalicart_bridge_coupons_agent_whitelist',
 	'kalicart_bridge_federation_registered_at',
+	'kalicart_bridge_federation_lifecycle_version',
+	'kalicart_bridge_federation_announce_attempts',
+	'kalicart_bridge_federation_last_error',
 	'kalicart_bridge_last_external_check',
 	'kalicart_bridge_acp_feed',
     'kalicart_rate_guard_checkout',
