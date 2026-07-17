@@ -6,6 +6,7 @@
 * Performance: the announcement runs outside normal storefront, REST, MCP and checkout requests through a one-time WP-Cron task. Network failures use at most five retries with bounded exponential backoff.
 * Removal: deleting the plugin requests immediate deregistration. Global liveness remains the eventual fallback when a host disappears, files are removed manually or the uninstall request cannot reach the service.
 * Interface: removes the activation and revoke controls because federation is now an intrinsic Bridge capability. The dashboard keeps the external-visibility observation.
+* Update details: the WordPress “View details” modal now reads description and changelog from the signed KaliCart release manifest instead of querying the WordPress.org directory.
 
 2026-07-16 - version 1.0.121
 

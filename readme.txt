@@ -176,6 +176,7 @@ This plugin works without a KaliCart account. The standalone distribution uses t
 * Performance: announcements run outside normal requests through a one-time scheduled task with at most five bounded retries.
 * Removal: deleting the plugin requests immediate deregistration; Global liveness remains the fallback when a host disappears without running uninstall.
 * Interface: removes the activation and revoke controls because federation is now an intrinsic Bridge capability.
+* Update details: the WordPress “View details” modal reads the KaliCart release manifest instead of the WordPress.org directory.
 
 = 1.0.121 =
 * Distribution: adds the self-contained KaliCart HTTPS update channel for standalone installs.

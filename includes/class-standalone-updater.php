@@ -16,6 +16,58 @@ final class KaliCart_Bridge_Standalone_Updater {
 
     public static function init(): void {
         add_filter( 'update_plugins_bridge.kalicart.com', [ __CLASS__, 'check_update' ], 10, 4 );
+        add_filter( 'plugins_api', [ __CLASS__, 'plugin_information' ], 20, 3 );
+    }
+
+    /**
+     * Supply the plugin-information modal from the KaliCart manifest.
+     *
+     * Without this filter WordPress queries WordPress.org by slug, even when
+     * the update itself comes from a custom Update URI.
+     *
+     * @param mixed  $result Existing API result.
+     * @param string $action Requested Plugins API action.
+     * @param object $args   Request arguments.
+     * @return mixed
+     */
+    public static function plugin_information( $result, string $action, $args ) {
+        if (
+            'plugin_information' !== $action
+            || ! is_object( $args )
+            || 'kalicart-bridge' !== (string) ( $args->slug ?? '' )
+        ) {
+            return $result;
+        }
+
+        $manifest = self::fetch_manifest();
+        if ( false === $manifest ) {
+            return $result;
+        }
+
+        $version = trim( (string) ( $manifest['version'] ?? '' ) );
+        $package = trim( (string) ( $manifest['download_url'] ?? ( $manifest['download_link'] ?? '' ) ) );
+        if ( '' === $version || ! self::is_allowed_url( $package ) ) {
+            return $result;
+        }
+
+        $sections = isset( $manifest['sections'] ) && is_array( $manifest['sections'] )
+            ? $manifest['sections']
+            : [];
+
+        return (object) [
+            'name'          => sanitize_text_field( (string) ( $manifest['name'] ?? 'KaliCart Bridge' ) ),
+            'slug'          => 'kalicart-bridge',
+            'version'       => $version,
+            'author'        => '<a href="https://kalicart.com/">KaliCart</a>',
+            'homepage'      => esc_url_raw( (string) ( $manifest['homepage'] ?? 'https://bridge.kalicart.com/' ) ),
+            'requires'      => sanitize_text_field( (string) ( $manifest['requires'] ?? '' ) ),
+            'tested'        => sanitize_text_field( (string) ( $manifest['tested'] ?? '' ) ),
+            'requires_php'  => sanitize_text_field( (string) ( $manifest['requires_php'] ?? '' ) ),
+            'download_link' => esc_url_raw( $package ),
+            'last_updated'  => sanitize_text_field( (string) ( $manifest['last_updated'] ?? '' ) ),
+            'sections'      => $sections,
+            'external'      => true,
+        ];
     }
 
     /**
