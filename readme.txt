@@ -169,6 +169,12 @@ This plugin works fully standalone. It connects to one external service **only i
 * Compatibility: installs running 1.0.120, 1.0.121 or 1.0.122 converge on the same WordPress.org-compatible package without changes to catalog, feed, MCP or checkout behavior.
 * Housekeeping: shortens the directory changelog so WordPress.org can display it without truncation.
 
+= 1.0.122 =
+* External-only release: briefly introduced an automatic federation lifecycle and Bridge-hosted plugin-details metadata. It was never published on WordPress.org and is superseded by 1.0.123, which restores explicit merchant consent and the native WordPress.org update flow.
+
+= 1.0.121 =
+* External-only release: introduced a standalone HTTPS updater for installations outside WordPress.org. It was never published on WordPress.org and is superseded by 1.0.123; the standalone updater is removed after convergence.
+
 = 1.0.120 =
 * Discovery controls: the three storefront-link toggles are independent, accurately described and remain off by default on new installations.
 * Catalog accuracy: size is explicitly detail-only and unsupported as a parent-product search filter; agents must verify purchasable product variations.

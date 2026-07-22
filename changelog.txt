@@ -8,6 +8,14 @@
 * Compatibility: installs running 1.0.120, 1.0.121 or 1.0.122 converge on the same WordPress.org-compatible package without changes to catalog, feed, MCP or checkout behavior.
 * Housekeeping: shortens the directory changelog so WordPress.org can display it without truncation.
 
+2026-07-17 - version 1.0.122
+
+* External-only release: briefly introduced an automatic federation lifecycle and Bridge-hosted plugin-details metadata. It was never published on WordPress.org and is superseded by 1.0.123, which restores explicit merchant consent and the native WordPress.org update flow.
+
+2026-07-16 - version 1.0.121
+
+* External-only release: introduced a standalone HTTPS updater for installations outside WordPress.org. It was never published on WordPress.org and is superseded by 1.0.123; the standalone updater is removed after convergence.
+
 2026-07-14 - version 1.0.120
 
 * Discovery controls: the three storefront-link toggles are independent, accurately described and remain off by default on new installations.
