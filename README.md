@@ -1,7 +1,7 @@
 # KaliCart Bridge
 
 > **Free WooCommerce plugin that makes your product catalog machine-readable for AI shopping agents.**  
-> ARC/1.0 reference implementation · No LLM · Automatic federation · No API key
+> ARC/1.0 reference implementation · No LLM · Opt-in federation · No API key
 
 [![Download](https://img.shields.io/badge/download-Bridge-blue)](https://bridge.kalicart.com/download/kalicart-bridge-latest.zip)
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
@@ -37,7 +37,7 @@ KaliCart Bridge installs on any WooCommerce store and exposes five things:
 
 4. **UCP interoperability** — `/.well-known/ucp.json` declares `catalog.search` and `catalog.lookup` capabilities for UCP-compliant agents (ChatGPT, Copilot, Gemini).
 
-5. **Automatic federated discovery** — activation announces the public store URL to [KaliCart Global](https://global.kalicart.com), a read-only multi-merchant index that AI agents can query without knowing an individual merchant in advance.
+5. **Optional federated discovery** — after explicit merchant consent, the plugin announces the public store URL to [KaliCart Global](https://global.kalicart.com), a read-only multi-merchant index that AI agents can query without knowing an individual merchant in advance. Consent can be revoked from the plugin settings.
 
 ---
 
@@ -47,7 +47,7 @@ KaliCart Bridge installs on any WooCommerce store and exposes five things:
 AI agent
     │
     ├─ 1. GET global.kalicart.com/v1/global-catalog/search?q=...  ← find merchants + products
-    │       (federated index — automatic discovery path)
+    │       (federated index — available only after merchant opt-in)
     │
     ├─ 2. GET {merchant}/wp-json/kalicart/v1/discovery             ← read contract
     │
@@ -72,7 +72,7 @@ AI agent
 1. Download [`kalicart-bridge-latest.zip`](https://bridge.kalicart.com/download/kalicart-bridge-latest.zip)
 2. Upload and activate from **WP Admin → Plugins → Add New → Upload**
 3. WooCommerce must be active
-4. Discovery signals are injected and the public store URL is announced to KaliCart Global automatically
+4. Local discovery signals are enabled; federated indexing remains off until the merchant gives explicit consent in the plugin settings
 5. Visit **WP Admin → KaliCart** for the catalog health dashboard
 
 That's it. Your catalog is now machine-readable.

@@ -8,22 +8,6 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
-// Federation is part of the product lifecycle. Request immediate parking before
-// local state is removed. Global's liveness policy remains the eventual fallback
-// when a host disappears or cannot make this best-effort HTTPS request.
-wp_remote_post(
-	'https://dashboard.kalicart.com/v1/bridge/deregister',
-	array(
-		'timeout'     => 5,
-		'redirection' => 0,
-		'sslverify'   => true,
-		'headers'     => array( 'Content-Type' => 'application/json' ),
-		'body'        => wp_json_encode( array( 'domain' => trailingslashit( get_site_url() ) ) ),
-	)
-);
-
-wp_clear_scheduled_hook( 'kalicart_bridge_federation_announce' );
-
 // Capture the token before deleting its option so the generated public feed can
 // be removed without scanning or recursively deleting anything in uploads.
 $kalicart_bridge_acp_options = get_option( 'kalicart_bridge_acp_feed', [] );
@@ -79,6 +63,7 @@ foreach ( $kalicart_bridge_options as $kalicart_bridge_option ) {
 wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
 wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
 wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
+wp_clear_scheduled_hook( 'kalicart_bridge_federation_announce' );
 
 // Checkout session claim rows (kalicart_session_claimed_{id}): dynamically keyed, one per
 // attributed checkout — not in the fixed options list above, needs a LIKE-pattern sweep.
