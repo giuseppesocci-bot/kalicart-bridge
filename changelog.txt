@@ -1,5 +1,10 @@
 *** KaliCart Bridge Changelog ***
 
+2026-08-24 - version 1.0.124
+
+* Compatibility: tested up to WordPress 7.1.
+
+
 2026-07-22 - version 1.0.123
 
 * Distribution: returns KaliCart Bridge to WordPress.org from the approved 1.0.120 baseline. Versions 1.0.121 and 1.0.122 were distributed externally and are superseded by this release.

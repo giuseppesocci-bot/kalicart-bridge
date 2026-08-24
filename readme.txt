@@ -2,8 +2,8 @@
 Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
-Tested up to: 7.0
-Stable tag: 1.0.123
+Tested up to: 7.1
+Stable tag: 1.0.124
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,9 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.124 =
+* Compatibility: tested up to WordPress 7.1.
 
 = 1.0.123 =
 * Distribution: returns KaliCart Bridge to WordPress.org from the approved 1.0.120 baseline. Versions 1.0.121 and 1.0.122 were distributed externally and are superseded by this release.
