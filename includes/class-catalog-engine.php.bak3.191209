@@ -530,41 +530,31 @@ class KaliCart_Bridge_Catalog_Engine {
                 ? array_values( wp_list_pluck( $cat_terms, 'slug' ) )
                 : [];
 
-            // PRICE-INTERVAL-v1 — `current` e' il prezzo ATTIVO PIU' BASSO e `regular`
-            // cade su `min_regular` sui variabili: entrambi sono ESTREMI, non "il
-            // prezzo". Senza `type` e `max_current` l'agente non puo' saperlo dal
-            // summary, ed e' proprio da qui che le agent_instructions gli dicono di
-            // classificare; l'intervallo restava leggibile solo dentro la stringa
-            // `display`, che non e' computabile. Gli estremi alti si AGGIUNGONO solo
-            // su type=range: su un prezzo fisso ripeterebbero current/regular per ogni
-            // prodotto del catalogo, e fields=summary esiste per pesare poco. Stessa
-            // scelta della card del global, che li omette sui fixed.
-            $price_type  = $price['type'] ?? 'fixed';
-            $price_block = [
-                'type'    => $price_type,
-                'current' => $price['current'] ?? null,
-                'display' => $price['display'] ?? null,
-                'regular' => $price['regular'] ?? $price['min_regular'] ?? null,
-            ];
-            if ( 'range' === $price_type ) {
-                $price_block['max_current'] = $price['max_current'] ?? null;
-                $price_block['max_regular'] = $price['max_regular'] ?? null;
-            }
-            $price_block += [
-                'on_sale'    => (bool) ( $price['on_sale'] ?? false ),
-                'sale_scope' => $price['sale_scope'] ?? ( ! empty( $price['on_sale'] ) ? 'single_product' : 'none' ),
-                'discounted_variations_count' => $price['discounted_variations_count'] ?? null,
-                'priced_variations_count'     => $price['priced_variations_count'] ?? null,
-                'variant_selection_required_for_sale' => (bool) ( $price['variant_selection_required_for_sale'] ?? false ),
-            ];
-
             return [
                 'id'         => $p->get_id(),
                 'sku'        => $p->get_sku() ?: null,
                 'name'       => $p->get_name(),
                 'brand'      => self::resolve_brand( $p ),
                 'url'        => get_permalink( $p->get_id() ),
-                'price'      => $price_block,
+                'price'      => [
+                    // PRICE-INTERVAL-v1 — `current` e' il prezzo ATTIVO PIU' BASSO e
+                    // `regular` cade su `min_regular` sui variabili: entrambi sono
+                    // ESTREMI, non "il prezzo". Senza `type` e `max_current` l'agente
+                    // non puo' saperlo dal summary, e le agent_instructions gli dicono
+                    // di classificare proprio da qui. L'intervallo restava leggibile
+                    // solo dentro la stringa `display`, che non e' computabile.
+                    'type'    => $price['type'] ?? 'fixed',
+                    'current' => $price['current'] ?? null,
+                    'max_current' => $price['max_current'] ?? $price['current'] ?? null,
+                    'display' => $price['display'] ?? null,
+                    'regular' => $price['regular'] ?? $price['min_regular'] ?? null,
+                    'max_regular' => $price['max_regular'] ?? $price['regular'] ?? null,
+                    'on_sale' => (bool) ( $price['on_sale'] ?? false ),
+					'sale_scope' => $price['sale_scope'] ?? ( ! empty( $price['on_sale'] ) ? 'single_product' : 'none' ),
+					'discounted_variations_count' => $price['discounted_variations_count'] ?? null,
+					'priced_variations_count' => $price['priced_variations_count'] ?? null,
+					'variant_selection_required_for_sale' => (bool) ( $price['variant_selection_required_for_sale'] ?? false ),
+                ],
                 'stock'      => [ 'in_stock' => $p->is_in_stock() ],
                 'categories' => $categories,
                 'type'       => $p->get_type(),

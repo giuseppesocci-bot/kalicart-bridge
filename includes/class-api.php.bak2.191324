@@ -654,11 +654,6 @@ class KaliCart_Bridge_API {
                         'regular'         => [ 'type' => [ 'number', 'null' ] ],
                         'sale'            => [ 'type' => [ 'number', 'null' ] ],
                         'current'         => [ 'type' => [ 'number', 'null' ] ],
-                        // PRICE-INTERVAL-v1: su type=range `current` e' l'estremo BASSO
-                        // dei prezzi attivi e `max_current` quello alto. Su type=fixed
-                        // i due estremi coincidono e max_current non viene emesso.
-                        // `type` e' gia' dichiarato in testa a queste properties.
-                        'max_current'     => [ 'type' => [ 'number', 'null' ] ],
                         'min_regular'     => [ 'type' => [ 'number', 'null' ] ],
                         'max_regular'     => [ 'type' => [ 'number', 'null' ] ],
                         'min_sale'        => [ 'type' => [ 'number', 'null' ] ],

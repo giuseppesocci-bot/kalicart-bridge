@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.124
+Stable tag: 1.0.125
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,11 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.125 =
+* Fix: the min_price filter discarded variable products that had purchasable variants inside the requested range. The post-filter compared only the lowest active price, cancelling the range-overlap semantics already declared by the SQL pre-filter. It now compares the whole interval.
+* New: price.max_current and price.max_regular are returned on price.type=range, in both the summary listing and the product detail. price.current is the lowest active price across variants; without these fields the interval was readable only inside the formatted price.display string.
+* Agent instructions and the CatalogPrice schema document the interval semantics.
 
 = 1.0.124 =
 * Compatibility: tested up to WordPress 7.1.
