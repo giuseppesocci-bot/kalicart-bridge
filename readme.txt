@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.125
+Stable tag: 1.0.126
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,13 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.126 =
+* New: "AI assistants and your store" in the Stats tab. One row per assistant, three columns: pages read, KaliCart catalog requests, and orders converted. The first column is what any site gets; the second exists only where the Bridge is installed. Reads the 31 days already recorded, so it is populated the moment you update — no migration.
+* New: order attribution from AI assistants, sourced from WooCommerce's own order attribution. A "Confirmed" line appears only when the same assistant both queried your catalog and brought customers who bought in the same window; it never shows on an empty cross-check.
+* New: Applebot is now recognised, so Siri and Spotlight visits are counted. Evaluated after Applebot-Extended, which stays distinct: indexing and model training are not the same thing.
+* Change: the agent checkout funnel is hidden while empty. Four zeros read as a broken plugin; a line now explains what will appear there when an assistant completes an order on its own.
+* i18n: all new strings translated to Italian, German, Spanish and French.
 
 = 1.0.125 =
 * Fix: the min_price filter discarded variable products that had purchasable variants inside the requested range. The post-filter compared only the lowest active price, cancelling the range-overlap semantics already declared by the SQL pre-filter. It now compares the whole interval.

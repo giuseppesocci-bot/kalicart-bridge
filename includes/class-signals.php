@@ -87,13 +87,333 @@ class KaliCart_Bridge_Signals {
     }
 
     /** Known branded AI crawler / agent user-agent tokens. First match wins. */
+    /**
+     * Mappa assistente -> [bot che leggono, domini di provenienza degli ordini].
+     *
+     * Le due colonne rispondono a domande diverse e sono ASIMMETRICHE di proposito:
+     *  - 'bots'    : chi legge il sito. Viene dal contatore ai_traffic.
+     *  - 'origins' : da dove arriva chi compra. Viene dall'attribuzione ordini di
+     *                WooCommerce, che e' sourcebuster.js lato browser: registra il
+     *                referrer di una PERSONA con un browser, mai di un agente.
+     *
+     * Asimmetrie volute, non dimenticanze:
+     *  - Amazon e Apple leggono ma non mandano traffico a negozi terzi -> no origins.
+     *    Siri in particolare apre Safari senza referrer: l'ordine risulta 'diretto'
+     *    e non e' distinguibile da chi digita l'indirizzo. Gli assistenti integrati
+     *    nel sistema operativo restano invisibili nella colonna ordini.
+     *  - Copilot non ha un crawler proprio (usa l'indice Bing) -> no bots.
+     *  - duckduckgo.com NON e' fra le origins: e' anche un motore di ricerca
+     *    normale, e conterebbe ricerche ordinarie come conversioni da assistente.
+     */
+    public static function assistant_map(): array {
+        return (array) apply_filters( 'kalicart_bridge_assistant_map', [
+            'ChatGPT'    => [ 'bots' => [ 'ChatGPT-User', 'OAI-SearchBot', 'GPTBot' ],
+                              'origins' => [ 'chatgpt.com', 'openai.com' ] ],
+            'Claude'     => [ 'bots' => [ 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'claude-web' ],
+                              'origins' => [ 'claude.ai' ] ],
+            'Perplexity' => [ 'bots' => [ 'PerplexityBot', 'Perplexity-User' ],
+                              'origins' => [ 'perplexity.ai' ] ],
+            'Gemini'     => [ 'bots' => [ 'Google-Extended' ],
+                              'origins' => [ 'gemini.google.com' ] ],
+            'Copilot'    => [ 'bots' => [],
+                              'origins' => [ 'copilot.microsoft.com' ] ],
+            'Meta AI'    => [ 'bots' => [ 'meta-externalagent' ],
+                              'origins' => [ 'meta.ai' ] ],
+            'Mistral'    => [ 'bots' => [ 'MistralAI' ],
+                              'origins' => [ 'chat.mistral.ai' ] ],
+            'DuckAssist' => [ 'bots' => [ 'DuckAssistBot' ], 'origins' => [] ],
+            'Siri'       => [ 'bots' => [ 'Applebot' ], 'origins' => [] ],
+            'Amazon'     => [ 'bots' => [ 'Amazonbot' ], 'origins' => [] ],
+            'Bytedance'  => [ 'bots' => [ 'Bytespider' ], 'origins' => [] ],
+            'Cohere'     => [ 'bots' => [ 'cohere-ai' ], 'origins' => [] ],
+        ] );
+    }
+
+    /**
+     * Report per il pannello Stats. Aggrega gli ultimi $days bucket di
+     * kalicart_bridge_ai_traffic in due sole colonne leggibili da un merchant:
+     *
+     *   pages   = superficie 'html'   -> pagine che esisterebbero comunque
+     *   catalog = superfici 'api'+'mcp' -> rotte che esistono SOLO col Bridge
+     *
+     * Sul catalogo si contano TUTTE le richieste, non i soli bot riconosciuti:
+     * la superficie mcp e' quasi tutta 'other'/'anonymous_programmatic' perche'
+     * le armature di agenti custom spesso non mandano user-agent. Filtrare per
+     * nome li cancellerebbe proprio mentre fanno la cosa che conta di piu'.
+     * Le visite HTML invece si contano solo se branded: li' il traffico non
+     * riconosciuto e' il proprietario del sito, non un agente.
+     *
+     * @return array{days_covered:int,pages:array,catalog:array,catalog_total:int,unnamed_catalog:int}
+     */
+    public static function get_agent_report( int $days = 30 ): array {
+        $data = get_option( 'kalicart_bridge_ai_traffic', [] );
+        if ( ! is_array( $data ) ) {
+            $data = [];
+        }
+        $from    = gmdate( 'Y-m-d', time() - ( max( 1, $days ) * DAY_IN_SECONDS ) );
+        $pages   = [];
+        $catalog = [];
+        $catalog_total = 0;
+        $named_catalog = 0;
+        $covered = 0;
+
+        foreach ( $data as $day => $surfaces ) {
+            if ( ! is_string( $day ) || $day < $from || ! is_array( $surfaces ) ) {
+                continue;
+            }
+            $covered++;
+            foreach ( $surfaces as $surface => $v ) {
+                if ( ! is_array( $v ) ) {
+                    continue;
+                }
+                $bots = is_array( $v['bot'] ?? null ) ? $v['bot'] : [];
+                if ( 'html' === $surface ) {
+                    foreach ( $bots as $bot => $n ) {
+                        $pages[ $bot ] = ( $pages[ $bot ] ?? 0 ) + (int) $n;
+                    }
+                    continue;
+                }
+                // api + mcp: il catalogo computabile.
+                // Si contano SOLO le classi plausibilmente agentiche. 'browser'
+                // sul catalogo e' il proprietario del sito o uno strumento di
+                // test: presentarlo come "agente anonimo" sarebbe una bugia
+                // proprio nella colonna che deve reggere meglio di tutte.
+                $classes = is_array( $v['class'] ?? null ) ? $v['class'] : [];
+                $agentic = (int) ( $classes['anonymous_programmatic'] ?? 0 )
+                         + (int) ( $classes['generic_client'] ?? 0 )
+                         + (int) ( $classes['branded_agent'] ?? 0 )
+                         + (int) ( $classes['other'] ?? 0 );
+                $catalog_total += $agentic;
+                foreach ( $bots as $bot => $n ) {
+                    $catalog[ $bot ] = ( $catalog[ $bot ] ?? 0 ) + (int) $n;
+                    $named_catalog  += (int) $n;
+                }
+            }
+        }
+        arsort( $pages );
+        arsort( $catalog );
+        return [
+            'days_covered'    => $covered,
+            'pages'           => $pages,
+            'catalog'         => $catalog,
+            'catalog_total'   => $catalog_total,
+            // Richieste al catalogo senza un agente riconoscibile: agenti custom
+            // senza user-agent, piu' il traffico del sito stesso. Si mostra come
+            // aggregato, mai attribuito a un nome.
+            'unnamed_catalog' => max( 0, $catalog_total - $named_catalog ),
+        ];
+    }
+
+    /**
+     * Righe del pannello, UNA PER ASSISTENTE e non per bot.
+     *
+     * Necessario perche' le tre colonne hanno chiavi diverse: pagine e catalogo
+     * sono per user-agent ('ChatGPT-User', 'OAI-SearchBot', 'GPTBot'), gli ordini
+     * sono per dominio di provenienza ('chatgpt.com'). Solo la mappa assistente
+     * tiene insieme le due cose, quindi l'aggregazione avviene qui e non nella
+     * vista. Per il merchant conta l'assistente, non quale dei tre crawler.
+     *
+     * I bot che non stanno nella mappa restano come riga a se': meglio un nome
+     * sconosciuto mostrato che un passaggio taciuto.
+     */
+    public static function get_panel_rows( int $days = 30 ): array {
+        $rep    = self::get_agent_report( $days );
+        $ord    = self::get_assistant_orders_report( $days );
+        $map    = self::assistant_map();
+        $rows   = [];
+        $seen   = [];
+
+        foreach ( $map as $name => $def ) {
+            $bots  = (array) ( $def['bots'] ?? [] );
+            $pages = 0;
+            $cat   = 0;
+            $found = [];
+            foreach ( $bots as $bot ) {
+                $p = (int) ( $rep['pages'][ $bot ] ?? 0 );
+                $c = (int) ( $rep['catalog'][ $bot ] ?? 0 );
+                if ( $p || $c ) {
+                    $found[] = $bot;
+                }
+                $pages += $p;
+                $cat   += $c;
+                $seen[ $bot ] = true;
+            }
+            $o = $ord['by_assistant'][ $name ] ?? [ 'orders' => 0, 'total' => 0.0 ];
+            if ( ! $pages && ! $cat && empty( $o['orders'] ) ) {
+                continue;
+            }
+            $rows[] = [
+                'name'    => $name,
+                'bots'    => $found,
+                'pages'   => $pages,
+                'catalog' => $cat,
+                'orders'  => (int) $o['orders'],
+                'total'   => (float) $o['total'],
+            ];
+        }
+
+        // Bot osservati ma non presenti nella mappa: si mostrano comunque.
+        foreach ( array_merge( array_keys( $rep['pages'] ), array_keys( $rep['catalog'] ) ) as $bot ) {
+            if ( isset( $seen[ $bot ] ) ) {
+                continue;
+            }
+            $seen[ $bot ] = true;
+            $rows[] = [
+                'name'    => $bot,
+                'bots'    => [],
+                'pages'   => (int) ( $rep['pages'][ $bot ] ?? 0 ),
+                'catalog' => (int) ( $rep['catalog'][ $bot ] ?? 0 ),
+                'orders'  => 0,
+                'total'   => 0.0,
+            ];
+        }
+
+        usort( $rows, static function ( $a, $b ) {
+            // Ordine: prima chi ha portato ordini, poi chi ha letto il catalogo,
+            // poi il volume sulle pagine. Le righe che dimostrano di piu' stanno
+            // in alto anche quando i numeri assoluti sono piccoli.
+            return [ $b['orders'], $b['catalog'], $b['pages'] ] <=> [ $a['orders'], $a['catalog'], $a['pages'] ];
+        } );
+
+        return [
+            'rows'            => $rows,
+            'days_covered'    => $rep['days_covered'],
+            'unnamed_catalog' => $rep['unnamed_catalog'],
+            'currency'        => $ord['currency'],
+            'orders_total'    => $ord['total'],
+            'orders_count'    => $ord['orders'],
+        ];
+    }
+
+    /**
+     * Ordini arrivati da un assistente AI negli ultimi $days giorni.
+     *
+     * Sorgente: attribuzione ordini nativa di WooCommerce (sourcebuster.js).
+     * IMPLICAZIONE DA NON DIMENTICARE: e' JavaScript lato browser, quindi
+     * registra il referrer di una PERSONA che ha cliccato un link dentro un
+     * assistente. Un agente headless non produce questo dato — quello, se
+     * comprera' davvero, passera' dal marker di sessione Bridge e finira' nel
+     * funnel checkout, che e' un contatore separato. I due non vanno sommati.
+     *
+     * Si usa wc_get_orders e non una query diretta: le chiavi stanno in
+     * wp_wc_orders_meta con HPOS attivo e in wp_postmeta senza, e una query
+     * sulla tabella si romperebbe sulla meta' dei merchant.
+     *
+     * @return array{orders:int,total:float,by_assistant:array,currency:string}
+     */
+    public static function get_assistant_orders_report( int $days = 30 ): array {
+        $empty = [ 'orders' => 0, 'total' => 0.0, 'by_assistant' => [], 'currency' => get_woocommerce_currency() ];
+        if ( ! function_exists( 'wc_get_orders' ) ) {
+            return $empty;
+        }
+        $cache = get_transient( 'kalicart_bridge_assistant_orders_' . $days );
+        if ( is_array( $cache ) ) {
+            return $cache;
+        }
+
+        // origine -> assistente, per risalire dal referrer al nome mostrato.
+        $lookup = [];
+        foreach ( self::assistant_map() as $name => $def ) {
+            foreach ( (array) ( $def['origins'] ?? [] ) as $origin ) {
+                $lookup[ strtolower( $origin ) ] = $name;
+            }
+        }
+        if ( ! $lookup ) {
+            return $empty;
+        }
+
+        $orders = wc_get_orders( [
+            'limit'        => 500, // limite di cortesia: il pannello e' un indicatore, non un report contabile
+            'date_created' => '>' . ( time() - ( max( 1, $days ) * DAY_IN_SECONDS ) ),
+            'status'       => [ 'wc-processing', 'wc-completed', 'wc-on-hold' ],
+            'return'       => 'objects',
+        ] );
+        if ( ! is_array( $orders ) ) {
+            return $empty;
+        }
+
+        $by = [];
+        $n  = 0;
+        $tot = 0.0;
+        foreach ( $orders as $order ) {
+            if ( ! ( $order instanceof WC_Order ) ) {
+                continue;
+            }
+            // utm_source e' il campo che WooCommerce valorizza col dominio di
+            // provenienza; referrer e' il fallback quando il primo manca.
+            $src = strtolower( (string) $order->get_meta( '_wc_order_attribution_utm_source', true ) );
+            if ( '' === $src ) {
+                $src = strtolower( (string) $order->get_meta( '_wc_order_attribution_referrer', true ) );
+            }
+            if ( '' === $src ) {
+                continue;
+            }
+            $matched = null;
+            foreach ( $lookup as $origin => $name ) {
+                if ( false !== strpos( $src, $origin ) ) {
+                    $matched = $name;
+                    break;
+                }
+            }
+            if ( null === $matched ) {
+                continue;
+            }
+            $value = (float) $order->get_total();
+            $n++;
+            $tot += $value;
+            if ( ! isset( $by[ $matched ] ) ) {
+                $by[ $matched ] = [ 'orders' => 0, 'total' => 0.0 ];
+            }
+            $by[ $matched ]['orders']++;
+            $by[ $matched ]['total'] += $value;
+        }
+        $out = [ 'orders' => $n, 'total' => $tot, 'by_assistant' => $by, 'currency' => get_woocommerce_currency() ];
+        set_transient( 'kalicart_bridge_assistant_orders_' . $days, $out, HOUR_IN_SECONDS );
+        return $out;
+    }
+
+    /**
+     * Incrocio: assistenti che hanno interrogato il catalogo Bridge E hanno
+     * portato clienti che hanno comprato, nella stessa finestra.
+     *
+     * LIMITE DICHIARATO: il contatore e' giornaliero e anonimo, l'attribuzione
+     * ordini e' per-ordine. Non esiste alcun identificativo condiviso, quindi
+     * questo NON dimostra che una lettura abbia causato quell'ordine. Dice che
+     * lo stesso assistente ha fatto entrambe le cose nel periodo. La frase
+     * mostrata all'utente deve restare a questo livello di pretesa.
+     */
+    public static function get_confirmed_assistants( int $days = 30 ): array {
+        $report = self::get_agent_report( $days );
+        $orders = self::get_assistant_orders_report( $days );
+        $out    = [];
+        foreach ( self::assistant_map() as $name => $def ) {
+            $read = 0;
+            foreach ( (array) ( $def['bots'] ?? [] ) as $bot ) {
+                $read += (int) ( $report['catalog'][ $bot ] ?? 0 );
+            }
+            if ( $read > 0 && ! empty( $orders['by_assistant'][ $name ]['orders'] ) ) {
+                $out[ $name ] = [
+                    'catalog_reads' => $read,
+                    'orders'        => (int) $orders['by_assistant'][ $name ]['orders'],
+                    'total'         => (float) $orders['by_assistant'][ $name ]['total'],
+                ];
+            }
+        }
+        return $out;
+    }
+
     private static function branded_ai_agent( string $ua ): ?string {
         $bots = [
             'GPTBot', 'OAI-SearchBot', 'ChatGPT-User',
             'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'claude-web',
             'PerplexityBot', 'Perplexity-User',
             'Google-Extended', 'Bytespider', 'Amazonbot',
-            'meta-externalagent', 'cohere-ai', 'Applebot-Extended',
+            'meta-externalagent', 'cohere-ai',
+            // ORDINE SIGNIFICATIVO: il ciclo restituisce il primo match, e
+            // 'Applebot' e' sottostringa di 'Applebot-Extended'. Extended (uso
+            // per addestramento) va valutato PRIMA di Applebot (indicizzazione
+            // per Siri/Spotlight), altrimenti i due diventano indistinguibili.
+            'Applebot-Extended', 'Applebot',
             'DuckAssistBot', 'MistralAI',
         ];
         foreach ( $bots as $bot ) {

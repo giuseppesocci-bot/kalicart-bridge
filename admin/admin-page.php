@@ -392,12 +392,138 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
 
   <!-- TAB: STATS -->
   <div id="kali-tab-stats" class="kali-panel" style="display:<?php echo 'stats' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
+    <?php
+    // ── Assistenti AI ─────────────────────────────────────────────────────────
+    // Tre colonne, una riga per ASSISTENTE (non per bot): pagine e catalogo
+    // arrivano dal contatore per user-agent, gli ordini dall'attribuzione per
+    // dominio. L'aggregazione sta in get_panel_rows(), qui solo la resa.
+    $kali_panel    = class_exists( 'KaliCart_Bridge_Signals' ) ? KaliCart_Bridge_Signals::get_panel_rows( 30 ) : null;
+    $kali_conf     = class_exists( 'KaliCart_Bridge_Signals' ) ? KaliCart_Bridge_Signals::get_confirmed_assistants( 30 ) : [];
+    $kali_counting = (bool) get_option( 'kalicart_bridge_ai_traffic_enabled', true );
+    if ( $kali_panel ) :
+      $kali_rows = $kali_panel['rows'];
+      $kali_pmax = 1; $kali_cmax = max( 1, (int) $kali_panel['unnamed_catalog'] ); $kali_omax = 1;
+      foreach ( $kali_rows as $kali_r ) {
+        $kali_pmax = max( $kali_pmax, $kali_r['pages'] );
+        $kali_cmax = max( $kali_cmax, $kali_r['catalog'] );
+        $kali_omax = max( $kali_omax, $kali_r['orders'] );
+      }
+    ?>
+    <div class="kali-section-title"><?php esc_html_e( 'AI assistants and your store', 'kalicart-bridge' ); ?></div>
+
+    <?php if ( ! $kali_counting ) : ?>
+      <p class="kali-hint"><strong><?php esc_html_e( 'Counting is turned off: this section is not measuring anything. That is not the same as no assistant having visited.', 'kalicart-bridge' ); ?></strong></p>
+    <?php elseif ( empty( $kali_rows ) ) : ?>
+      <p class="kali-hint"><?php
+        /* translators: %d: number of days observed */
+        printf( esc_html__( 'No assistant has visited your store yet in the last %d days observed.', 'kalicart-bridge' ), (int) $kali_panel['days_covered'] ); ?></p>
+    <?php else : ?>
+      <div class="kali-agents">
+        <div class="kali-agents__head">
+          <div class="kali-agents__col kali-agents__col--spacer"></div>
+          <div class="kali-agents__col">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6b7a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h11l5 5v13H4z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+            <div><b><?php esc_html_e( 'Read your pages', 'kalicart-bridge' ); ?></b>
+            <span><?php esc_html_e( 'Anyone can read them, with or without KaliCart', 'kalicart-bridge' ); ?></span></div>
+          </div>
+          <div class="kali-agents__col kali-agents__col--strong">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a7f3c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5C3 5 5.7 4 9 4s6 1 6 2.5S12.3 9 9 9 3 8 3 6.5z"/><path d="M3 6.5v11C3 19 5.7 20 9 20s6-1 6-2.5v-11"/><path d="M3 12c0 1.5 2.7 2.5 6 2.5s6-1 6-2.5"/><path d="M17.5 13.5l3.5 3.5-3.5 3.5"/></svg>
+            <div><b><?php esc_html_e( 'Asked for your KaliCart catalog', 'kalicart-bridge' ); ?></b>
+            <span><?php esc_html_e( 'Only possible with the Bridge active', 'kalicart-bridge' ); ?></span></div>
+          </div>
+          <div class="kali-agents__col kali-agents__col--strong">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a7f3c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6L5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>
+            <div><b><?php esc_html_e( 'Orders converted', 'kalicart-bridge' ); ?></b>
+            <span><?php esc_html_e( 'Customers who arrived from there and bought', 'kalicart-bridge' ); ?></span></div>
+          </div>
+        </div>
+
+        <?php foreach ( $kali_rows as $kali_r ) : ?>
+          <div class="kali-agents__row kali-agents__row--4">
+            <div class="kali-agents__name">
+              <span class="kali-agents__dot<?php echo ( $kali_r['catalog'] || $kali_r['orders'] ) ? ' kali-agents__dot--strong' : ''; ?>"></span>
+              <div>
+                <?php echo esc_html( $kali_r['name'] ); ?>
+                <?php if ( ! empty( $kali_r['bots'] ) ) : ?>
+                  <em><?php echo esc_html( implode( ', ', $kali_r['bots'] ) ); ?></em>
+                <?php endif; ?>
+              </div>
+            </div>
+            <div class="kali-agents__cell">
+              <span class="kali-agents__num<?php echo $kali_r['pages'] ? '' : ' kali-agents__num--muted'; ?>"><?php echo $kali_r['pages'] ? esc_html( number_format_i18n( $kali_r['pages'] ) ) : '&mdash;'; ?></span>
+              <span class="kali-agents__bar"><i style="width:<?php echo esc_attr( $kali_r['pages'] ? max( 3, round( $kali_r['pages'] * 100 / $kali_pmax ) ) : 0 ); ?>%"></i></span>
+            </div>
+            <div class="kali-agents__cell">
+              <span class="kali-agents__num<?php echo $kali_r['catalog'] ? ' kali-agents__num--strong' : ' kali-agents__num--muted'; ?>"><?php echo $kali_r['catalog'] ? esc_html( number_format_i18n( $kali_r['catalog'] ) ) : '&mdash;'; ?></span>
+              <span class="kali-agents__bar"><i class="is-strong" style="width:<?php echo esc_attr( $kali_r['catalog'] ? max( 3, round( $kali_r['catalog'] * 100 / $kali_cmax ) ) : 0 ); ?>%"></i></span>
+            </div>
+            <div class="kali-agents__cell">
+              <?php if ( $kali_r['orders'] ) : ?>
+                <span class="kali-agents__num kali-agents__num--strong"><?php echo esc_html( number_format_i18n( $kali_r['orders'] ) ); ?></span>
+                <span class="kali-agents__money"><?php echo wp_kses_post( wc_price( $kali_r['total'], [ 'currency' => $kali_panel['currency'] ] ) ); ?></span>
+              <?php else : ?>
+                <span class="kali-agents__num kali-agents__num--muted">&mdash;</span>
+              <?php endif; ?>
+            </div>
+          </div>
+        <?php endforeach; ?>
+
+        <?php if ( ! empty( $kali_panel['unnamed_catalog'] ) ) : ?>
+          <div class="kali-agents__row kali-agents__row--4">
+            <div class="kali-agents__name">
+              <span class="kali-agents__dot kali-agents__dot--strong"></span>
+              <div><em><?php esc_html_e( 'Agents that do not identify themselves', 'kalicart-bridge' ); ?></em></div>
+            </div>
+            <div class="kali-agents__cell"><span class="kali-agents__num kali-agents__num--muted">&mdash;</span></div>
+            <div class="kali-agents__cell">
+              <span class="kali-agents__num kali-agents__num--strong"><?php echo esc_html( number_format_i18n( $kali_panel['unnamed_catalog'] ) ); ?></span>
+              <span class="kali-agents__bar"><i class="is-strong" style="width:<?php echo esc_attr( max( 3, round( $kali_panel['unnamed_catalog'] * 100 / $kali_cmax ) ) ); ?>%"></i></span>
+            </div>
+            <div class="kali-agents__cell"><span class="kali-agents__num kali-agents__num--muted">&mdash;</span></div>
+          </div>
+        <?php endif; ?>
+      </div>
+      <p class="kali-hint"><?php esc_html_e( 'Anyone can read your pages, with or without KaliCart. Only those who find the Bridge active on your site can ask for the catalog. Converted orders are people who clicked a link inside an assistant and bought from you.', 'kalicart-bridge' ); ?></p>
+    <?php endif; ?>
+
+    <?php foreach ( $kali_conf as $kali_a => $kali_v ) : ?>
+      <div class="kali-confirmed">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a7f3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>
+        <span><?php
+        /* translators: 1: assistant name, 2: catalog requests, 3: orders, 4: order value */
+        printf( esc_html__( 'Confirmed: %1$s asked for your KaliCart catalog %2$s times and, in the same period, brought %3$s customers who bought, for %4$s.', 'kalicart-bridge' ),
+          esc_html( $kali_a ),
+          esc_html( number_format_i18n( $kali_v['catalog_reads'] ) ),
+          esc_html( number_format_i18n( $kali_v['orders'] ) ),
+          wp_kses_post( wc_price( $kali_v['total'], [ 'currency' => $kali_panel['currency'] ] ) )
+        ); ?></span>
+      </div>
+    <?php endforeach; ?>
+
+    <p class="kali-hint"><?php
+      /* translators: %d: number of days observed */
+      printf( esc_html__( 'Local to your site, last %d days observed. No data leaves your store.', 'kalicart-bridge' ), (int) $kali_panel['days_covered'] ); ?></p>
+    <?php endif; ?>
+
     <div class="kali-section-title"><?php esc_html_e( 'Agent checkout', 'kalicart-bridge' ); ?></div>
     <p class="kali-hint"><?php esc_html_e( 'Last 30 days. Local counters only — no cloud. Orders created from a Bridge checkout session, through either classic checkout or Checkout Block, are linked back to that session.', 'kalicart-bridge' ); ?></p>
 
     <?php
     $kalicart_bridge_funnel = class_exists( 'KaliCart_Bridge_Checkout' ) ? KaliCart_Bridge_Checkout::get_funnel_report() : null;
-    if ( $kalicart_bridge_funnel ) :
+    // Il checkout agentico completo — l'agente che costruisce il carrello e paga
+    // da solo — non e' ancora una pratica diffusa: su quasi tutti i negozi questi
+    // quattro contatori sono a zero. Mostrare quattro zeri fa concludere che il
+    // plugin non funzioni, mentre le sezioni sopra dimostrano il contrario. Si
+    // mostra la griglia SOLO quando c'e' qualcosa dentro; altrimenti una riga che
+    // spiega cosa comparira'. Stesso principio della riga "Confermato".
+    $kalicart_bridge_funnel_active = $kalicart_bridge_funnel && (
+        (int) $kalicart_bridge_funnel['sessions_created']
+      + (int) $kalicart_bridge_funnel['carts_loaded']
+      + (int) $kalicart_bridge_funnel['orders_linked'] ) > 0;
+    if ( ! $kalicart_bridge_funnel_active ) : ?>
+      <p class="kali-hint"><?php esc_html_e( 'When an assistant builds the cart and completes the order on its own, with no human step, it will show up here. The Bridge already keeps that possibility open: no assistant does it at scale yet.', 'kalicart-bridge' ); ?></p>
+    <?php endif;
+    if ( $kalicart_bridge_funnel_active ) :
     ?>
     <div class="kali-stats-grid kali-stats-grid--4">
       <div class="kali-stat">
