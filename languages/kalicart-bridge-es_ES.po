@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KaliCart Bridge 1.0.118\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kalicart-bridge\n"
-"POT-Creation-Date: 2026-09-09T13:29:01+02:00\n"
+"POT-Creation-Date: 2026-09-10T08:35:17+02:00\n"
 "PO-Revision-Date: 2026-07-12 16:13+0000\n"
 "Last-Translator: KaliCart <giuso@kalicart.com>\n"
 "Language-Team: Spanish\n"
@@ -463,11 +463,11 @@ msgstr ""
 msgid "Eligible coupons"
 msgstr "Cupones elegibles"
 
-#: admin/admin-page.php:412
+#: admin/admin-page.php:411
 msgid "AI assistants and your store"
 msgstr "Asistentes de IA y tu tienda"
 
-#: admin/admin-page.php:415
+#: admin/admin-page.php:414
 msgid ""
 "Counting is turned off: this section is not measuring anything. That is not "
 "the same as no assistant having visited."
@@ -476,42 +476,42 @@ msgstr ""
 "significa que ningún asistente haya pasado."
 
 #. translators: %d: number of days observed
-#: admin/admin-page.php:419
+#: admin/admin-page.php:418
 #, php-format
 msgid "No assistant has visited your store yet in the last %d days observed."
 msgstr ""
 "Ningún asistente ha visitado todavía tu tienda en los últimos %d días "
 "observados."
 
-#: admin/admin-page.php:426
+#: admin/admin-page.php:425
 msgid "Read your pages"
 msgstr "Ha leído tus páginas"
 
-#: admin/admin-page.php:427
+#: admin/admin-page.php:426
 msgid "Anyone can read them, with or without KaliCart"
 msgstr "Cualquiera puede leerlas, con o sin KaliCart"
 
-#: admin/admin-page.php:431
+#: admin/admin-page.php:430
 msgid "Asked for your KaliCart catalog"
 msgstr "Ha pedido tu catálogo KaliCart"
 
-#: admin/admin-page.php:432
+#: admin/admin-page.php:431
 msgid "Only possible with the Bridge active"
 msgstr "Solo es posible con el Bridge activo"
 
-#: admin/admin-page.php:436
+#: admin/admin-page.php:435
 msgid "Orders converted"
 msgstr "Pedidos convertidos"
 
-#: admin/admin-page.php:437
+#: admin/admin-page.php:436
 msgid "Customers who arrived from there and bought"
 msgstr "Clientes que llegaron desde allí y compraron"
 
-#: admin/admin-page.php:475
+#: admin/admin-page.php:493
 msgid "Agents that do not identify themselves"
 msgstr "Agentes que no se identifican"
 
-#: admin/admin-page.php:486
+#: admin/admin-page.php:504
 msgid ""
 "Anyone can read your pages, with or without KaliCart. Only those who find "
 "the Bridge active on your site can ask for the catalog. Converted orders are"
@@ -522,30 +522,38 @@ msgstr ""
 "convertidos son personas que hicieron clic en un enlace dentro de un "
 "asistente y te compraron."
 
-#. translators: 1: assistant name, 2: catalog requests, 3: orders, 4: order
-#. value
-#: admin/admin-page.php:494
-#, php-format
+#: admin/admin-page.php:518
 msgid ""
-"Confirmed: %1$s asked for your KaliCart catalog %2$s times and, in the same "
-"period, brought %3$s customers who bought, for %4$s."
+"Proven: those requests arrived on routes that do not exist without the "
+"Bridge."
 msgstr ""
-"Confirmado: %1$s ha pedido tu catálogo KaliCart %2$s veces y, en el mismo "
-"periodo, ha traído %3$s clientes que compraron, por %4$s."
+"Demostrado: esas solicitudes llegaron a rutas que no existen sin el Bridge."
+
+#: admin/admin-page.php:519
+msgid ""
+"Same period: this assistant both asked for your catalog and brought "
+"customers. The two are not proven to be connected."
+msgstr ""
+"Mismo periodo: este asistente pidió tu catálogo y trajo clientes. No está "
+"demostrado que ambas cosas estén relacionadas."
+
+#: admin/admin-page.php:520
+msgid "No link observed."
+msgstr "Ningún vínculo observado."
 
 #. translators: %d: number of days observed
-#: admin/admin-page.php:505
+#: admin/admin-page.php:525
 #, php-format
 msgid "Local to your site, last %d days observed. No data leaves your store."
 msgstr ""
 "Datos locales de tu sitio, últimos %d días observados. Ningún dato sale de "
 "la tienda."
 
-#: admin/admin-page.php:508
+#: admin/admin-page.php:528
 msgid "Agent checkout"
 msgstr "Checkout asistido por agente"
 
-#: admin/admin-page.php:509
+#: admin/admin-page.php:529
 msgid ""
 "Last 30 days. Local counters only — no cloud. Orders created from a Bridge "
 "checkout session, through either classic checkout or Checkout Block, are "
@@ -555,7 +563,7 @@ msgstr ""
 " creados a partir de una sesión de checkout de Bridge, ya sea mediante el "
 "checkout clásico o Checkout Block, se vinculan con esa sesión."
 
-#: admin/admin-page.php:524
+#: admin/admin-page.php:552
 msgid ""
 "When an assistant builds the cart and completes the order on its own, with "
 "no human step, it will show up here. The Bridge already keeps that "
@@ -565,23 +573,23 @@ msgstr ""
 "sin paso humano, aparecerá aquí. El Bridge ya mantiene abierta esa "
 "posibilidad: hoy ningún asistente lo hace a escala."
 
-#: admin/admin-page.php:531
+#: admin/admin-page.php:559
 msgid "Sessions created"
 msgstr "Sesiones creadas"
 
-#: admin/admin-page.php:535
+#: admin/admin-page.php:563
 msgid "Carts loaded"
 msgstr "Carritos cargados"
 
-#: admin/admin-page.php:539
+#: admin/admin-page.php:567
 msgid "Orders linked"
 msgstr "Pedidos vinculados"
 
-#: admin/admin-page.php:543
+#: admin/admin-page.php:571
 msgid "Net value, payment confirmed"
 msgstr "Valor neto, pago confirmado"
 
-#: admin/admin-page.php:546
+#: admin/admin-page.php:574
 msgid ""
 "Cash on delivery, bank transfer and cheque orders are included in “Orders "
 "linked”, but excluded from net value unless WooCommerce records a payment "
@@ -1653,7 +1661,7 @@ msgstr ""
 "devolución. Añade la URL de tu página de política de devoluciones en "
 "Ajustes."
 
-#: includes/class-signals.php:772
+#: includes/class-signals.php:781
 msgid ""
 "Structured catalog API for agents: returns products with normalized price, "
 "availability and filters. Preferred entry point over the human Shop page."
@@ -1662,11 +1670,11 @@ msgstr ""
 "disponibilidad y filtros normalizados. Punto de entrada preferido frente a "
 "la página de Tienda para humanos."
 
-#: includes/class-signals.php:773
+#: includes/class-signals.php:782
 msgid "AI catalog — structured product data for agents"
 msgstr "Catálogo IA — datos de producto estructurados para agentes"
 
-#: includes/class-signals.php:778
+#: includes/class-signals.php:787
 msgid "AI catalog"
 msgstr "Catálogo IA"
 
@@ -1681,6 +1689,14 @@ msgstr ""
 #: kalicart-bridge.php:177
 msgid "WooCommerce required"
 msgstr "WooCommerce necesario"
+
+#, php-format
+#~ msgid ""
+#~ "Confirmed: %1$s asked for your KaliCart catalog %2$s times and, in the same "
+#~ "period, brought %3$s customers who bought, for %4$s."
+#~ msgstr ""
+#~ "Confirmado: %1$s ha pedido tu catálogo KaliCart %2$s veces y, en el mismo "
+#~ "periodo, ha traído %3$s clientes que compraron, por %4$s."
 
 #~ msgid ""
 #~ "Disabling the AI catalog badge removes a key discovery signal for agents "

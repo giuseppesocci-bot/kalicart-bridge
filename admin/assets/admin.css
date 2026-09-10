@@ -1000,3 +1000,25 @@
 .kali-agents__name em { display: block; font-size: 11px; color: var(--kb-muted2); font-style: normal; margin-top: 1px; }
 .kali-agents__money { font-family: var(--kb-font-mono); font-size: 11px; color: var(--kb-green); }
 @media (max-width: 782px) { .kali-agents__head, .kali-agents__row--4 { grid-template-columns: 1fr; } }
+
+/* Valore degli ordini NON assistiti dal Bridge: neutro, non verde. Il verde in
+   questa tabella e' riservato a cio' che il plugin ha reso possibile. */
+.kali-agents__money--plain { color: var(--kb-muted); }
+
+/* Scala dei colori: verde = dimostrato, arancio = coincidenza qualificata,
+   grigio = nessun legame. Non aggiungere sfumature intermedie: ogni colore
+   corrisponde a un livello di prova, non a un'intensita'. */
+.kali-agents__num--maybe   { color: #b45309; font-weight: 600; }
+.kali-agents__money--maybe { color: #b45309; }
+.kali-agents__money--plain { color: var(--kb-muted); }
+.kali-agents__col--maybe   { background: rgba(180,83,9,.06); border-color: rgba(180,83,9,.22); }
+
+.kali-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; width: 100%; margin: 10px 0 0;
+  padding: 10px 12px; border: 1px solid var(--kb-border); border-radius: var(--kb-radius);
+  background: var(--kb-surface2); }
+.kali-legend__item { display: flex; align-items: flex-start; gap: 7px; font-size: 11px;
+  color: var(--kb-muted); line-height: 1.45; flex: 1 1 240px; }
+.kali-legend__dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-top: 4px; }
+.kali-legend__dot--proven { background: var(--kb-green); }
+.kali-legend__dot--maybe  { background: #b45309; }
+.kali-legend__dot--none   { background: var(--kb-muted2); }

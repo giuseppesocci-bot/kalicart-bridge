@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.126
+Stable tag: 1.0.127
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,15 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.127 =
+* Change: colours in the assistants table now state a level of proof, not an intensity. Green is used only where something is demonstrated — requests that reached routes which do not exist without the Bridge. Orders from an assistant that also queried your catalog are amber: same period, no proven link. Everything else is grey.
+* Removed: the "Confirmed" banner. Both halves of it were true, the link between them was not: the bot queries from the provider's servers, the customer buys from their own browser, and no identifier is shared between the two. A sentence a merchant repeats to others needs a trace, not a coincidence. It will return when an order can carry the catalog's own signature.
+* New: a legend spelling out what each colour claims, including that amber proves nothing.
+* Fix: the agent checkout funnel now appears only when net paid value is above zero. Counting sessions let it through on a real store showing 1 session and three zeros — exactly what hiding it was meant to prevent.
+* Fix: catalog requests count only agent-like clients. Browser traffic on those routes is the shop owner or a testing tool, and was being presented as anonymous agents.
+* Code: admin page variables carry the full plugin prefix again, clearing 14 Plugin Check warnings introduced in 1.0.126.
+* i18n: new strings translated to Italian, German, Spanish and French.
 
 = 1.0.126 =
 * New: "AI assistants and your store" in the Stats tab. One row per assistant, three columns: pages read, KaliCart catalog requests, and orders converted. The first column is what any site gets; the second exists only where the Bridge is installed. Reads the 31 days already recorded, so it is populated the moment you update — no migration.

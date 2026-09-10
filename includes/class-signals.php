@@ -382,6 +382,15 @@ class KaliCart_Bridge_Signals {
      * lo stesso assistente ha fatto entrambe le cose nel periodo. La frase
      * mostrata all'utente deve restare a questo livello di pretesa.
      */
+    /**
+     * NON USATA DALLA VISTA dal 2026-09-10, quando il banner "Confermato" e' stato
+     * rimosso: affermava un legame che non e' dimostrabile con i dati attuali.
+     * Si conserva perche' e' la base su cui poggera' la categoria "provati", il
+     * giorno in cui il Bridge firmera' gli URL consegnati agli agenti e l'ordine
+     * portera' quella firma. A quel punto il criterio non sara' piu' "stesso
+     * periodo" ma "l'ordine porta la traccia", e questa funzione va riscritta di
+     * conseguenza, non riusata com'e'.
+     */
     public static function get_confirmed_assistants( int $days = 30 ): array {
         $report = self::get_agent_report( $days );
         $orders = self::get_assistant_orders_report( $days );
