@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.127
+Stable tag: 1.0.128
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,12 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.128 =
+* Fix: orders and revenue are now counted separately. An order with a recorded source is not income until it has a payment date: bank transfer and cash-on-delivery orders reach a paying status with no payment recorded, so they were inflating the figure. The panel now shows orders, orders with payment recorded, and value net of refunds as three distinct numbers.
+* Fix: the assistant totals were capped at 500 orders without saying so, which silently understated the count on busier stores. The report now pages through the whole window.
+* Fix: order sources are matched on a normalised host instead of a substring, so a referrer such as `chatgpt.com.evil.example` no longer counts as ChatGPT.
+* The payment criterion is now the same one the agent checkout funnel already used, so the two sections of the panel cannot disagree.
 
 = 1.0.127 =
 * Change: colours in the assistants table now state a level of proof, not an intensity. Green is used only where something is demonstrated — requests that reached routes which do not exist without the Bridge. Orders from an assistant that also queried your catalog are amber: same period, no proven link. Everything else is grey.

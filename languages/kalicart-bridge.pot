@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: KaliCart Bridge – Product Feed for ChatGPT & AI Agents 1.0.126\n"
+"Project-Id-Version: KaliCart Bridge – Product Feed for ChatGPT & AI Agents 1.0.127\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kalicart-bridge\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-10T08:35:17+02:00\n"
+"POT-Creation-Date: 2026-09-11T07:38:54+02:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: kalicart-bridge\n"
@@ -411,61 +411,79 @@ msgstr ""
 msgid "Customers who arrived from there and bought"
 msgstr ""
 
+#. translators: %s: number of orders
+#: admin/admin-page.php:482
+#, php-format
+msgid "%s order"
+msgid_plural "%s orders"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: paid orders, 2: net value
+#: admin/admin-page.php:489
+#, php-format
+msgid "%1$s with payment recorded · %2$s"
+msgstr ""
+
 #: admin/admin-page.php:493
+msgid "no payment recorded yet"
+msgstr ""
+
+#: admin/admin-page.php:506
 msgid "Agents that do not identify themselves"
 msgstr ""
 
-#: admin/admin-page.php:504
-msgid "Anyone can read your pages, with or without KaliCart. Only those who find the Bridge active on your site can ask for the catalog. Converted orders are people who clicked a link inside an assistant and bought from you."
+#: admin/admin-page.php:517
+msgid "Anyone can read your pages, with or without KaliCart. Only those who find the Bridge active on your site can ask for the catalog. Converted orders are people who clicked a link inside an assistant and bought from you: the value counts only orders with a payment date recorded, net of refunds — a bank transfer or cash-on-delivery order shows up as an order but not as revenue until it is paid."
 msgstr ""
 
-#: admin/admin-page.php:518
+#: admin/admin-page.php:531
 msgid "Proven: those requests arrived on routes that do not exist without the Bridge."
 msgstr ""
 
-#: admin/admin-page.php:519
+#: admin/admin-page.php:532
 msgid "Same period: this assistant both asked for your catalog and brought customers. The two are not proven to be connected."
 msgstr ""
 
-#: admin/admin-page.php:520
+#: admin/admin-page.php:533
 msgid "No link observed."
 msgstr ""
 
 #. translators: %d: number of days observed
-#: admin/admin-page.php:525
+#: admin/admin-page.php:538
 #, php-format
 msgid "Local to your site, last %d days observed. No data leaves your store."
 msgstr ""
 
-#: admin/admin-page.php:528
+#: admin/admin-page.php:541
 msgid "Agent checkout"
 msgstr ""
 
-#: admin/admin-page.php:529
+#: admin/admin-page.php:542
 msgid "Last 30 days. Local counters only — no cloud. Orders created from a Bridge checkout session, through either classic checkout or Checkout Block, are linked back to that session."
 msgstr ""
 
-#: admin/admin-page.php:552
+#: admin/admin-page.php:565
 msgid "When an assistant builds the cart and completes the order on its own, with no human step, it will show up here. The Bridge already keeps that possibility open: no assistant does it at scale yet."
 msgstr ""
 
-#: admin/admin-page.php:559
+#: admin/admin-page.php:572
 msgid "Sessions created"
 msgstr ""
 
-#: admin/admin-page.php:563
+#: admin/admin-page.php:576
 msgid "Carts loaded"
 msgstr ""
 
-#: admin/admin-page.php:567
+#: admin/admin-page.php:580
 msgid "Orders linked"
 msgstr ""
 
-#: admin/admin-page.php:571
+#: admin/admin-page.php:584
 msgid "Net value, payment confirmed"
 msgstr ""
 
-#: admin/admin-page.php:574
+#: admin/admin-page.php:587
 msgid "Cash on delivery, bank transfer and cheque orders are included in “Orders linked”, but excluded from net value unless WooCommerce records a payment date. Reaching “processing” is not proof of payment for these methods."
 msgstr ""
 
@@ -1252,15 +1270,15 @@ msgstr ""
 msgid "Agents cannot inform buyers about your return conditions. Add your return policy page URL in Settings."
 msgstr ""
 
-#: includes/class-signals.php:781
+#: includes/class-signals.php:836
 msgid "Structured catalog API for agents: returns products with normalized price, availability and filters. Preferred entry point over the human Shop page."
 msgstr ""
 
-#: includes/class-signals.php:782
+#: includes/class-signals.php:837
 msgid "AI catalog — structured product data for agents"
 msgstr ""
 
-#: includes/class-signals.php:787
+#: includes/class-signals.php:842
 msgid "AI catalog"
 msgstr ""
 

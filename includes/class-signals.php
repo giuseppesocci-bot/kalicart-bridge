@@ -238,7 +238,7 @@ class KaliCart_Bridge_Signals {
                 $cat   += $c;
                 $seen[ $bot ] = true;
             }
-            $o = $ord['by_assistant'][ $name ] ?? [ 'orders' => 0, 'total' => 0.0 ];
+            $o = $ord['by_assistant'][ $name ] ?? [ 'orders' => 0, 'paid_orders' => 0, 'net_paid' => 0.0 ];
             if ( ! $pages && ! $cat && empty( $o['orders'] ) ) {
                 continue;
             }
@@ -247,8 +247,12 @@ class KaliCart_Bridge_Signals {
                 'bots'    => $found,
                 'pages'   => $pages,
                 'catalog' => $cat,
-                'orders'  => (int) $o['orders'],
-                'total'   => (float) $o['total'],
+                // Tre grandezze DISTINTE, mai sommate fra loro: un ordine con
+                // provenienza registrata non e' un incasso finche' non ha una data
+                // di pagamento, e il valore e' al netto dei rimborsi.
+                'orders'      => (int) $o['orders'],
+                'paid_orders' => (int) ( $o['paid_orders'] ?? 0 ),
+                'net_paid'    => (float) ( $o['net_paid'] ?? 0 ),
             ];
         }
 
@@ -280,8 +284,9 @@ class KaliCart_Bridge_Signals {
             'days_covered'    => $rep['days_covered'],
             'unnamed_catalog' => $rep['unnamed_catalog'],
             'currency'        => $ord['currency'],
-            'orders_total'    => $ord['total'],
             'orders_count'    => $ord['orders'],
+            'orders_paid'     => $ord['paid_orders'],
+            'orders_net_paid' => $ord['net_paid'],
         ];
     }
 
@@ -299,77 +304,127 @@ class KaliCart_Bridge_Signals {
      * wp_wc_orders_meta con HPOS attivo e in wp_postmeta senza, e una query
      * sulla tabella si romperebbe sulla meta' dei merchant.
      *
-     * @return array{orders:int,total:float,by_assistant:array,currency:string}
+     * @return array{orders:int,paid_orders:int,net_paid:float,by_assistant:array,currency:string}
      */
     public static function get_assistant_orders_report( int $days = 30 ): array {
-        $empty = [ 'orders' => 0, 'total' => 0.0, 'by_assistant' => [], 'currency' => get_woocommerce_currency() ];
+        $empty = [
+            'orders'       => 0,
+            'paid_orders'  => 0,
+            'net_paid'     => 0.0,
+            'by_assistant' => [],
+            'currency'     => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : '',
+        ];
         if ( ! function_exists( 'wc_get_orders' ) ) {
             return $empty;
         }
         $cache = get_transient( 'kalicart_bridge_assistant_orders_' . $days );
-        if ( is_array( $cache ) ) {
+        if ( is_array( $cache ) && isset( $cache['paid_orders'] ) ) {
             return $cache;
         }
 
-        // origine -> assistente, per risalire dal referrer al nome mostrato.
+        // host -> assistente. Si confrontano HOST NORMALIZZATI, mai sottostringhe:
+        // con strpos un referrer come `notchatgpt.com.evil.example` matchava.
         $lookup = [];
         foreach ( self::assistant_map() as $name => $def ) {
             foreach ( (array) ( $def['origins'] ?? [] ) as $origin ) {
-                $lookup[ strtolower( $origin ) ] = $name;
+                $lookup[ self::normalize_host( $origin ) ] = $name;
             }
         }
+        unset( $lookup[''] );
         if ( ! $lookup ) {
             return $empty;
         }
 
-        $orders = wc_get_orders( [
-            'limit'        => 500, // limite di cortesia: il pannello e' un indicatore, non un report contabile
+        // Paginazione completa: il limite fisso a 500 falsava il conteggio sui
+        // negozi con volume, e lo falsava in silenzio. Stesso schema del funnel
+        // checkout in class-checkout.php.
+        $query_args = [
             'date_created' => '>' . ( time() - ( max( 1, $days ) * DAY_IN_SECONDS ) ),
-            'status'       => [ 'wc-processing', 'wc-completed', 'wc-on-hold' ],
+            'status'       => array_keys( wc_get_order_statuses() ),
             'return'       => 'objects',
-        ] );
-        if ( ! is_array( $orders ) ) {
-            return $empty;
-        }
+            'limit'        => 100,
+            'paginate'     => true,
+            'orderby'      => 'ID',
+            'order'        => 'ASC',
+        ];
 
-        $by = [];
-        $n  = 0;
-        $tot = 0.0;
-        foreach ( $orders as $order ) {
-            if ( ! ( $order instanceof WC_Order ) ) {
-                continue;
-            }
-            // utm_source e' il campo che WooCommerce valorizza col dominio di
-            // provenienza; referrer e' il fallback quando il primo manca.
-            $src = strtolower( (string) $order->get_meta( '_wc_order_attribution_utm_source', true ) );
-            if ( '' === $src ) {
-                $src = strtolower( (string) $order->get_meta( '_wc_order_attribution_referrer', true ) );
-            }
-            if ( '' === $src ) {
-                continue;
-            }
-            $matched = null;
-            foreach ( $lookup as $origin => $name ) {
-                if ( false !== strpos( $src, $origin ) ) {
-                    $matched = $name;
-                    break;
+        $by    = [];
+        $n     = 0;
+        $paid  = 0;
+        $net   = 0.0;
+        $page  = 1;
+        do {
+            $query_args['page'] = $page;
+            $result = wc_get_orders( $query_args );
+            $orders = is_object( $result ) && isset( $result->orders ) ? (array) $result->orders : (array) $result;
+            $max    = is_object( $result ) && isset( $result->max_num_pages ) ? (int) $result->max_num_pages : 1;
+
+            foreach ( $orders as $order ) {
+                if ( ! ( $order instanceof WC_Order ) ) {
+                    continue;
                 }
+                $src = (string) $order->get_meta( '_wc_order_attribution_utm_source', true );
+                if ( '' === $src ) {
+                    $src = (string) $order->get_meta( '_wc_order_attribution_referrer', true );
+                }
+                $host = self::normalize_host( $src );
+                if ( '' === $host || ! isset( $lookup[ $host ] ) ) {
+                    continue;
+                }
+                $name = $lookup[ $host ];
+                if ( ! isset( $by[ $name ] ) ) {
+                    $by[ $name ] = [ 'orders' => 0, 'paid_orders' => 0, 'net_paid' => 0.0 ];
+                }
+                $n++;
+                $by[ $name ]['orders']++;
+
+                // Uno stato "pagante" NON e' prova di pagamento: contrassegno,
+                // bonifico e assegno raggiungono 'processing' con date_paid ancora
+                // NULL. Viceversa un ordine rimborsato conserva una data di
+                // pagamento reale e deve contribuire col suo netto, spesso zero.
+                // Criterio identico al funnel checkout, per non avere due verita'
+                // diverse nello stesso pannello.
+                if ( ! $order->get_date_paid() ) {
+                    continue;
+                }
+                $value = (float) $order->get_total() - (float) $order->get_total_refunded();
+                $paid++;
+                $net += $value;
+                $by[ $name ]['paid_orders']++;
+                $by[ $name ]['net_paid'] += $value;
             }
-            if ( null === $matched ) {
-                continue;
-            }
-            $value = (float) $order->get_total();
-            $n++;
-            $tot += $value;
-            if ( ! isset( $by[ $matched ] ) ) {
-                $by[ $matched ] = [ 'orders' => 0, 'total' => 0.0 ];
-            }
-            $by[ $matched ]['orders']++;
-            $by[ $matched ]['total'] += $value;
-        }
-        $out = [ 'orders' => $n, 'total' => $tot, 'by_assistant' => $by, 'currency' => get_woocommerce_currency() ];
+            $page++;
+        } while ( $page <= $max );
+
+        $out = [
+            'orders'       => $n,
+            'paid_orders'  => $paid,
+            'net_paid'     => $net,
+            'by_assistant' => $by,
+            'currency'     => get_woocommerce_currency(),
+        ];
         set_transient( 'kalicart_bridge_assistant_orders_' . $days, $out, HOUR_IN_SECONDS );
         return $out;
+    }
+
+    /**
+     * Host in forma confrontabile: minuscolo, senza schema, porta, www e path.
+     * WooCommerce valorizza utm_source col dominio nudo ma il fallback referrer
+     * e' una URL completa, quindi vanno ridotti alla stessa forma prima del
+     * confronto.
+     */
+    private static function normalize_host( string $value ): string {
+        $value = strtolower( trim( $value ) );
+        if ( '' === $value ) {
+            return '';
+        }
+        if ( false !== strpos( $value, '//' ) ) {
+            $value = (string) wp_parse_url( $value, PHP_URL_HOST );
+        } else {
+            $value = explode( '/', $value )[0];
+        }
+        $value = explode( ':', $value )[0];
+        return preg_replace( '/^www\./', '', $value );
     }
 
     /**
@@ -404,7 +459,7 @@ class KaliCart_Bridge_Signals {
                 $out[ $name ] = [
                     'catalog_reads' => $read,
                     'orders'        => (int) $orders['by_assistant'][ $name ]['orders'],
-                    'total'         => (float) $orders['by_assistant'][ $name ]['total'],
+                    'total'         => (float) ( $orders['by_assistant'][ $name ]['net_paid'] ?? 0 ),
                 ];
             }
         }

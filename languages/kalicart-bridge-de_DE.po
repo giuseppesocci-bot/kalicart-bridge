@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KaliCart Bridge 1.0.118\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kalicart-bridge\n"
-"POT-Creation-Date: 2026-09-10T08:35:17+02:00\n"
+"POT-Creation-Date: 2026-09-11T07:38:54+02:00\n"
 "PO-Revision-Date: 2026-07-12 16:13+0000\n"
 "Last-Translator: KaliCart <giuso@kalicart.com>\n"
 "Language-Team: German\n"
@@ -507,29 +507,53 @@ msgstr "Umgewandelte Bestellungen"
 msgid "Customers who arrived from there and bought"
 msgstr "Kunden, die von dort kamen und gekauft haben"
 
+#. translators: %s: number of orders
+#: admin/admin-page.php:482
+#, php-format
+msgid "%s order"
+msgid_plural "%s orders"
+msgstr[0] "%s Bestellung"
+msgstr[1] "%s Bestellungen"
+
+#. translators: 1: paid orders, 2: net value
+#: admin/admin-page.php:489
+#, php-format
+msgid "%1$s with payment recorded · %2$s"
+msgstr "%1$s mit erfasster Zahlung · %2$s"
+
 #: admin/admin-page.php:493
+msgid "no payment recorded yet"
+msgstr "noch keine Zahlung erfasst"
+
+#: admin/admin-page.php:506
 msgid "Agents that do not identify themselves"
 msgstr "Agenten, die sich nicht identifizieren"
 
-#: admin/admin-page.php:504
+#: admin/admin-page.php:517
 msgid ""
 "Anyone can read your pages, with or without KaliCart. Only those who find "
 "the Bridge active on your site can ask for the catalog. Converted orders are"
-" people who clicked a link inside an assistant and bought from you."
+" people who clicked a link inside an assistant and bought from you: the "
+"value counts only orders with a payment date recorded, net of refunds — a "
+"bank transfer or cash-on-delivery order shows up as an order but not as "
+"revenue until it is paid."
 msgstr ""
 "Deine Seiten kann jeder lesen, mit oder ohne KaliCart. Den Katalog kann nur "
 "abfragen, wer den Bridge auf deiner Website aktiv vorfindet. Umgewandelte "
 "Bestellungen sind Menschen, die in einem Assistenten auf einen Link geklickt"
-" und bei dir gekauft haben."
+" und bei dir gekauft haben: Der Wert zählt nur Bestellungen mit erfasstem "
+"Zahlungsdatum, abzüglich Erstattungen — eine Überweisung oder Nachnahme "
+"erscheint als Bestellung, aber nicht als Umsatz, solange sie nicht bezahlt "
+"ist."
 
-#: admin/admin-page.php:518
+#: admin/admin-page.php:531
 msgid ""
 "Proven: those requests arrived on routes that do not exist without the "
 "Bridge."
 msgstr ""
 "Belegt: Diese Anfragen kamen über Routen, die es ohne den Bridge nicht gibt."
 
-#: admin/admin-page.php:519
+#: admin/admin-page.php:532
 msgid ""
 "Same period: this assistant both asked for your catalog and brought "
 "customers. The two are not proven to be connected."
@@ -537,23 +561,23 @@ msgstr ""
 "Gleicher Zeitraum: Dieser Assistent hat deinen Katalog abgefragt und Kunden "
 "gebracht. Ein Zusammenhang ist nicht belegt."
 
-#: admin/admin-page.php:520
+#: admin/admin-page.php:533
 msgid "No link observed."
 msgstr "Kein Zusammenhang beobachtet."
 
 #. translators: %d: number of days observed
-#: admin/admin-page.php:525
+#: admin/admin-page.php:538
 #, php-format
 msgid "Local to your site, last %d days observed. No data leaves your store."
 msgstr ""
 "Lokal auf deiner Website, letzte %d beobachtete Tage. Keine Daten verlassen "
 "den Shop."
 
-#: admin/admin-page.php:528
+#: admin/admin-page.php:541
 msgid "Agent checkout"
 msgstr "Agenten-Checkout"
 
-#: admin/admin-page.php:529
+#: admin/admin-page.php:542
 msgid ""
 "Last 30 days. Local counters only — no cloud. Orders created from a Bridge "
 "checkout session, through either classic checkout or Checkout Block, are "
@@ -563,7 +587,7 @@ msgstr ""
 " Bridge-Checkout-Sitzung heraus über den klassischen Checkout oder den "
 "Checkout-Block erstellt wurden, werden mit dieser Sitzung verknüpft."
 
-#: admin/admin-page.php:552
+#: admin/admin-page.php:565
 msgid ""
 "When an assistant builds the cart and completes the order on its own, with "
 "no human step, it will show up here. The Bridge already keeps that "
@@ -574,23 +598,23 @@ msgstr ""
 "diese Möglichkeit bereits offen: Bislang tut es kein Assistent in der "
 "Breite."
 
-#: admin/admin-page.php:559
+#: admin/admin-page.php:572
 msgid "Sessions created"
 msgstr "Erstellte Sitzungen"
 
-#: admin/admin-page.php:563
+#: admin/admin-page.php:576
 msgid "Carts loaded"
 msgstr "Geladene Warenkörbe"
 
-#: admin/admin-page.php:567
+#: admin/admin-page.php:580
 msgid "Orders linked"
 msgstr "Verknüpfte Bestellungen"
 
-#: admin/admin-page.php:571
+#: admin/admin-page.php:584
 msgid "Net value, payment confirmed"
 msgstr "Nettowert, Zahlung bestätigt"
 
-#: admin/admin-page.php:574
+#: admin/admin-page.php:587
 msgid ""
 "Cash on delivery, bank transfer and cheque orders are included in “Orders "
 "linked”, but excluded from net value unless WooCommerce records a payment "
@@ -1662,7 +1686,7 @@ msgstr ""
 "Agenten können Käufer nicht über deine Rückgabebedingungen informieren. Füge"
 " die URL deiner Rückgaberichtlinie-Seite in den Einstellungen hinzu."
 
-#: includes/class-signals.php:781
+#: includes/class-signals.php:836
 msgid ""
 "Structured catalog API for agents: returns products with normalized price, "
 "availability and filters. Preferred entry point over the human Shop page."
@@ -1671,11 +1695,11 @@ msgstr ""
 "Preis, Verfügbarkeit und Filtern. Bevorzugter Einstiegspunkt gegenüber der "
 "menschlichen Shop-Seite."
 
-#: includes/class-signals.php:782
+#: includes/class-signals.php:837
 msgid "AI catalog — structured product data for agents"
 msgstr "KI-Katalog — strukturierte Produktdaten für Agenten"
 
-#: includes/class-signals.php:787
+#: includes/class-signals.php:842
 msgid "AI catalog"
 msgstr "KI-Katalog"
 

@@ -477,8 +477,21 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
                 // mostrava 2 conversioni in verde con la colonna catalogo vuota, e
                 // ha ingannato chi conosceva i dati.
                 $kalicart_bridge_assisted = $kalicart_bridge_r['catalog'] > 0; ?>
-                <span class="kali-agents__num<?php echo $kalicart_bridge_assisted ? ' kali-agents__num--maybe' : ''; ?>"><?php echo esc_html( number_format_i18n( $kalicart_bridge_r['orders'] ) ); ?></span>
-                <span class="kali-agents__money<?php echo $kalicart_bridge_assisted ? ' kali-agents__money--maybe' : ' kali-agents__money--plain'; ?>"><?php echo wp_kses_post( wc_price( $kalicart_bridge_r['total'], [ 'currency' => $kalicart_bridge_panel['currency'] ] ) ); ?></span>
+                <span class="kali-agents__num<?php echo $kalicart_bridge_assisted ? ' kali-agents__num--maybe' : ''; ?>"><?php
+                  /* translators: %s: number of orders */
+                  printf( esc_html( _n( '%s order', '%s orders', (int) $kalicart_bridge_r['orders'], 'kalicart-bridge' ) ), esc_html( number_format_i18n( $kalicart_bridge_r['orders'] ) ) ); ?></span>
+                <span class="kali-agents__money<?php echo $kalicart_bridge_assisted ? ' kali-agents__money--maybe' : ' kali-agents__money--plain'; ?>"><?php
+                  // Tre grandezze distinte, mai fuse in un numero solo: un ordine
+                  // con provenienza registrata non e' un incasso finche' non ha una
+                  // data di pagamento. Il valore e' al netto dei rimborsi.
+                  if ( (int) $kalicart_bridge_r['paid_orders'] > 0 ) {
+                      /* translators: 1: paid orders, 2: net value */
+                      printf( esc_html__( '%1$s with payment recorded · %2$s', 'kalicart-bridge' ),
+                          esc_html( number_format_i18n( $kalicart_bridge_r['paid_orders'] ) ),
+                          wp_kses_post( wc_price( $kalicart_bridge_r['net_paid'], [ 'currency' => $kalicart_bridge_panel['currency'] ] ) ) );
+                  } else {
+                      esc_html_e( 'no payment recorded yet', 'kalicart-bridge' );
+                  } ?></span>
               <?php else : ?>
                 <span class="kali-agents__num kali-agents__num--muted">&mdash;</span>
               <?php endif; ?>
@@ -501,7 +514,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
           </div>
         <?php endif; ?>
       </div>
-      <p class="kali-hint"><?php esc_html_e( 'Anyone can read your pages, with or without KaliCart. Only those who find the Bridge active on your site can ask for the catalog. Converted orders are people who clicked a link inside an assistant and bought from you.', 'kalicart-bridge' ); ?></p>
+      <p class="kali-hint"><?php esc_html_e( 'Anyone can read your pages, with or without KaliCart. Only those who find the Bridge active on your site can ask for the catalog. Converted orders are people who clicked a link inside an assistant and bought from you: the value counts only orders with a payment date recorded, net of refunds — a bank transfer or cash-on-delivery order shows up as an order but not as revenue until it is paid.', 'kalicart-bridge' ); ?></p>
     <?php endif; ?>
 
     <?php
