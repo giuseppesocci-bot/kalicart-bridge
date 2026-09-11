@@ -1022,3 +1022,40 @@
 .kali-legend__dot--proven { background: var(--kb-green); }
 .kali-legend__dot--maybe  { background: #b45309; }
 .kali-legend__dot--none   { background: var(--kb-muted2); }
+
+/* ── Blocchi assistenti (1.0.129) ──────────────────────────────────────────
+   Due misure indipendenti, ognuna con la propria fonte dichiarata. NESSUN
+   colore semantico: la tabella precedente usava verde/arancio/grigio per
+   dichiarare livelli di prova, ma separati i blocchi un colore tornerebbe a
+   suggerire il legame che la struttura serve a negare. */
+.kali-blocks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin: 12px 0 0; }
+.kali-block {
+  border: 1px solid var(--kb-border); border-radius: var(--kb-radius);
+  background: var(--kb-surface); padding: 14px 16px;
+}
+.kali-block--note { grid-column: 1 / -1; background: var(--kb-surface2); margin-top: 12px; }
+.kali-block__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+  padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--kb-border); }
+.kali-block__title { font-size: 13px; font-weight: 600; color: var(--kb-text); }
+.kali-block__src { font-size: 11px; color: var(--kb-muted2); margin-left: auto;
+  padding: 2px 7px; border: 1px solid var(--kb-border); border-radius: 999px; white-space: nowrap; }
+.kali-block__figure { margin: 0 0 12px; }
+.kali-block__figure--minor .kali-block__num { font-size: 20px; color: var(--kb-muted); }
+.kali-block__num { display: block; font-family: var(--kb-font-mono); font-size: 28px;
+  line-height: 1.1; color: var(--kb-text); }
+.kali-block__label { display: block; font-size: 12px; color: var(--kb-text); margin-top: 3px; }
+.kali-block__note { display: block; font-size: 11px; color: var(--kb-muted2); margin-top: 2px; line-height: 1.4; }
+.kali-block__detail { margin: 0 0 8px; font-size: 11px; line-height: 1.5; color: var(--kb-muted); }
+.kali-block__detail--muted { color: var(--kb-muted2); }
+.kali-block__rule { border: 0; border-top: 1px solid var(--kb-border); margin: 14px 0; }
+.kali-badge-beta { display: inline-block; margin-left: 8px; padding: 1px 7px; font-size: 10px;
+  font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--kb-muted); border: 1px solid var(--kb-border2); border-radius: 999px; vertical-align: middle; }
+
+/* Le tab restavano in orizzontale e sforavano su schermi stretti: .kali-tabs
+   era flex con width:fit-content e nessuna media query in tutto il file. */
+@media (max-width: 782px) {
+  .kali-blocks { grid-template-columns: 1fr; }
+  .kali-tabs { flex-direction: column; width: 100%; }
+  .kali-tabs .kali-tab { width: 100%; text-align: left; }
+}

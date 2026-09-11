@@ -105,6 +105,34 @@ class KaliCart_Bridge_Signals {
      *  - duckduckgo.com NON e' fra le origins: e' anche un motore di ricerca
      *    normale, e conterebbe ricerche ordinarie come conversioni da assistente.
      */
+    /**
+     * Bot che agiscono PER CONTO DI UN UTENTE in quel momento, distinti da quelli
+     * che indicizzano per conto proprio.
+     *
+     * La distinzione non e' cosmetica: sono le uniche due cose che il pannello
+     * puo' affermare, e hanno valore diverso. Un indicizzatore lavora una volta e
+     * lascia qualcosa nell'indice del fornitore; un agente-utente sta rispondendo
+     * a una persona mentre chiama. Misurato su tre negozi (project2209, possedoni,
+     * duinshop): il catalogo lo hanno chiesto SOLO indicizzatori, gli agenti-utente
+     * mai. Raggruppare i due sotto un nome solo faceva scrivere al pannello
+     * "ChatGPT ha chiesto il tuo catalogo 17 volte" quando ChatGPT-User non lo
+     * aveva toccato nemmeno una volta: vero alla lettera, falso nella sostanza.
+     *
+     * Elenco esplicito e non euristica sul suffisso `-User`: il suffisso oggi
+     * regge, ma un fornitore puo' nominare diversamente e un'euristica
+     * sbaglierebbe in silenzio.
+     */
+    public static function user_agent_bots(): array {
+        return (array) apply_filters( 'kalicart_bridge_user_agent_bots', [
+            'ChatGPT-User', 'Claude-User', 'Perplexity-User',
+        ] );
+    }
+
+    /** true se il bot agisce per conto di un utente, false se indicizza. */
+    public static function is_user_agent_bot( string $bot ): bool {
+        return in_array( $bot, self::user_agent_bots(), true );
+    }
+
     public static function assistant_map(): array {
         return (array) apply_filters( 'kalicart_bridge_assistant_map', [
             'ChatGPT'    => [ 'bots' => [ 'ChatGPT-User', 'OAI-SearchBot', 'GPTBot' ],
@@ -205,6 +233,61 @@ class KaliCart_Bridge_Signals {
     }
 
     /**
+     * Vista del pannello: due misure INDIPENDENTI, mai fuse.
+     *
+     * Struttura deliberata. La tabella a tre colonne affiancate costruiva
+     * visivamente una sequenza crawler -> visita -> ordine, mentre i tre numeri
+     * vengono da popolazioni che NON condividono alcun identificativo: il bot
+     * interroga dai server del fornitore, la persona compra dal proprio browser
+     * giorni dopo. Nessuna legenda elimina quella lettura, quindi la struttura
+     * separa cio' che il dato separa.
+     *
+     *   'bridge'  -> attivita' osservata sul sito, fonte: contatore KaliCart
+     *   'orders'  -> ordini, fonte: attribuzione nativa WooCommerce
+     *
+     * Non calcolare mai un rapporto fra i due, e non presentarli come stadi.
+     */
+    public static function get_panel_view( int $days = 30 ): array {
+        $rep = self::get_agent_report( $days );
+        $ord = self::get_assistant_orders_report( $days );
+
+        $pages_total = array_sum( $rep['pages'] );
+        $idx = [];
+        $usr = [];
+        foreach ( $rep['catalog'] as $bot => $n ) {
+            if ( self::is_user_agent_bot( (string) $bot ) ) {
+                $usr[ $bot ] = (int) $n;
+            } else {
+                $idx[ $bot ] = (int) $n;
+            }
+        }
+        arsort( $idx );
+        arsort( $usr );
+
+        return [
+            'days_covered' => $rep['days_covered'],
+            'counting'     => (bool) get_option( 'kalicart_bridge_ai_traffic_enabled', true ),
+            'bridge'       => [
+                'pages_total'      => $pages_total,
+                'pages_by_bot'     => $rep['pages'],
+                'catalog_total'    => array_sum( $idx ) + array_sum( $usr ) + (int) $rep['unnamed_catalog'],
+                'by_indexer'       => $idx,
+                'by_user_agent'    => $usr,
+                'indexer_total'    => array_sum( $idx ),
+                'user_agent_total' => array_sum( $usr ),
+                'unnamed'          => (int) $rep['unnamed_catalog'],
+            ],
+            'orders'       => [
+                'count'        => (int) $ord['orders'],
+                'paid'         => (int) $ord['paid_orders'],
+                'net_paid'     => (float) $ord['net_paid'],
+                'by_assistant' => $ord['by_assistant'],
+                'currency'     => $ord['currency'],
+            ],
+        ];
+    }
+
+    /**
      * Righe del pannello, UNA PER ASSISTENTE e non per bot.
      *
      * Necessario perche' le tre colonne hanno chiavi diverse: pagine e catalogo
@@ -215,6 +298,14 @@ class KaliCart_Bridge_Signals {
      *
      * I bot che non stanno nella mappa restano come riga a se': meglio un nome
      * sconosciuto mostrato che un passaggio taciuto.
+     */
+    /**
+     * NON USATA DALLA VISTA dal 2026-09-11 (1.0.129), quando la tabella a colonne
+     * affiancate e' stata sostituita da due blocchi indipendenti: aggregava le
+     * tre misure in una riga per assistente, che e' esattamente la forma che
+     * suggeriva una sequenza crawler -> visita -> ordine fra popolazioni non
+     * collegabili. Conservata perche' l'aggregazione per assistente resta utile
+     * se un giorno servira' un export, ma NON va riusata per la vista.
      */
     public static function get_panel_rows( int $days = 30 ): array {
         $rep    = self::get_agent_report( $days );

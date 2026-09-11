@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.128
+Stable tag: 1.0.129
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,15 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.129 =
+* Change: the assistants section is now two independent blocks instead of one table. Three columns side by side read as a sequence — crawler, then visit, then order — while the numbers come from systems that share no identifier. Each block now states its own source: what KaliCart recorded, and what WooCommerce attributed.
+* New: a block that says plainly what the plugin cannot tell you. "KaliCart's impact on sales: not estimable with the available data." It is always visible, and it is the boundary within which every other number keeps its credibility.
+* New: catalog requests are split between automated reads by AI providers and lookups made while a person was using an assistant. Grouping them made the panel claim "ChatGPT asked for your catalog" when ChatGPT's user-facing agent had never touched it — true to the letter, false in substance.
+* Change: the catalog figure comes first and store pages follow as context. Pages stay visible — hiding them would be the same selectivity we avoid elsewhere — but they are not what the plugin makes possible.
+* Change: colours removed from this section. They were carrying a claim about how proven each number was; with the blocks separated, any colour would rebuild the very link the structure is there to deny.
+* Change: the section is marked Beta. It is new and will change; the counts are real requests, what is still uncertain is how much they weigh on orders.
+* Fix: the admin tabs now stack on narrow screens instead of overflowing horizontally.
 
 = 1.0.128 =
 * Fix: orders and revenue are now counted separately. An order with a recorded source is not income until it has a payment date: bank transfer and cash-on-delivery orders reach a paying status with no payment recorded, so they were inflating the figure. The panel now shows orders, orders with payment recorded, and value net of refunds as three distinct numbers.

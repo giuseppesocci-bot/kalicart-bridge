@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KaliCart Bridge 1.0.118\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kalicart-bridge\n"
-"POT-Creation-Date: 2026-09-11T07:38:54+02:00\n"
+"POT-Creation-Date: 2026-09-11T14:13:12+02:00\n"
 "PO-Revision-Date: 2026-07-12 16:13+0000\n"
 "Last-Translator: KaliCart <giuso@kalicart.com>\n"
 "Language-Team: German\n"
@@ -463,11 +463,32 @@ msgstr ""
 msgid "Eligible coupons"
 msgstr "Infrage kommende Gutscheine"
 
-#: admin/admin-page.php:411
+#: admin/admin-page.php:409
 msgid "AI assistants and your store"
 msgstr "KI-Assistenten und dein Shop"
 
+#: admin/admin-page.php:410
+msgid "Beta"
+msgstr "Beta"
+
+#. translators: %d: number of days observed
 #: admin/admin-page.php:414
+#, php-format
+msgid "Last %d days observed · counts of requests, not of people."
+msgstr ""
+"Letzte %d beobachtete Tage · Zählung von Anfragen, nicht von Personen."
+
+#: admin/admin-page.php:416
+msgid ""
+"Beta: this section is new and will change in future versions. The counts are"
+" real requests to your site; what we cannot yet say with certainty is how "
+"much they weigh on your orders."
+msgstr ""
+"Beta: Dieser Abschnitt ist neu und wird sich in kommenden Versionen ändern. "
+"Die Zahlen sind echte Anfragen an deine Website; was wir noch nicht mit "
+"Sicherheit sagen können, ist, wie stark sie auf deine Bestellungen wirken."
+
+#: admin/admin-page.php:419
 msgid ""
 "Counting is turned off: this section is not measuring anything. That is not "
 "the same as no assistant having visited."
@@ -475,109 +496,111 @@ msgstr ""
 "Die Zählung ist deaktiviert: Dieser Abschnitt misst nichts. Das heißt nicht,"
 " dass kein Assistent da war."
 
-#. translators: %d: number of days observed
-#: admin/admin-page.php:418
-#, php-format
-msgid "No assistant has visited your store yet in the last %d days observed."
-msgstr ""
-"In den letzten %d beobachteten Tagen hat noch kein Assistent deinen Shop "
-"besucht."
-
 #: admin/admin-page.php:425
-msgid "Read your pages"
-msgstr "Hat deine Seiten gelesen"
+msgid "Activity observed on your site"
+msgstr "Auf deiner Website beobachtete Aktivität"
 
 #: admin/admin-page.php:426
-msgid "Anyone can read them, with or without KaliCart"
-msgstr "Das kann jeder, auch ohne KaliCart"
+msgid "Recorded by KaliCart"
+msgstr "Von KaliCart erfasst"
 
-#: admin/admin-page.php:430
-msgid "Asked for your KaliCart catalog"
-msgstr "Hat deinen KaliCart-Katalog abgefragt"
-
-#: admin/admin-page.php:431
-msgid "Only possible with the Bridge active"
-msgstr "Nur möglich, wenn der Bridge aktiv ist"
+#: admin/admin-page.php:434
+msgid "requests to the KaliCart structured catalog"
+msgstr "Anfragen an den strukturierten KaliCart-Katalog"
 
 #: admin/admin-page.php:435
-msgid "Orders converted"
-msgstr "Umgewandelte Bestellungen"
+msgid "Available only while the Bridge is active."
+msgstr "Nur verfügbar, solange der Bridge aktiv ist."
 
-#: admin/admin-page.php:436
-msgid "Customers who arrived from there and bought"
-msgstr "Kunden, die von dort kamen und gekauft haben"
+#: admin/admin-page.php:439
+msgid "Automated reads by AI providers"
+msgstr "Automatische Abrufe durch KI-Anbieter"
 
-#. translators: %s: number of orders
-#: admin/admin-page.php:482
+#: admin/admin-page.php:448
+msgid "Lookups while a person was using an assistant"
+msgstr "Abfragen, während eine Person einen Assistenten nutzte"
+
+#: admin/admin-page.php:458
+msgid ""
+"In the selected period, on this store, no catalog lookups were observed "
+"while a person was using an assistant."
+msgstr ""
+"Im gewählten Zeitraum wurden in diesem Shop keine Katalogabfragen "
+"beobachtet, während eine Person einen Assistenten nutzte."
+
+#. translators: %s: number of requests
+#: admin/admin-page.php:464
 #, php-format
-msgid "%s order"
-msgid_plural "%s orders"
-msgstr[0] "%s Bestellung"
-msgstr[1] "%s Bestellungen"
+msgid "Agents that do not identify themselves: %s requests."
+msgstr "Agenten, die sich nicht identifizieren: %s Anfragen."
+
+#: admin/admin-page.php:470
+msgid "requests to your store pages"
+msgstr "Anfragen an deine Shop-Seiten"
+
+#: admin/admin-page.php:471
+msgid "These would exist and be reachable without KaliCart too."
+msgstr "Diese gäbe es auch ohne KaliCart, und sie wären erreichbar."
+
+#: admin/admin-page.php:485
+msgid "Orders sourced from recognised assistants"
+msgstr "Bestellungen mit Herkunft von erkannten Assistenten"
+
+#: admin/admin-page.php:486
+msgid "WooCommerce order attribution"
+msgstr "WooCommerce-Bestellzuordnung"
+
+#. translators: %s: assistant name
+#: admin/admin-page.php:495
+#, php-format
+msgid "orders sourced from %s"
+msgstr "Bestellungen mit Herkunft von %s"
 
 #. translators: 1: paid orders, 2: net value
-#: admin/admin-page.php:489
+#: admin/admin-page.php:498
 #, php-format
-msgid "%1$s with payment recorded · %2$s"
-msgstr "%1$s mit erfasster Zahlung · %2$s"
+msgid "%1$s with payment recorded · %2$s net of refunds"
+msgstr "%1$s mit erfasster Zahlung · %2$s abzüglich Erstattungen"
 
-#: admin/admin-page.php:493
-msgid "no payment recorded yet"
-msgstr "noch keine Zahlung erfasst"
+#: admin/admin-page.php:504
+msgid "No orders with an assistant as their recorded source in this period."
+msgstr ""
+"In diesem Zeitraum keine Bestellung mit einem Assistenten als erfasster "
+"Herkunft."
 
 #: admin/admin-page.php:506
-msgid "Agents that do not identify themselves"
-msgstr "Agenten, die sich nicht identifizieren"
+msgid ""
+"WooCommerce records the source; KaliCart recognises a maintained list of "
+"known domains, which can fall behind when new services appear."
+msgstr ""
+"WooCommerce erfasst die Herkunft; KaliCart erkennt eine gepflegte Liste "
+"bekannter Domains, die veralten kann, wenn neue Dienste erscheinen."
 
 #: admin/admin-page.php:517
+msgid "KaliCart's impact on sales"
+msgstr "Einfluss von KaliCart auf die Verkäufe"
+
+#: admin/admin-page.php:519
+msgid "Not estimable with the available data."
+msgstr "Mit den verfügbaren Daten nicht schätzbar."
+
+#: admin/admin-page.php:520
 msgid ""
-"Anyone can read your pages, with or without KaliCart. Only those who find "
-"the Bridge active on your site can ask for the catalog. Converted orders are"
-" people who clicked a link inside an assistant and bought from you: the "
-"value counts only orders with a payment date recorded, net of refunds — a "
-"bank transfer or cash-on-delivery order shows up as an order but not as "
-"revenue until it is paid."
+"Catalog requests and orders come from different systems and share no "
+"identifier that would let them be linked: the bot queries from the "
+"provider's servers, the customer buys from their own browser, often days "
+"later."
 msgstr ""
-"Deine Seiten kann jeder lesen, mit oder ohne KaliCart. Den Katalog kann nur "
-"abfragen, wer den Bridge auf deiner Website aktiv vorfindet. Umgewandelte "
-"Bestellungen sind Menschen, die in einem Assistenten auf einen Link geklickt"
-" und bei dir gekauft haben: Der Wert zählt nur Bestellungen mit erfasstem "
-"Zahlungsdatum, abzüglich Erstattungen — eine Überweisung oder Nachnahme "
-"erscheint als Bestellung, aber nicht als Umsatz, solange sie nicht bezahlt "
-"ist."
+"Katalogabfragen und Bestellungen stammen aus verschiedenen Systemen und "
+"teilen keine Kennung, die sie verknüpfen würde: Der Bot fragt von den "
+"Servern des Anbieters ab, die Kundin kauft im eigenen Browser, oft Tage "
+"später."
 
-#: admin/admin-page.php:531
-msgid ""
-"Proven: those requests arrived on routes that do not exist without the "
-"Bridge."
-msgstr ""
-"Belegt: Diese Anfragen kamen über Routen, die es ohne den Bridge nicht gibt."
-
-#: admin/admin-page.php:532
-msgid ""
-"Same period: this assistant both asked for your catalog and brought "
-"customers. The two are not proven to be connected."
-msgstr ""
-"Gleicher Zeitraum: Dieser Assistent hat deinen Katalog abgefragt und Kunden "
-"gebracht. Ein Zusammenhang ist nicht belegt."
-
-#: admin/admin-page.php:533
-msgid "No link observed."
-msgstr "Kein Zusammenhang beobachtet."
-
-#. translators: %d: number of days observed
-#: admin/admin-page.php:538
-#, php-format
-msgid "Local to your site, last %d days observed. No data leaves your store."
-msgstr ""
-"Lokal auf deiner Website, letzte %d beobachtete Tage. Keine Daten verlassen "
-"den Shop."
-
-#: admin/admin-page.php:541
+#: admin/admin-page.php:525
 msgid "Agent checkout"
 msgstr "Agenten-Checkout"
 
-#: admin/admin-page.php:542
+#: admin/admin-page.php:526
 msgid ""
 "Last 30 days. Local counters only — no cloud. Orders created from a Bridge "
 "checkout session, through either classic checkout or Checkout Block, are "
@@ -587,7 +610,7 @@ msgstr ""
 " Bridge-Checkout-Sitzung heraus über den klassischen Checkout oder den "
 "Checkout-Block erstellt wurden, werden mit dieser Sitzung verknüpft."
 
-#: admin/admin-page.php:565
+#: admin/admin-page.php:549
 msgid ""
 "When an assistant builds the cart and completes the order on its own, with "
 "no human step, it will show up here. The Bridge already keeps that "
@@ -598,23 +621,23 @@ msgstr ""
 "diese Möglichkeit bereits offen: Bislang tut es kein Assistent in der "
 "Breite."
 
-#: admin/admin-page.php:572
+#: admin/admin-page.php:556
 msgid "Sessions created"
 msgstr "Erstellte Sitzungen"
 
-#: admin/admin-page.php:576
+#: admin/admin-page.php:560
 msgid "Carts loaded"
 msgstr "Geladene Warenkörbe"
 
-#: admin/admin-page.php:580
+#: admin/admin-page.php:564
 msgid "Orders linked"
 msgstr "Verknüpfte Bestellungen"
 
-#: admin/admin-page.php:584
+#: admin/admin-page.php:568
 msgid "Net value, payment confirmed"
 msgstr "Nettowert, Zahlung bestätigt"
 
-#: admin/admin-page.php:587
+#: admin/admin-page.php:571
 msgid ""
 "Cash on delivery, bank transfer and cheque orders are included in “Orders "
 "linked”, but excluded from net value unless WooCommerce records a payment "
@@ -1686,7 +1709,7 @@ msgstr ""
 "Agenten können Käufer nicht über deine Rückgabebedingungen informieren. Füge"
 " die URL deiner Rückgaberichtlinie-Seite in den Einstellungen hinzu."
 
-#: includes/class-signals.php:836
+#: includes/class-signals.php:927
 msgid ""
 "Structured catalog API for agents: returns products with normalized price, "
 "availability and filters. Preferred entry point over the human Shop page."
@@ -1695,11 +1718,11 @@ msgstr ""
 "Preis, Verfügbarkeit und Filtern. Bevorzugter Einstiegspunkt gegenüber der "
 "menschlichen Shop-Seite."
 
-#: includes/class-signals.php:837
+#: includes/class-signals.php:928
 msgid "AI catalog — structured product data for agents"
 msgstr "KI-Katalog — strukturierte Produktdaten für Agenten"
 
-#: includes/class-signals.php:842
+#: includes/class-signals.php:933
 msgid "AI catalog"
 msgstr "KI-Katalog"
 
@@ -1714,6 +1737,74 @@ msgstr ""
 #: kalicart-bridge.php:177
 msgid "WooCommerce required"
 msgstr "WooCommerce erforderlich"
+
+#, php-format
+#~ msgid "No assistant has visited your store yet in the last %d days observed."
+#~ msgstr ""
+#~ "In den letzten %d beobachteten Tagen hat noch kein Assistent deinen Shop "
+#~ "besucht."
+
+#~ msgid "Read your pages"
+#~ msgstr "Hat deine Seiten gelesen"
+
+#~ msgid "Anyone can read them, with or without KaliCart"
+#~ msgstr "Das kann jeder, auch ohne KaliCart"
+
+#~ msgid "Asked for your KaliCart catalog"
+#~ msgstr "Hat deinen KaliCart-Katalog abgefragt"
+
+#~ msgid "Orders converted"
+#~ msgstr "Umgewandelte Bestellungen"
+
+#~ msgid "Customers who arrived from there and bought"
+#~ msgstr "Kunden, die von dort kamen und gekauft haben"
+
+#, php-format
+#~ msgid "%s order"
+#~ msgid_plural "%s orders"
+#~ msgstr[0] "%s Bestellung"
+#~ msgstr[1] "%s Bestellungen"
+
+#~ msgid "no payment recorded yet"
+#~ msgstr "noch keine Zahlung erfasst"
+
+#~ msgid ""
+#~ "Anyone can read your pages, with or without KaliCart. Only those who find "
+#~ "the Bridge active on your site can ask for the catalog. Converted orders are"
+#~ " people who clicked a link inside an assistant and bought from you: the "
+#~ "value counts only orders with a payment date recorded, net of refunds — a "
+#~ "bank transfer or cash-on-delivery order shows up as an order but not as "
+#~ "revenue until it is paid."
+#~ msgstr ""
+#~ "Deine Seiten kann jeder lesen, mit oder ohne KaliCart. Den Katalog kann nur "
+#~ "abfragen, wer den Bridge auf deiner Website aktiv vorfindet. Umgewandelte "
+#~ "Bestellungen sind Menschen, die in einem Assistenten auf einen Link geklickt"
+#~ " und bei dir gekauft haben: Der Wert zählt nur Bestellungen mit erfasstem "
+#~ "Zahlungsdatum, abzüglich Erstattungen — eine Überweisung oder Nachnahme "
+#~ "erscheint als Bestellung, aber nicht als Umsatz, solange sie nicht bezahlt "
+#~ "ist."
+
+#~ msgid ""
+#~ "Proven: those requests arrived on routes that do not exist without the "
+#~ "Bridge."
+#~ msgstr ""
+#~ "Belegt: Diese Anfragen kamen über Routen, die es ohne den Bridge nicht gibt."
+
+#~ msgid ""
+#~ "Same period: this assistant both asked for your catalog and brought "
+#~ "customers. The two are not proven to be connected."
+#~ msgstr ""
+#~ "Gleicher Zeitraum: Dieser Assistent hat deinen Katalog abgefragt und Kunden "
+#~ "gebracht. Ein Zusammenhang ist nicht belegt."
+
+#~ msgid "No link observed."
+#~ msgstr "Kein Zusammenhang beobachtet."
+
+#, php-format
+#~ msgid "Local to your site, last %d days observed. No data leaves your store."
+#~ msgstr ""
+#~ "Lokal auf deiner Website, letzte %d beobachtete Tage. Keine Daten verlassen "
+#~ "den Shop."
 
 #, php-format
 #~ msgid ""
