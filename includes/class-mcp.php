@@ -447,7 +447,12 @@ class KaliCart_Bridge_MCP {
 
 	// ── tools/call ────────────────────────────────────────────────────────────────
 
-	private static function validate_tool_arguments( string $name, array $args ): ?string {
+	/**
+	 * @return null|string|array null se valido; string per gli errori legacy;
+	 *                          array per l'errore strutturato dei facet (1.0.130),
+	 *                          che arriva intatto all'agente con accepted_values.
+	 */
+	private static function validate_tool_arguments( string $name, array $args ) {
 		$filter_types = array(
 			'q'         => 'string',
 			'category'  => 'string',
@@ -503,11 +508,18 @@ class KaliCart_Bridge_MCP {
 		if ( isset( $args['page'] ) && ( $args['page'] < 1 || $args['page'] > $max_page ) ) {
 			return 'page is outside the safe catalog pagination range';
 		}
-		if ( isset( $args['gender'] ) && ! in_array( $args['gender'], array( 'male', 'female', 'unisex', 'kids' ), true ) ) {
-			return 'gender is not an accepted enum value';
-		}
-		if ( isset( $args['color'] ) && ! in_array( $args['color'], array( 'red', 'blue', 'green', 'black', 'white', 'grey', 'brown', 'yellow', 'orange', 'pink', 'purple', 'multi' ), true ) ) {
-			return 'color is not an accepted enum value';
+		// 1.0.130 — stesso vocabolario e stessa normalizzazione del REST. Prima
+		// le due superfici divergevano sullo stesso input: l'MCP rifiutava con
+		// enum, il REST accettava e restituiva risultati. La validazione formale
+		// (trim + lowercase) avviene in normalize_tool_facets() prima di qui.
+		foreach ( array( 'gender', 'color' ) as $kc_facet ) {
+			if ( ! isset( $args[ $kc_facet ] ) || '' === $args[ $kc_facet ] ) {
+				continue;
+			}
+			$kc_err = KaliCart_Bridge_Catalog_Engine::validate_facet_value( $kc_facet, $args[ $kc_facet ] );
+			if ( null !== $kc_err ) {
+				return $kc_err;
+			}
 		}
 		if ( isset( $args['orderby'] ) && ! in_array( $args['orderby'], array( 'date', 'price', 'title', 'popularity' ), true ) ) {
 			return 'orderby is not an accepted enum value';
@@ -539,10 +551,24 @@ class KaliCart_Bridge_MCP {
 			self::track( array( 'method' => 'tools/call', 'tool' => '(invalid)', 'outcome' => 'error' ) );
 			return self::rpc_error( $id, -32602, 'Unknown tool: ' . $name );
 		}
+		// Normalizzazione SOLO formale prima di validare: `MALE ` e `male` sono lo
+		// stesso valore scritto diversamente. Nessuna traduzione — `uomo` resta
+		// una parola diversa e viene respinta.
+		foreach ( array( 'gender', 'color' ) as $kc_facet ) {
+			if ( isset( $args[ $kc_facet ] ) ) {
+				$args[ $kc_facet ] = KaliCart_Bridge_Catalog_Engine::normalize_facet_value( $args[ $kc_facet ] );
+			}
+		}
 		$argument_error = self::validate_tool_arguments( $name, $args );
 		if ( null !== $argument_error ) {
 			self::track( array( 'method' => 'tools/call', 'tool' => $name, 'outcome' => 'error' ) );
-			return self::tool_result( $id, array( 'error' => 'Invalid tool arguments: ' . $argument_error ), true );
+			// Un errore strutturato (array) arriva intatto all'agente: porta
+			// received, normalized, accepted_values e search_executed, cosi' si
+			// corregge al primo colpo. Gli errori legacy restano stringhe.
+			$kc_payload = is_array( $argument_error )
+				? $argument_error
+				: array( 'error' => 'Invalid tool arguments: ' . $argument_error, 'search_executed' => false );
+			return self::tool_result( $id, $kc_payload, true );
 		}
 
 		try {
@@ -641,24 +667,32 @@ class KaliCart_Bridge_MCP {
 	// ── tools/list definitions ─────────────────────────────────────────────────────
 
 	private static function tool_definitions(): array {
-		$gender_enum = array( 'male', 'female', 'unisex', 'kids' );
-		$color_enum  = array( 'red', 'blue', 'green', 'black', 'white', 'grey', 'brown', 'yellow', 'orange', 'pink', 'purple', 'multi' );
-		$orderby     = array( 'date', 'price', 'title', 'popularity' );
+		// 1.0.130 — vocabolario dal motore, non piu' duplicato qui.
+		$gender_enum = KaliCart_Bridge_Catalog_Engine::accepted_facet_values( 'gender' );
+		$color_enum  = KaliCart_Bridge_Catalog_Engine::accepted_facet_values( 'color' );
+		$orderby     = KaliCart_Bridge_Catalog_Engine::accepted_facet_values( 'orderby' );
 
 		$filter_props = array(
 			'category'  => array(
 				'type'        => 'string',
 				'description' => 'WooCommerce category slug (e.g. "scarpe-uomo"). Enumerate valid slugs via list_categories or get_meta.',
 			),
+			// SCHEMA `string`, NON `enum`. Un client MCP conforme valida l'enum
+			// PRIMA di chiamare: `MALE ` verrebbe bloccato sul client e non
+			// raggiungerebbe mai il server, quindi la tolleranza formale (trim +
+			// lowercase) non si applicherebbe e l'errore strutturato non
+			// arriverebbe all'agente. Il costo e' la minore scopribilita': si
+			// recupera elencando i canonici nella descrizione.
+			// E soprattutto: NESSUN alias. La descrizione prometteva
+			// `uomo`/`donna` mentre l'enum accettava solo i canonici — l'agente
+			// leggeva una cosa e ne otteneva un'altra.
 			'gender'    => array(
 				'type'        => 'string',
-				'enum'        => $gender_enum,
-				'description' => 'Gender facet. IT aliases uomo/donna are also accepted.',
+				'description' => 'Gender facet. Canonical values only: ' . implode( ', ', $gender_enum ) . '. Input is trimmed and lowercased; no translation is performed. See get_meta for the values actually present in this store.',
 			),
 			'color'     => array(
 				'type'        => 'string',
-				'enum'        => $color_enum,
-				'description' => 'Colour family. IT aliases (rosso, blu, nero…) are also accepted.',
+				'description' => 'Colour family. Canonical values only: ' . implode( ', ', $color_enum ) . '. Input is trimmed and lowercased; no translation is performed. See get_meta for the families actually present in this store.',
 			),
 			'min_price' => array(
 				'type'        => 'number',

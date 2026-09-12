@@ -264,7 +264,7 @@ class KaliCart_Bridge_API {
                 'last_updated'          => gmdate( 'c' ),
                 'trust' => [
                     'read_only'           => true,
-                    'data'                => 'live WooCommerce catalog — always current, not a sync snapshot',
+                    'data'                => 'Read from WooCommerce at request time, not from a sync snapshot. Caching, plugins or the store being offline can still make a response differ from the storefront: verify price, stock and variant on the product page before committing.',
                     'checkout_authority'  => 'merchant_storefront',
                     'safe_for'            => [ 'product_search', 'price_check', 'availability_check', 'budget_filter', 'category_browse', 'shipping_policy_reasoning', 'coupon_hint_reasoning' ],
                     'not_for'             => [ 'payment', 'order_creation', 'checkout_execution' ],
@@ -328,7 +328,7 @@ class KaliCart_Bridge_API {
                 'source'              => 'live_woocommerce_database',
                 'is_realtime'         => true,
                 'is_sync_snapshot'    => false,
-                'note'                => 'Data is read directly from WooCommerce at query time — always current.',
+                'note'                => 'Data is read from WooCommerce at query time. That is the perimeter of the guarantee: it is not a promise that the response matches the storefront at the instant you read it. Verify the final product before quoting price, stock or variant.',
             ],
 
             'authentication' => [
@@ -376,14 +376,14 @@ class KaliCart_Bridge_API {
                     'rule'    => 'CRITICAL. q must contain ONLY the bare product noun (the spine). Every attribute (category, gender, color, price) MUST go in its own structured filter, never inside q. size is NOT a search filter — use product detail after candidate selection. Stacking attributes into q returns 0 results.',
                     'correct' => [ '?q=t-shirt&gender=male&max_price=50', '?q=costume&gender=female&color=blue', '?q=scarpe&category=scarpe-uomo' ],
                     'wrong'   => [ '?q=t-shirt+uomo+nike  (→ 0 results: attributes stacked in q)', '?q=costume+da+bagno+blu  (→ 0 results)' ],
-                    'zero_results_recovery' => 'If 0 results: retry with a barer q (drop attributes from q into filters). Then check /catalog/categories to find the right category slug. Only report "not available" after bare-spine + category-browse both return 0.',
+                    'zero_results_recovery' => 'If 0 results: retry with a barer q (drop attributes from q into filters). Then check /catalog/categories to find the right category slug. Zero results means this search found nothing — not that the store does not carry the product. Report absence only as "not found with these terms", after bare-spine and category-browse have both returned 0.',
                 ],
 
                 'search_filters' => [
                     'q'          => 'Bare product spine ONLY (single product noun). e.g. costume, t-shirt, scarpe. NEVER put brand, color, gender or price in q. size is not a filter.',
                     'size_note'  => 'size is not a search filter. Use product detail and variations after candidate selection to read available sizes.',
                     'category'   => 'WooCommerce category slug, e.g. abbigliamento or scarpe-uomo. Get valid slugs from /catalog/categories.',
-                    'gender'     => 'Gender facet: male, female, unisex, kids. Also accepts IT aliases: uomo, donna.',
+                    'gender'     => 'Gender facet. Canonical values only: male, female, unisex, kids. Input is trimmed and lowercased; no translation is performed. Soft filter: a product with a different gender is excluded, one whose gender cannot be determined is retained and marked unknown_retained.',
                     'color'      => 'Color family: red, blue, green, black, white, grey, brown, yellow, orange, pink, purple, multi. Also accepts IT: rosso, blu, verde, nero, bianco, grigio, marrone, giallo, arancione, rosa, viola.',
                     'min_price'  => 'Minimum current price (numeric, merchant currency).',
                     'max_price'  => 'Maximum current price (numeric, merchant currency).',
@@ -808,7 +808,12 @@ class KaliCart_Bridge_API {
         ], fn( $v ) => $v !== null && $v !== '' );
 
         if ( (int) ( $result['total'] ?? 0 ) > 0 && $args['fields'] === 'summary' ) {
-            $result['result_guidance'] = self::summary_triage_guidance();
+            // Non sovrascrivere una guidance gia' emessa dal motore: la triage di
+            // summary e' un consiglio di navigazione, NO_CONFIRMED_GENDER_MATCHES
+            // e' un fatto sul risultato e vale di piu'.
+            if ( empty( $result['result_guidance'] ) ) {
+                $result['result_guidance'] = self::summary_triage_guidance();
+            }
         } elseif ( (int) ( $result['total'] ?? 0 ) === 0 ) {
             $result['result_guidance'] = self::zero_results_guidance( $q, $args );
         }
@@ -847,7 +852,12 @@ class KaliCart_Bridge_API {
             return $engine_error;
         }
         if ( (int) ( $result['total'] ?? 0 ) > 0 && $args['fields'] === 'summary' ) {
-            $result['result_guidance'] = self::summary_triage_guidance();
+            // Non sovrascrivere una guidance gia' emessa dal motore: la triage di
+            // summary e' un consiglio di navigazione, NO_CONFIRMED_GENDER_MATCHES
+            // e' un fatto sul risultato e vale di piu'.
+            if ( empty( $result['result_guidance'] ) ) {
+                $result['result_guidance'] = self::summary_triage_guidance();
+            }
         }
         return self::ok( $result );
     }
@@ -966,6 +976,10 @@ class KaliCart_Bridge_API {
 			$facets = [ 'genders' => [], 'colors' => [] ];
         }
         $available_genders = $facets['genders'] ?? [];
+        $kc_available_genders = array_values( array_column( $available_genders, 'value' ) );
+        $kc_available_colors  = array_values( array_column( $facets['colors'] ?? [], 'value' ) );
+        $kc_facets_ts         = (int) get_option( 'kalicart_bridge_catalog_facets_at_' . ( self::default_language() ?? 'mono' ), 0 );
+        $kc_facets_computed_at = $kc_facets_ts > 0 ? gmdate( 'c', $kc_facets_ts ) : null;
         $available_colors  = $facets['colors']  ?? [];
 
         // Public parent lookup values are WooCommerce's canonical catalog range.
@@ -1015,14 +1029,40 @@ class KaliCart_Bridge_API {
                 'min' => $price_range && $price_range->min_price !== null ? (float) $price_range->min_price : null,
                 'max' => $price_range && $price_range->max_price !== null ? (float) $price_range->max_price : null,
             ],
+            // 1.0.130 — DUE VOCABOLARI DISTINTI, e non vanno resi uguali.
+            //   accepted_values  : il contratto. Stabile, decide la validita'.
+            //   available_values : la fotografia di QUESTO catalogo. Informativa,
+            //                      non decide mai: e' aggiornata al massimo ogni
+            //                      12 ore dal cron dei facet, e rifiutare su un
+            //                      dato vecchio mezza giornata negherebbe una
+            //                      ricerca legittima su un prodotto appena
+            //                      pubblicato.
+            // Gli ALIAS sono stati RIMOSSI: lo schema li prometteva e il runtime
+            // li rifiutava. E tradurre `uomo`->`male` o `azzurro`->`blue`
+            // significherebbe mettere nel Bridge un'interpretazione che sta
+            // nell'agente, e obbligare noi a scegliere fra `blue` e `light_blue`.
+            // `q` resta linguaggio naturale; i facet sono linguaggio macchina.
+            'filter_vocabulary' => [
+                'normalization' => 'Formal only: input is trimmed and lowercased. No translation, no aliases, no fuzzy matching.',
+                'validation'    => 'Exact membership in accepted_values. A value outside it is rejected with INVALID_FILTER_VALUE and search_executed:false — no search is run.',
+                'availability'  => [
+                    'meaning'            => 'available_values lists what this catalog currently contains. It never rejects a request: an accepted value absent from it returns zero results, not an error.',
+                    'computed_at'        => $kc_facets_computed_at,
+                    'max_staleness_hours' => 12,
+                ],
+            ],
             'accepted_filters' => [
                 'gender' => [
-                    'values'  => [ 'male', 'female', 'unisex', 'kids' ],
-                    'aliases' => [ 'uomo' => 'male', 'donna' => 'female', 'man' => 'male', 'woman' => 'female', 'men' => 'male', 'women' => 'female' ],
+                    'accepted_values'  => KaliCart_Bridge_Catalog_Engine::accepted_facet_values( 'gender' ),
+                    'available_values' => $kc_available_genders,
+                    'mode'             => 'soft',
+                    'mode_note'        => 'A product whose gender differs is excluded; a product whose gender cannot be determined is RETAINED as a candidate and marked unknown_retained. Every result carries filter_evidence.gender, and the response carries gender_summary with the counts over the whole result set.',
                 ],
                 'color' => [
-                    'families' => [ 'red', 'blue', 'green', 'black', 'white', 'grey', 'brown', 'yellow', 'orange', 'pink', 'purple', 'multi' ],
-                    'it_aliases' => [ 'rosso' => 'red', 'blu' => 'blue', 'verde' => 'green', 'nero' => 'black', 'bianco' => 'white', 'grigio' => 'grey', 'marrone' => 'brown', 'giallo' => 'yellow', 'arancione' => 'orange', 'rosa' => 'pink', 'viola' => 'purple' ],
+                    'accepted_values'  => KaliCart_Bridge_Catalog_Engine::accepted_facet_values( 'color' ),
+                    'available_values' => $kc_available_colors,
+                    'mode'             => 'strict',
+                    'mode_note'        => 'A product with no detected colour family is excluded. This is deliberately the opposite of gender: colours are read from attributes, genders are inferred and excluding the unknown ones would lose too much.',
                 ],
                 'orderby'  => [
                     'values'      => [ 'date', 'price', 'title', 'popularity' ],
@@ -1257,6 +1297,25 @@ class KaliCart_Bridge_API {
     private static function common_filter_args( bool $with_q ): array {
         $short_text = static fn( $value ): bool => is_scalar( $value ) && strlen( (string) $value ) <= 200;
         $facet_text = static fn( $value ): bool => is_scalar( $value ) && strlen( (string) $value ) <= 64;
+        $facet_norm = static fn( $value ): string => KaliCart_Bridge_Catalog_Engine::normalize_facet_value( substr( (string) sanitize_text_field( (string) $value ), 0, 64 ) );
+        // Si restituisce un WP_Error invece di false: `rest_invalid_param` dice
+        // soltanto che qualcosa non va, e costringe l'agente a indovinare cosa.
+        // L'errore strutturato porta gia' accepted_values, cosi' si corregge al
+        // primo colpo senza una chiamata informativa aggiuntiva. `search_executed`
+        // e' parte sostanziale del contratto, non messaggistica: un filtro non
+        // valido non deve MAI produrre risultati.
+        $facet_valid = static function ( $value, $request, $param ) {
+            $err = KaliCart_Bridge_Catalog_Engine::validate_facet_value( (string) $param, $value );
+            if ( null === $err ) {
+                return true;
+            }
+            return new WP_Error( 'INVALID_FILTER_VALUE', sprintf(
+                /* translators: 1: parameter name, 2: received value */
+                __( '%1$s: "%2$s" is not an accepted value. See accepted_values.', 'kalicart-bridge' ),
+                (string) $param,
+                (string) $err['received']
+            ), [ 'status' => 400 ] + $err );
+        };
         $max_page   = self::catalog_max_page();
         $args = [
             'category'  => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $short_text ],
@@ -1268,8 +1327,14 @@ class KaliCart_Bridge_API {
             'on_sale'   => [ 'default' => null ],
             'min_price' => [ 'default' => null, 'validate_callback' => static fn( $v ): bool => $v === null || ( is_numeric( $v ) && is_finite( (float) $v ) ) ],
             'max_price' => [ 'default' => null, 'validate_callback' => static fn( $v ): bool => $v === null || ( is_numeric( $v ) && is_finite( (float) $v ) ) ],
-            'gender'    => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
-            'color'     => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
+            // 1.0.130 — i facet sono linguaggio macchina e vanno validati contro il
+            // vocabolario canonico, non solo per lunghezza. Prima un valore
+            // inesistente come `gender=inventato` passava e restituiva 96 prodotti
+            // a genere sconosciuto: un risultato plausibile e sbagliato, che un
+            // agente non ha modo di riconoscere. La normalizzazione (trim +
+            // lowercase) avviene nel sanitize, la validita' nel validate.
+            'gender'    => [ 'default' => '', 'sanitize_callback' => $facet_norm, 'validate_callback' => $facet_valid ],
+            'color'     => [ 'default' => '', 'sanitize_callback' => $facet_norm, 'validate_callback' => $facet_valid ],
             // Incremental sync: federated indexers pass an ISO-8601 timestamp to fetch
             // only products modified since their last sync (post_modified_gmt). Read-only.
             'modified_after' => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
@@ -1409,7 +1474,7 @@ class KaliCart_Bridge_API {
                 'If q contains attributes, retry with a barer product noun in q and move attributes into filters.',
                 'Fetch /catalog/meta to inspect accepted filters and price range.',
                 'Fetch /catalog/categories to browse valid merchant category slugs.',
-                'Only report not available after bare-q search and relevant category browse both return 0.',
+                'Zero results proves nothing about the catalog, only about the query. After bare-q search and category browse both return 0, report it as not found with these terms — not as unavailable.',
             ],
             'current_query' => array_filter( [
                 'q'         => $q ?: null,

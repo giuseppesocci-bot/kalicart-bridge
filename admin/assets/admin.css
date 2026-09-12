@@ -888,7 +888,7 @@
   align-items: center;
   padding: 2px 10px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 .kali-pill--ok   { background: #e6f6ec; color: #0f6f3c; border: 1px solid rgba(15,111,60,.18); }
@@ -902,7 +902,7 @@
 
 /* ── Quality Signals: nota campione + bottoni-filtro (1.0.114) ── */
 .kali-q-sample-note {
-  font-size: 12px;
+  font-size: 13px;
   color: #64748b;
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
@@ -913,7 +913,7 @@
 .kali-q-actions { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
 .kali-q-actions__row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kali-q-actions__label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -924,7 +924,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   padding: 4px 10px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
@@ -937,91 +937,15 @@
   background: #eef2f7;
   border-radius: 99px;
   padding: 1px 7px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: #475569;
 }
 
-/* ── Assistenti AI ─────────────────────────────────────────────────────────
-   Due colonne che rispondono a due domande diverse: pagine (chiunque le legge)
-   e catalogo (esiste solo col Bridge). Il peso visivo della seconda e' voluto:
-   e' l'unica che dimostra il contributo del plugin. */
-.kali-agents { width: 100%; margin: 0 0 18px; }
-
-.kali-agents__head {
-  display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; margin-bottom: 10px;
-}
-.kali-agents__col {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 10px 12px; border: 1px solid var(--kb-border); border-radius: var(--kb-radius);
-  background: var(--kb-surface2);
-}
-.kali-agents__col--strong { background: rgba(26,127,60,.06); border-color: rgba(26,127,60,.22); }
-.kali-agents__col svg { flex: 0 0 auto; margin-top: 1px; }
-.kali-agents__col b { display: block; font-size: 13px; color: var(--kb-text); line-height: 1.25; }
-.kali-agents__col span { display: block; font-size: 11px; color: var(--kb-muted); margin-top: 2px; line-height: 1.35; }
-.kali-agents__col--spacer { background: transparent; border: 0; }
-
-.kali-agents__row {
-  display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; align-items: center;
-  width: 100%; padding: 9px 12px; border: 1px solid var(--kb-border);
-  border-radius: var(--kb-radius-sm); background: var(--kb-surface); margin-bottom: 6px;
-}
-.kali-agents__row:hover { border-color: var(--kb-border2); }
-.kali-agents__name { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--kb-text); }
-.kali-agents__name em { color: var(--kb-muted); font-style: italic; }
-.kali-agents__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--kb-muted2); flex: 0 0 auto; }
-.kali-agents__dot--strong { background: var(--kb-green); }
-
-.kali-agents__cell { display: flex; align-items: center; gap: 8px; }
-.kali-agents__num { font-family: var(--kb-font-mono); font-size: 13px; color: var(--kb-text); min-width: 52px; text-align: right; }
-.kali-agents__num--muted { color: var(--kb-muted2); }
-.kali-agents__num--strong { color: var(--kb-green); font-weight: 600; }
-.kali-agents__bar { flex: 1; height: 5px; border-radius: 3px; background: var(--kb-surface2); overflow: hidden; }
-.kali-agents__bar i { display: block; height: 100%; background: var(--kb-muted2); border-radius: 3px; }
-.kali-agents__bar i.is-strong { background: var(--kb-green); }
-
-.kali-confirmed {
-  display: flex; align-items: flex-start; gap: 10px; width: 100%;
-  margin: 14px 0 0; padding: 12px 14px;
-  border: 1px solid rgba(26,127,60,.3); border-left: 3px solid var(--kb-green);
-  border-radius: var(--kb-radius); background: rgba(26,127,60,.06);
-  font-size: 13px; line-height: 1.5; color: var(--kb-text);
-}
-.kali-confirmed svg { flex: 0 0 auto; margin-top: 1px; }
-
-@media (max-width: 782px) {
-  .kali-agents__head, .kali-agents__row { grid-template-columns: 1fr; gap: 6px; }
-  .kali-agents__num { min-width: 0; text-align: left; }
-}
-
-/* riga a 4 colonne: nome, pagine, catalogo, ordini */
-.kali-agents__head, .kali-agents__row--4 { grid-template-columns: 1.5fr 1fr 1fr 1fr; }
-.kali-agents__name em { display: block; font-size: 11px; color: var(--kb-muted2); font-style: normal; margin-top: 1px; }
-.kali-agents__money { font-family: var(--kb-font-mono); font-size: 11px; color: var(--kb-green); }
-@media (max-width: 782px) { .kali-agents__head, .kali-agents__row--4 { grid-template-columns: 1fr; } }
-
-/* Valore degli ordini NON assistiti dal Bridge: neutro, non verde. Il verde in
-   questa tabella e' riservato a cio' che il plugin ha reso possibile. */
-.kali-agents__money--plain { color: var(--kb-muted); }
-
-/* Scala dei colori: verde = dimostrato, arancio = coincidenza qualificata,
-   grigio = nessun legame. Non aggiungere sfumature intermedie: ogni colore
-   corrisponde a un livello di prova, non a un'intensita'. */
-.kali-agents__num--maybe   { color: #b45309; font-weight: 600; }
-.kali-agents__money--maybe { color: #b45309; }
-.kali-agents__money--plain { color: var(--kb-muted); }
-.kali-agents__col--maybe   { background: rgba(180,83,9,.06); border-color: rgba(180,83,9,.22); }
-
-.kali-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; width: 100%; margin: 10px 0 0;
-  padding: 10px 12px; border: 1px solid var(--kb-border); border-radius: var(--kb-radius);
-  background: var(--kb-surface2); }
-.kali-legend__item { display: flex; align-items: flex-start; gap: 7px; font-size: 11px;
-  color: var(--kb-muted); line-height: 1.45; flex: 1 1 240px; }
-.kali-legend__dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-top: 4px; }
-.kali-legend__dot--proven { background: var(--kb-green); }
-.kali-legend__dot--maybe  { background: #b45309; }
-.kali-legend__dot--none   { background: var(--kb-muted2); }
+/* Il blocco .kali-agents__* / .kali-legend__* / .kali-confirmed e' stato RIMOSSO
+   nella 1.0.130: la tabella a colonne affiancate che serviva e' stata sostituita
+   dai due blocchi indipendenti nella 1.0.129, e quelle classi non avevano piu'
+   alcun uso in admin-page.php (verificato: 0 occorrenze). */
 
 /* ── Blocchi assistenti (1.0.129) ──────────────────────────────────────────
    Due misure indipendenti, ognuna con la propria fonte dichiarata. NESSUN
@@ -1033,24 +957,24 @@
   border: 1px solid var(--kb-border); border-radius: var(--kb-radius);
   background: var(--kb-surface); padding: 14px 16px;
 }
-.kali-block--note { grid-column: 1 / -1; background: var(--kb-surface2); margin-top: 12px; }
+.kali-block--note { grid-column: 1 / -1; background: var(--kb-surface2); margin-top: 12px; margin-bottom: 20px; }
 .kali-block__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
   padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--kb-border); }
 .kali-block__title { font-size: 13px; font-weight: 600; color: var(--kb-text); }
-.kali-block__src { font-size: 11px; color: var(--kb-muted2); margin-left: auto;
-  padding: 2px 7px; border: 1px solid var(--kb-border); border-radius: 999px; white-space: nowrap; }
+.kali-block__src { font-size: 13px; color: var(--kb-muted2); margin-left: auto;
+  padding: 2px 7px; border: 1px solid var(--kb-border); border-radius: 4px; white-space: nowrap; }
 .kali-block__figure { margin: 0 0 12px; }
 .kali-block__figure--minor .kali-block__num { font-size: 20px; color: var(--kb-muted); }
 .kali-block__num { display: block; font-family: var(--kb-font-mono); font-size: 28px;
   line-height: 1.1; color: var(--kb-text); }
-.kali-block__label { display: block; font-size: 12px; color: var(--kb-text); margin-top: 3px; }
-.kali-block__note { display: block; font-size: 11px; color: var(--kb-muted2); margin-top: 2px; line-height: 1.4; }
-.kali-block__detail { margin: 0 0 8px; font-size: 11px; line-height: 1.5; color: var(--kb-muted); }
+.kali-block__label { display: block; font-size: 13px; color: var(--kb-text); margin-top: 3px; }
+.kali-block__note { display: block; font-size: 13px; color: var(--kb-muted2); margin-top: 2px; line-height: 1.4; }
+.kali-block__detail { margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: var(--kb-muted); }
 .kali-block__detail--muted { color: var(--kb-muted2); }
 .kali-block__rule { border: 0; border-top: 1px solid var(--kb-border); margin: 14px 0; }
-.kali-badge-beta { display: inline-block; margin-left: 8px; padding: 1px 7px; font-size: 10px;
+.kali-badge-beta { display: inline-block; margin-left: 8px; padding: 1px 7px; font-size: 13px;
   font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-  color: var(--kb-muted); border: 1px solid var(--kb-border2); border-radius: 999px; vertical-align: middle; }
+  background: orange; color: #fff; border: 0 !important; border-radius: 4px; vertical-align: middle; }
 
 /* Le tab restavano in orizzontale e sforavano su schermi stretti: .kali-tabs
    era flex con width:fit-content e nessuna media query in tutto il file. */

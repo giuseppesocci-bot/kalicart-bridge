@@ -1,5 +1,17 @@
 *** KaliCart Bridge Changelog ***
 
+2026-09-12 - version 1.0.130
+
+* Fix: an unrecognised `gender` value used to return results. Because most products have no detectable gender, `gender=kids` and `gender=inventato` both returned the same set — a plausible answer to a filter that had filtered nothing, and no way for an agent to tell. Unknown values are now rejected before any search runs.
+* Fix: REST and MCP applied opposite rules to the same input. MCP rejected `uomo` with an enum error, REST accepted it and returned a subset. Both now share one vocabulary and one normaliser.
+* Change: no more aliases. The MCP schema promised `uomo` and `rosso` while the runtime rejected them. Facet values are canonical only; `q` remains natural language. Input is trimmed and lowercased — `MALE ` and `male` are the same value written differently, `uomo` and `male` are two different words, and translating the second pair is the agent's job, not the catalog's.
+* Change: the MCP schema declares `string` rather than `enum`, so a conforming client no longer blocks a merely mis-cased value before the request reaches the Bridge, and the structured error reaches the agent with `received`, `normalized`, `accepted_values` and `search_executed: false`.
+* New: `gender` is the only soft filter, and now says so. A product whose gender cannot be determined is retained as a candidate, not silently mixed in: every result carries `filter_evidence.gender`, and the response carries `gender_summary` with counts over the whole result set. When nothing is confirmed, `NO_CONFIRMED_GENDER_MATCHES` says it. `color`, stock, sale and price stay strict — the asymmetry is deliberate and now documented.
+* New: `get_meta` separates `accepted_values`, the contract, from `available_values`, what this catalog currently holds, with the age of that snapshot. An accepted value that is absent returns zero results, never an error.
+* Change: removed "always current" and "not available". A response is read from WooCommerce at request time; that is the perimeter, not a promise it matches the storefront. Zero results proves something about the query, not about the catalog.
+* Fix: admin styling — nothing below 13px, and the tab bar stacks on narrow screens.
+
+
 2026-09-11 - version 1.0.129
 
 * Change: the assistants section is now two independent blocks instead of one table. Three columns side by side read as a sequence — crawler, then visit, then order — while the numbers come from systems that share no identifier. Each block now states its own source: what KaliCart recorded, and what WooCommerce attributed.

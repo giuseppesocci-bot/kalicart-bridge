@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KaliCart Bridge 1.0.118\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kalicart-bridge\n"
-"POT-Creation-Date: 2026-09-11T14:13:12+02:00\n"
+"POT-Creation-Date: 2026-09-12T08:52:28+02:00\n"
 "PO-Revision-Date: 2026-07-12 16:13+0000\n"
 "Last-Translator: KaliCart <giuso@kalicart.com>\n"
 "Language-Team: Spanish\n"
@@ -1591,6 +1591,12 @@ msgstr ""
 #: includes/class-admin.php:224
 msgid "Documentation"
 msgstr "Documentación"
+
+#. translators: 1: parameter name, 2: received value
+#: includes/class-api.php:1314
+#, php-format
+msgid "%1$s: \"%2$s\" is not an accepted value. See accepted_values."
+msgstr "%1$s: \"%2$s\" no es un valor admitido. Consulta accepted_values."
 
 #: includes/class-checkout.php:470
 msgid "Too many checkout link requests. Please retry shortly."

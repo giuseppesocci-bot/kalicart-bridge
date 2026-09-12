@@ -241,6 +241,9 @@ class KaliCart_Bridge_Catalog_Engine {
             $result_start   = ( $page - 1 ) * $per_page;
             $result_end     = $result_start + $per_page;
             $filtered_total = 0;
+            $gender_matched = 0;
+            $gender_unknown = 0;
+            $page_states    = [];
             $batch_page     = 1;
             $batch_pages    = (int) $query->max_num_pages;
 
@@ -253,9 +256,24 @@ class KaliCart_Bridge_Catalog_Engine {
                 }
                 foreach ( $batch_ids as $product_id ) {
                     $wc_product = wc_get_product( (int) $product_id );
+                    self::$gender_pass_state = null;
+                    self::$gender_pass_detected = null;
                     if ( ! $wc_product || ! self::matches_derived_filters( $wc_product, $args ) ) {
                         continue;
                     }
+
+                    // Conteggi sull'INTERO insieme, non sulla pagina: questo ciclo
+                    // attraversa gia' tutti i candidati per calcolare
+                    // $filtered_total, quindi non costano una scansione in piu'.
+                    if ( 'matched' === self::$gender_pass_state ) {
+                        $gender_matched++;
+                    } elseif ( 'unknown_retained' === self::$gender_pass_state ) {
+                        $gender_unknown++;
+                    }
+                    $page_states[ (int) $product_id ] = [
+                        'status'   => self::$gender_pass_state,
+                        'detected' => self::$gender_pass_detected,
+                    ];
 
                     $match_index = $filtered_total;
                     $filtered_total++;
@@ -282,6 +300,49 @@ class KaliCart_Bridge_Catalog_Engine {
                 'per_page'    => $per_page,
                 'total_pages' => (int) ceil( $filtered_total / $per_page ),
             ];
+
+            // `gender` e' l'UNICO filtro morbido del Bridge: un genere diverso
+            // esclude, un genere ignoto CONSERVA il prodotto come candidato.
+            // Difendibile (i generi si inferiscono male, escluderli perderebbe
+            // troppo) ma finora invisibile: su un catalogo dove 96 prodotti su 109
+            // non hanno genere rilevato, qualunque valore sembrava filtrare.
+            // color, stock, promozioni e prezzi restano rigidi: senza evidenza il
+            // prodotto esce. L'asimmetria e' dichiarata, non subita.
+            if ( ! empty( $args['gender'] ) ) {
+                // Il ciclo sopra NON si ferma a pagina piena: attraversa tutti i
+                // candidati per calcolare $filtered_total. Quindi i conteggi sono
+                // sull'intero insieme e result_set_evaluation_complete e' true.
+                // Se un giorno il ciclo dovesse interrompersi in anticipo, questo
+                // flag va messo a false e i due conteggi globali a null — MAI a
+                // zero, e mai stimati: un numero parziale che sembra completo e'
+                // peggio di un numero assente.
+                $result['gender_summary'] = [
+                    'requested'                         => (string) $args['gender'],
+                    'mode'                              => 'soft',
+                    'scope'                             => 'result_set',
+                    'result_set_evaluation_complete'    => true,
+                    'result_set_matched_count'          => $gender_matched,
+                    'result_set_unknown_retained_count' => $gender_unknown,
+                ];
+                if ( 0 === $gender_matched && $gender_unknown > 0 ) {
+                    $result['result_guidance'] = [
+                        'guidance_code' => 'NO_CONFIRMED_GENDER_MATCHES',
+                        'message'       => 'No product in this result set has a confirmed gender matching the filter. The products returned are candidates whose gender could not be determined and were retained rather than discarded.',
+                    ];
+                }
+                foreach ( $result['products'] as $kc_i => $kc_p ) {
+                    $kc_id = (int) ( $kc_p['id'] ?? 0 );
+                    if ( ! isset( $page_states[ $kc_id ] ) ) {
+                        continue;
+                    }
+                    $result['products'][ $kc_i ]['filter_evidence']['gender'] = [
+                        'requested' => (string) $args['gender'],
+                        'detected'  => $page_states[ $kc_id ]['detected'],
+                        'status'    => $page_states[ $kc_id ]['status'],
+                    ];
+                }
+            }
+
             self::query_cache_put( $args, $result );
             return $result;
         }
@@ -384,6 +445,12 @@ class KaliCart_Bridge_Catalog_Engine {
             if ( $gender !== $args['gender'] && $gender !== null ) {
                 return false;
             }
+            // 1.0.130 — l'esito va DICHIARATO, non solo applicato. Prima
+            // `gender=kids` e `gender=inventato` restituivano lo stesso insieme di
+            // 96 prodotti a genere ignoto, e l'agente non aveva modo di sapere che
+            // nessuno era confermato. Si annota qui e si aggrega nel ciclo.
+            self::$gender_pass_state = ( null === $gender ) ? 'unknown_retained' : 'matched';
+            self::$gender_pass_detected = $gender;
         }
 
         if ( ! empty( $args['color'] ) ) {
@@ -1697,6 +1764,10 @@ class KaliCart_Bridge_Catalog_Engine {
         // Persist result so meta endpoint can read it without re-computing.
         $option_key = 'kalicart_bridge_catalog_facets_' . ( $lang ?? 'mono' );
         update_option( $option_key, $result, false ); // autoload=false
+        // 1.0.130 — l'eta' del dato fa parte del contratto: get_meta dichiara
+        // computed_at e max_staleness_hours, cosi' un agente sa che
+        // available_values e' una fotografia e non uno stato istantaneo.
+        update_option( 'kalicart_bridge_catalog_facets_at_' . ( $lang ?? 'mono' ), time(), false );
 		// A first-request placeholder must disappear as soon as the background build
 		// completes, rather than hiding fresh facets for the full five-minute meta TTL.
 		delete_transient( 'kalicart_bridge_meta_' . ( $lang ?? 'mono' ) );
@@ -1711,6 +1782,79 @@ class KaliCart_Bridge_Catalog_Engine {
      * @param string|null $lang
      * @return array|null
      */
+    /**
+     * VOCABOLARIO CANONICO — fonte unica per schema, validazione REST, validazione
+     * MCP, get_meta e test. Prima della 1.0.130 gli stessi elenchi erano duplicati
+     * in sei punti fra class-mcp.php e class-api.php, ed e' cosi' che schema e
+     * runtime avevano finito per promettere cose diverse.
+     *
+     * `accepted_values` e' il CONTRATTO: stabile, decide la validita'.
+     * Da non confondere con `available_values` (get_cached_catalog_facets), che e'
+     * la fotografia di questo catalogo e NON decide mai la validita' di una
+     * richiesta: e' aggiornata al massimo ogni 12 ore dal cron, e rifiutare su un
+     * dato vecchio mezza giornata negherebbe una ricerca legittima su un prodotto
+     * appena pubblicato.
+     */
+    /**
+     * Esito dell'ultimo prodotto valutato dal filtro gender. Proprieta' statiche e
+     * non valore di ritorno perche' matches_derived_filters() e' un predicato
+     * booleano usato in piu' punti: cambiarne la firma avrebbe toccato percorsi
+     * che non hanno bisogno di questo dato.
+     */
+    private static $gender_pass_state = null;
+    private static $gender_pass_detected = null;
+
+    public static function accepted_facet_values( string $facet ): array {
+        $map = [
+            'gender'  => [ 'male', 'female', 'unisex', 'kids' ],
+            'color'   => [ 'red', 'blue', 'green', 'black', 'white', 'grey', 'brown', 'yellow', 'orange', 'pink', 'purple', 'multi' ],
+            'orderby' => [ 'date', 'price', 'title', 'popularity' ],
+            'order'   => [ 'asc', 'desc' ],
+        ];
+        return $map[ $facet ] ?? [];
+    }
+
+    /**
+     * Normalizzazione SOLO FORMALE: trim + lowercase ASCII. Nient'altro.
+     *
+     * Non e' un dettaglio implementativo, e' il confine del contratto. `MALE ` e
+     * `male` sono lo stesso valore scritto diversamente; `uomo` e `male` sono due
+     * parole diverse. Tradurre la seconda coppia significherebbe mettere in
+     * KaliCart un'intelligenza che sta gia' nell'agente — e obbligherebbe noi a
+     * decidere, per esempio, se `azzurro` sia `blue` o `light_blue`.
+     *
+     * `q` resta linguaggio naturale nella lingua dell'utente; i facet sono
+     * linguaggio macchina.
+     */
+    public static function normalize_facet_value( $value ): string {
+        if ( ! is_scalar( $value ) ) {
+            return '';
+        }
+        return strtolower( trim( (string) $value ) );
+    }
+
+    /**
+     * @return array|null null se valido; altrimenti il payload d'errore strutturato.
+     *                    L'agente deve poter correggere al primo colpo, senza una
+     *                    chiamata informativa aggiuntiva: per questo l'errore porta
+     *                    gia' accepted_values.
+     */
+    public static function validate_facet_value( string $facet, $raw ): ?array {
+        $accepted  = self::accepted_facet_values( $facet );
+        $normalized = self::normalize_facet_value( $raw );
+        if ( '' === $normalized || in_array( $normalized, $accepted, true ) ) {
+            return null;
+        }
+        return [
+            'error'           => 'INVALID_FILTER_VALUE',
+            'parameter'       => $facet,
+            'received'        => is_scalar( $raw ) ? (string) $raw : '',
+            'normalized'      => $normalized,
+            'accepted_values' => $accepted,
+            'search_executed' => false,
+        ];
+    }
+
     public static function get_cached_catalog_facets( ?string $lang = null ): ?array {
         $option_key = 'kalicart_bridge_catalog_facets_' . ( $lang ?? 'mono' );
         $cached = get_option( $option_key, null );
