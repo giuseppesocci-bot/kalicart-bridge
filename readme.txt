@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.130
+Stable tag: 1.0.131
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,19 @@ This plugin works fully standalone. It connects to one external service **only i
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.131 =
+**Contract hardening.** Compact catalog responses now carry enough evidence for an agent to distinguish a real match, a soft-filter no-op, a valid but unobserved value and a silently wrong request.
+
+* New: `fields=summary` always includes `gender`, explicitly `null` when it cannot be inferred. A gender-filtered scan reuses the evidence it already computed instead of inferring it twice.
+* New: `filter_effect.gender` reports the complete baseline evaluated after all strict filters, with matched, unknown-retained and excluded counts plus `changed_result_set`. A proven no-op emits `GENDER_FILTER_NO_EFFECT`.
+* New: zero-result guidance can identify `VALID_FILTER_VALUE_NOT_OBSERVED`, `VALID_CATEGORY_NO_RESULTS` and `FILTER_COMBINATION_ELIMINATED_RESULTS`, but only from the current query or at most two drop-one probes. More complex or incomplete evidence keeps the generic recovery guidance.
+* Fix: all result guidance uses the `code` field. The legacy one-off `guidance_code` spelling is removed, and a specific evidentiary finding takes precedence over generic triage.
+* Fix: catalog REST endpoints reject unknown query parameters with HTTP 400 and `search_executed:false`. In particular, `search` on `/catalog/products` now points to `/catalog/search?q=...` with invalid parameters, corrections, the correct endpoint and a copyable suggested URL.
+* New: summary prices include `currency` and `encoding: decimal_major_units`. Price-filtered responses echo `query_interpretation`, including the requested range and the interval-overlap matching rule.
+* Fix: compact product verification exposes top-level WooCommerce `attributes`; `variants[].attributes` remains the separate variation-level evidence. REST, OpenAPI and MCP describe the same projection.
+* Fix: category scope is explicit. `get_meta.categories` is a flat list of populated categories; `list_categories` is the complete hierarchical taxonomy, including empty and Uncategorized nodes.
+* Fix: a facet snapshot without a timestamp now reports `computed_at:null` and `freshness_status:unknown`, then queues an asynchronous rebuild. Stale snapshots are also queued for refresh; public metadata requests never perform the full-catalog scan inline.
 
 = 1.0.130 =
 **Contract change.** Filter values that were previously tolerated are now rejected. `gender=uomo` used to return results on the REST surface; it no longer does. If you call the Bridge directly, send canonical values.

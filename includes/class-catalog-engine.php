@@ -241,8 +241,10 @@ class KaliCart_Bridge_Catalog_Engine {
             $result_start   = ( $page - 1 ) * $per_page;
             $result_end     = $result_start + $per_page;
             $filtered_total = 0;
+            $gender_evaluated = 0;
             $gender_matched = 0;
             $gender_unknown = 0;
+            $gender_excluded = 0;
             $page_states    = [];
             $batch_page     = 1;
             $batch_pages    = (int) $query->max_num_pages;
@@ -256,24 +258,37 @@ class KaliCart_Bridge_Catalog_Engine {
                 }
                 foreach ( $batch_ids as $product_id ) {
                     $wc_product = wc_get_product( (int) $product_id );
+                    if ( ! $wc_product ) {
+                        continue;
+                    }
                     self::$gender_pass_state = null;
                     self::$gender_pass_detected = null;
-                    if ( ! $wc_product || ! self::matches_derived_filters( $wc_product, $args ) ) {
+                    $passes_filters = self::matches_derived_filters( $wc_product, $args );
+
+                    // Gender is evaluated only after every strict filter has passed.
+                    // These counters therefore describe the exact baseline against
+                    // which the soft filter can change (or fail to change) results.
+                    if ( ! empty( $args['gender'] ) && self::$gender_pass_state !== null ) {
+                        $gender_evaluated++;
+                        if ( 'matched' === self::$gender_pass_state ) {
+                            $gender_matched++;
+                        } elseif ( 'unknown_retained' === self::$gender_pass_state ) {
+                            $gender_unknown++;
+                        } elseif ( 'excluded' === self::$gender_pass_state ) {
+                            $gender_excluded++;
+                        }
+                    }
+
+                    if ( ! $passes_filters ) {
                         continue;
                     }
 
-                    // Conteggi sull'INTERO insieme, non sulla pagina: questo ciclo
-                    // attraversa gia' tutti i candidati per calcolare
-                    // $filtered_total, quindi non costano una scansione in piu'.
-                    if ( 'matched' === self::$gender_pass_state ) {
-                        $gender_matched++;
-                    } elseif ( 'unknown_retained' === self::$gender_pass_state ) {
-                        $gender_unknown++;
+                    if ( ! empty( $args['gender'] ) ) {
+                        $page_states[ (int) $product_id ] = [
+                            'status'   => self::$gender_pass_state,
+                            'detected' => self::$gender_pass_detected,
+                        ];
                     }
-                    $page_states[ (int) $product_id ] = [
-                        'status'   => self::$gender_pass_state,
-                        'detected' => self::$gender_pass_detected,
-                    ];
 
                     $match_index = $filtered_total;
                     $filtered_total++;
@@ -282,7 +297,10 @@ class KaliCart_Bridge_Catalog_Engine {
                     }
 
                     // Full projection cost is paid only for survivors on this page.
-                    $products[] = self::normalize_product( $wc_product, $want_summary ? 'summary' : 'list' );
+                    $projection_context = ! empty( $args['gender'] )
+                        ? [ 'gender' => self::$gender_pass_detected ]
+                        : null;
+                    $products[] = self::normalize_product( $wc_product, $want_summary ? 'summary' : 'list', $projection_context );
                 }
 
                 $batch_page++;
@@ -324,10 +342,24 @@ class KaliCart_Bridge_Catalog_Engine {
                     'result_set_matched_count'          => $gender_matched,
                     'result_set_unknown_retained_count' => $gender_unknown,
                 ];
-                if ( 0 === $gender_matched && $gender_unknown > 0 ) {
+                $result['filter_effect']['gender'] = [
+                    'evaluated_scope'        => 'candidates_matching_all_other_filters',
+                    'evaluated_count'        => $gender_evaluated,
+                    'matched_count'          => $gender_matched,
+                    'unknown_retained_count' => $gender_unknown,
+                    'excluded_count'         => $gender_excluded,
+                    'evaluation_complete'    => true,
+                    'changed_result_set'     => $gender_excluded > 0,
+                ];
+                if ( $gender_evaluated > 0 && 0 === $gender_matched && 0 === $gender_excluded ) {
                     $result['result_guidance'] = [
-                        'guidance_code' => 'NO_CONFIRMED_GENDER_MATCHES',
-                        'message'       => 'No product in this result set has a confirmed gender matching the filter. The products returned are candidates whose gender could not be determined and were retained rather than discarded.',
+                        'code'    => 'GENDER_FILTER_NO_EFFECT',
+                        'message' => 'The gender filter was evaluated completely but did not change the result set: no product had a confirmed matching gender and every evaluated product was retained because its gender was unknown.',
+                    ];
+                } elseif ( 0 === $gender_matched && $gender_unknown > 0 ) {
+                    $result['result_guidance'] = [
+                        'code'    => 'NO_CONFIRMED_GENDER_MATCHES',
+                        'message' => 'No product in this result set has a confirmed gender matching the filter. The products returned are candidates whose gender could not be determined and were retained rather than discarded.',
                     ];
                 }
                 foreach ( $result['products'] as $kc_i => $kc_p ) {
@@ -435,24 +467,6 @@ class KaliCart_Bridge_Catalog_Engine {
         $categories = null;
         $tags       = null;
 
-        if ( ! empty( $args['gender'] ) ) {
-            $attributes = self::get_normalized_attributes( $product );
-            $categories = self::get_product_categories( $product );
-            $tags       = self::get_product_tags( $product );
-            $gender     = self::infer_gender( $product, $categories, $tags, $attributes );
-            // Preserve the existing soft-gender contract: an explicitly different
-            // value is excluded, while an unclassified product remains a candidate.
-            if ( $gender !== $args['gender'] && $gender !== null ) {
-                return false;
-            }
-            // 1.0.130 — l'esito va DICHIARATO, non solo applicato. Prima
-            // `gender=kids` e `gender=inventato` restituivano lo stesso insieme di
-            // 96 prodotti a genere ignoto, e l'agente non aveva modo di sapere che
-            // nessuno era confermato. Si annota qui e si aggrega nel ciclo.
-            self::$gender_pass_state = ( null === $gender ) ? 'unknown_retained' : 'matched';
-            self::$gender_pass_detected = $gender;
-        }
-
         if ( ! empty( $args['color'] ) ) {
             $attributes = $attributes ?? self::get_normalized_attributes( $product );
             $tags       = $tags ?? self::get_product_tags( $product );
@@ -482,6 +496,21 @@ class KaliCart_Bridge_Catalog_Engine {
 				return false;
 			}
 		}
+
+        if ( ! empty( $args['gender'] ) ) {
+            $attributes = $attributes ?? self::get_normalized_attributes( $product );
+            $categories = self::get_product_categories( $product );
+            $tags       = $tags ?? self::get_product_tags( $product );
+            $gender     = self::infer_gender( $product, $categories, $tags, $attributes );
+            self::$gender_pass_detected = $gender;
+            // Preserve the soft-gender contract: an explicitly different value is
+            // excluded, while an unclassified product remains a candidate.
+            if ( $gender !== $args['gender'] && $gender !== null ) {
+                self::$gender_pass_state = 'excluded';
+                return false;
+            }
+            self::$gender_pass_state = ( null === $gender ) ? 'unknown_retained' : 'matched';
+        }
 
         return true;
     }
@@ -585,17 +614,31 @@ class KaliCart_Bridge_Catalog_Engine {
     /**
      * Normalize a single WC_Product into agent-ready array.
      */
-    public static function normalize_product( WC_Product $p, string $context = 'list' ): array {
+    public static function normalize_product( WC_Product $p, string $context = 'list', ?array $projection_context = null ): array {
         // Summary projection: slim listing for agent triage. Returns ONLY the fields an
         // agent needs to shortlist candidates; open /catalog/product/{id} for the few that
-        // matter. Short-circuits BEFORE the heavy per-product work (attribute terms, images,
-        // gender/color inference, quarantine, purchase_readiness, shipping, variants).
+        // matter. It performs only the bounded attribute/category work required for
+        // gender, then short-circuits before images, color inference, quarantine,
+        // purchase_readiness, shipping and variants.
         if ( 'summary' === $context ) {
-            $price      = self::compute_price( $p );
-            $cat_terms  = get_the_terms( $p->get_id(), 'product_cat' );
-            $categories = ( $cat_terms && ! is_wp_error( $cat_terms ) )
-                ? array_values( wp_list_pluck( $cat_terms, 'slug' ) )
-                : [];
+            $price = self::compute_price( $p );
+            if ( is_array( $projection_context ) && array_key_exists( 'gender', $projection_context ) ) {
+                // A gender-filtered scan has already paid for inference. Reuse its
+                // evidence instead of repeating attribute/category work on the page.
+                $gender     = $projection_context['gender'];
+                $cat_terms  = get_the_terms( $p->get_id(), 'product_cat' );
+                $categories = ( $cat_terms && ! is_wp_error( $cat_terms ) )
+                    ? array_values( wp_list_pluck( $cat_terms, 'slug' ) )
+                    : [];
+            } else {
+                // Gender is part of the compact contract even when it is unknown.
+                // The extra inference work is bounded by per_page, never catalog size.
+                $category_records = self::get_product_categories( $p );
+                $categories       = array_values( array_column( $category_records, 'slug' ) );
+                $attributes       = self::get_normalized_attributes( $p );
+                $tags             = self::get_product_tags( $p );
+                $gender           = self::infer_gender( $p, $category_records, $tags, $attributes );
+            }
 
             // PRICE-INTERVAL-v1 — `current` e' il prezzo ATTIVO PIU' BASSO e `regular`
             // cade su `min_regular` sui variabili: entrambi sono ESTREMI, non "il
@@ -608,6 +651,8 @@ class KaliCart_Bridge_Catalog_Engine {
             // scelta della card del global, che li omette sui fixed.
             $price_type  = $price['type'] ?? 'fixed';
             $price_block = [
+                'currency' => get_woocommerce_currency(),
+                'encoding' => 'decimal_major_units',
                 'type'    => $price_type,
                 'current' => $price['current'] ?? null,
                 'display' => $price['display'] ?? null,
@@ -634,6 +679,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 'price'      => $price_block,
                 'stock'      => [ 'in_stock' => $p->is_in_stock() ],
                 'categories' => $categories,
+                'gender'     => $gender,
                 'type'       => $p->get_type(),
                 'selection_required' => $p->is_type( 'variable' ),
                 'updated_at' => $p->get_date_modified() ? $p->get_date_modified()->date( 'c' ) : null,
@@ -1902,10 +1948,9 @@ class KaliCart_Bridge_Catalog_Engine {
             if ( $node['parent'] && isset( $map[ $node['parent'] ] ) ) {
                 $map[ $node['parent'] ]['children'][] = &$node;
             } else {
-                // Skip Uncategorized at root level
-                if ( $node['slug'] !== 'uncategorized' ) {
-                    $roots[] = &$node;
-                }
+                // Complete taxonomy means complete: empty nodes and WooCommerce's
+                // default Uncategorized node remain visible to contract consumers.
+                $roots[] = &$node;
             }
         }
 

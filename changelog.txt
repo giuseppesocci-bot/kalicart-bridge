@@ -1,5 +1,18 @@
 *** KaliCart Bridge Changelog ***
 
+2026-09-13 - version 1.0.131
+
+* New: `fields=summary` always includes `gender`, explicitly `null` when it cannot be inferred. A gender-filtered scan reuses the evidence it already computed instead of inferring it twice.
+* New: `filter_effect.gender` reports the complete baseline evaluated after all strict filters, with matched, unknown-retained and excluded counts plus `changed_result_set`. A proven no-op emits `GENDER_FILTER_NO_EFFECT`.
+* New: zero-result guidance can identify `VALID_FILTER_VALUE_NOT_OBSERVED`, `VALID_CATEGORY_NO_RESULTS` and `FILTER_COMBINATION_ELIMINATED_RESULTS`, but only from the current query or at most two drop-one probes. More complex or incomplete evidence keeps the generic recovery guidance.
+* Fix: all result guidance uses the `code` field. The legacy one-off `guidance_code` spelling is removed, and a specific evidentiary finding takes precedence over generic triage.
+* Fix: catalog REST endpoints reject unknown query parameters with HTTP 400 and `search_executed:false`. In particular, `search` on `/catalog/products` now points to `/catalog/search?q=...` with invalid parameters, corrections, the correct endpoint and a copyable suggested URL.
+* New: summary prices include `currency` and `encoding: decimal_major_units`. Price-filtered responses echo `query_interpretation`, including the requested range and the interval-overlap matching rule.
+* Fix: compact product verification exposes top-level WooCommerce `attributes`; `variants[].attributes` remains the separate variation-level evidence. REST, OpenAPI and MCP describe the same projection.
+* Fix: category scope is explicit. `get_meta.categories` is a flat list of populated categories; `list_categories` is the complete hierarchical taxonomy, including empty and Uncategorized nodes.
+* Fix: a facet snapshot without a timestamp now reports `computed_at:null` and `freshness_status:unknown`, then queues an asynchronous rebuild. Stale snapshots are also queued for refresh; public metadata requests never perform the full-catalog scan inline.
+
+
 2026-09-12 - version 1.0.130
 
 * Fix: an unrecognised `gender` value used to return results. Because most products have no detectable gender, `gender=kids` and `gender=inventato` both returned the same set — a plausible answer to a filter that had filtered nothing, and no way for an agent to tell. Unknown values are now rejected before any search runs.

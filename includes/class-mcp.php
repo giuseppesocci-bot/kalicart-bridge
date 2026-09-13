@@ -437,7 +437,7 @@ class KaliCart_Bridge_MCP {
 				' ',
 				array(
 					'Read-only WooCommerce catalog for ' . $name . '.',
-					'Call get_meta first to learn valid category slugs, accepted filter values and the price range.',
+					'Call get_meta first to learn populated category slugs, accepted filter values and the price range; call list_categories for the complete taxonomy including empty categories.',
 					'Use search_products with ONLY a bare product noun in "q"; put every attribute (category, gender, color, price) in its own argument — never inside "q".',
 					'Prices are catalog prices in major currency units. When price.type is "range", price.current is the LOWEST active price across variants and price.max_current the highest: do not quote price.current as the product price, and rank or filter with the interval in mind. For variable products, on_sale may apply to only some size/color variants: inspect price.sale_scope and verify the selected variant before quoting a discount. Checkout stays on the merchant storefront; this server never takes payment.',
 				)
@@ -770,7 +770,7 @@ class KaliCart_Bridge_MCP {
 			array(
 				'name'        => 'get_product',
 				'title'       => 'Verify selected product',
-				'description' => 'After ranking summaries, call once for the final selected product. Returns compact price, stock, variants, shipping and coupon evidence.',
+				'description' => 'After ranking summaries, call once for the final selected product. Returns compact price, stock, top-level product attributes, variants with variation-level attributes, shipping and coupon evidence.',
 				'inputSchema' => array(
 					'type'                 => 'object',
 					'properties'           => (object) array(
@@ -786,7 +786,7 @@ class KaliCart_Bridge_MCP {
 			array(
 				'name'        => 'list_categories',
 				'title'       => 'List categories',
-				'description' => 'Return the merchant-native WooCommerce category tree (slugs + names). Use a slug as the category argument of search_products/list_products.',
+				'description' => 'Return the complete merchant-native WooCommerce category tree, including empty categories (slugs + names). Use a slug as the category argument of search_products/list_products.',
 				'inputSchema' => array(
 					'type'                 => 'object',
 					'properties'           => (object) array(),
@@ -796,7 +796,7 @@ class KaliCart_Bridge_MCP {
 			array(
 				'name'        => 'get_meta',
 				'title'       => 'Get catalog meta',
-				'description' => 'Return accepted filter values (category slugs, genders, colours), the price range and the merchant shipping policy. Call this first to ground a search.',
+				'description' => 'Return populated category slugs, accepted filter values, asynchronous facet freshness, the price range and merchant shipping policy. For the complete taxonomy including empty categories, call list_categories.',
 				'inputSchema' => array(
 					'type'                 => 'object',
 					'properties'           => (object) array(),
