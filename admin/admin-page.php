@@ -75,6 +75,66 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     </div>
   </div>
 
+  <?php
+  $kalicart_bridge_provider_registry = KaliCart_Bridge_Commerce_Consent::provider_registry();
+  $kalicart_bridge_openai_provider   = $kalicart_bridge_provider_registry[ KaliCart_Bridge_Commerce_Consent::PROVIDER_OPENAI ];
+  ?>
+  <!-- PROVIDER AUTHORIZATION: separate from both federation and the direct merchant feed. -->
+  <section class="kali-provider-consent" id="providerConsentBlock" aria-labelledby="providerConsentTitle">
+    <div class="kali-provider-consent__head">
+      <div>
+        <strong id="providerConsentTitle"><?php esc_html_e( 'Federated distribution channels', 'kalicart-bridge' ); ?></strong>
+        <p><?php esc_html_e( 'These optional authorizations allow KaliCart Global to distribute your public product catalog through a named external system. They are separate from joining the Federated Catalog and from the direct merchant feed configured in the ChatGPT Feed tab.', 'kalicart-bridge' ); ?></p>
+      </div>
+      <span class="kali-provider-consent__provider"><?php echo esc_html( $kalicart_bridge_openai_provider['label'] ); ?></span>
+    </div>
+
+    <div id="providerGlobalRequired" class="kali-provider-consent__notice" style="display:none">
+      <?php esc_html_e( 'Activate the Federated Catalog above before authorizing this distribution channel.', 'kalicart-bridge' ); ?>
+    </div>
+
+    <div id="providerConsentGrantPanel">
+      <label class="kali-provider-consent__check" for="providerConsentCheckbox">
+        <input type="checkbox" id="providerConsentCheckbox" value="1">
+        <span><?php echo esc_html( KaliCart_Bridge_Commerce_Consent::localized_consent_text() ); ?></span>
+      </label>
+      <p class="kali-provider-consent__documents">
+        <?php
+        echo wp_kses_post( sprintf(
+          /* translators: 1: consent terms version, 2: opening Privacy Notice link, 3: closing link, 4: privacy version, 5: opening Global Terms link, 6: closing link, 7: global terms version */
+          __( 'Authorization terms: %1$s · %2$sPrivacy Notice%3$s (%4$s) · %5$sKaliCart Global Terms%6$s (%7$s)', 'kalicart-bridge' ),
+          '<code>' . esc_html( $kalicart_bridge_openai_provider['terms_version'] ) . '</code>',
+          '<a href="' . esc_url( $kalicart_bridge_openai_provider['privacy_url'] ) . '" target="_blank" rel="noopener">',
+          '</a>',
+          esc_html( KaliCart_Bridge_Commerce_Consent::PRIVACY_VERSION ),
+          '<a href="' . esc_url( $kalicart_bridge_openai_provider['terms_url'] ) . '" target="_blank" rel="noopener">',
+          '</a>',
+          esc_html( KaliCart_Bridge_Commerce_Consent::GLOBAL_TERMS_VERSION )
+        ) );
+        ?>
+      </p>
+      <button type="button" class="kali-btn kali-btn--primary" id="providerConsentGrantBtn"><?php esc_html_e( 'Authorize this channel', 'kalicart-bridge' ); ?></button>
+    </div>
+
+    <div id="providerConsentCurrent" class="kali-provider-consent__current" style="display:none">
+      <div id="providerConsentStatus"></div>
+      <div class="kali-provider-consent__actions">
+        <button type="button" class="kali-btn kali-btn--secondary" id="providerConsentRevokeBtn"><?php esc_html_e( 'Revoke channel authorization', 'kalicart-bridge' ); ?></button>
+        <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'json' ) ); ?>"><?php esc_html_e( 'Export proof (JSON)', 'kalicart-bridge' ); ?></a>
+        <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'csv' ) ); ?>"><?php esc_html_e( 'Export proof (CSV)', 'kalicart-bridge' ); ?></a>
+      </div>
+    </div>
+
+    <div id="providerConsentRevokeConfirm" class="kali-warn-alert" style="display:none">
+      <strong>&#9888; <?php esc_html_e( 'Confirm channel revocation', 'kalicart-bridge' ); ?></strong>
+      <span><?php esc_html_e( 'This stops authorization for this external channel only. Your Federated Catalog participation remains active, and the prior authorization stays in the evidence log.', 'kalicart-bridge' ); ?></span>
+      <div class="kali-provider-consent__actions">
+        <button type="button" class="kali-btn kali-btn--secondary" id="providerConsentRevokeConfirmBtn"><?php esc_html_e( 'Yes, revoke this channel', 'kalicart-bridge' ); ?></button>
+        <button type="button" class="kali-btn kali-btn--primary" id="providerConsentRevokeCancelBtn"><?php esc_html_e( 'Keep this channel authorized', 'kalicart-bridge' ); ?></button>
+      </div>
+    </div>
+  </section>
+
   <!-- TABS -->
   <div class="kali-tabsrow">
     <div class="kali-tabs">

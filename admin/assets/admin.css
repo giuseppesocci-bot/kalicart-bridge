@@ -976,10 +976,51 @@
   font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
   background: orange; color: #fff; border: 0 !important; border-radius: 4px; vertical-align: middle; }
 
+/* Provider-specific consent is intentionally outside the merchant feed tab. */
+.kali-provider-consent {
+  margin: 10px 0 18px;
+  padding: 16px;
+  border: 1px solid var(--kb-border, #e2e4e7);
+  border-radius: 10px;
+  background: var(--kb-surface, #fff);
+}
+.kali-provider-consent__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.kali-provider-consent__head strong { display: block; margin-bottom: 4px; }
+.kali-provider-consent__head p { margin: 0 0 12px; max-width: 850px; color: var(--kb-muted, #555); font-size: 13px; line-height: 1.5; }
+.kali-provider-consent__provider {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border: 1px solid var(--kb-border, #ddd);
+  border-radius: 999px;
+  color: var(--kb-muted, #555);
+  font-size: 12px;
+  font-weight: 600;
+}
+.kali-provider-consent__notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 4px solid #b26b00;
+  background: #fff8e5;
+  font-size: 13px;
+}
+.kali-provider-consent__check { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.55; }
+.kali-provider-consent__check input { flex: 0 0 auto; margin-top: 3px; }
+.kali-provider-consent__documents { margin: 10px 0 12px; color: var(--kb-muted, #666); font-size: 12px; }
+.kali-provider-consent__current { padding-top: 2px; font-size: 13px; }
+.kali-provider-consent__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.kali-provider-consent__actions .kali-btn { text-decoration: none; }
+.kali-provider-consent .kali-warn-alert { margin-top: 12px; }
+
 /* Le tab restavano in orizzontale e sforavano su schermi stretti: .kali-tabs
    era flex con width:fit-content e nessuna media query in tutto il file. */
 @media (max-width: 782px) {
   .kali-blocks { grid-template-columns: 1fr; }
+  .kali-provider-consent__head { flex-direction: column; gap: 4px; }
   .kali-tabs { flex-direction: column; width: 100%; }
   .kali-tabs .kali-tab { width: 100%; text-align: left; }
 }

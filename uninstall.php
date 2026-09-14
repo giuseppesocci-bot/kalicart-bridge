@@ -42,6 +42,8 @@ $kalicart_bridge_options = [
 	'kalicart_bridge_federation_last_error',
 	'kalicart_bridge_last_external_check',
 	'kalicart_bridge_acp_feed',
+	'kalicart_bridge_commerce_consents',
+	'kalicart_bridge_commerce_schema_version',
     'kalicart_rate_guard_checkout',
 	'kalicart_rate_guard_checkout_long',
 	'kalicart_rate_guard_checkout_access',
@@ -64,6 +66,7 @@ wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
 wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
 wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
 wp_clear_scheduled_hook( 'kalicart_bridge_federation_announce' );
+wp_clear_scheduled_hook( 'kalicart_bridge_provider_consent_retry' );
 
 // Checkout session claim rows (kalicart_session_claimed_{id}): dynamically keyed, one per
 // attributed checkout — not in the fixed options list above, needs a LIKE-pattern sweep.
@@ -85,12 +88,18 @@ foreach ( [
 	'_transient_timeout_kalicart_checkout_idem_',
 	'_transient_kalicart_bridge_meta_',
 	'_transient_timeout_kalicart_bridge_meta_',
+	'kalicart_bridge_consent_lock_',
 ] as $kalicart_bridge_dynamic_prefix ) {
 	$wpdb->query( $wpdb->prepare(
 		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
 		$wpdb->esc_like( $kalicart_bridge_dynamic_prefix ) . '%'
 	) );
 }
+
+// The append-only local proof ledger is retained on deactivation and removed
+// only when the merchant explicitly deletes the plugin.
+$kalicart_bridge_consent_table = $wpdb->prefix . 'kalicart_bridge_consent_log';
+$wpdb->query( "DROP TABLE IF EXISTS {$kalicart_bridge_consent_table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- exact plugin-owned table; uninstall is the explicit deletion boundary.
 
 // Transients
 $kalicart_bridge_transients = [

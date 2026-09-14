@@ -16,6 +16,9 @@ class KaliCart_Bridge_Admin {
         add_action( 'wp_ajax_kalicart_save_settings', [ __CLASS__, 'ajax_save_settings' ] );
         add_action( 'wp_ajax_kalicart_federation_activate', [ __CLASS__, 'ajax_federation_activate' ] );
         add_action( 'wp_ajax_kalicart_federation_revoke',   [ __CLASS__, 'ajax_federation_revoke' ] );
+        add_action( 'wp_ajax_kalicart_provider_consent_grant',  [ __CLASS__, 'ajax_provider_consent_grant' ] );
+        add_action( 'wp_ajax_kalicart_provider_consent_revoke', [ __CLASS__, 'ajax_provider_consent_revoke' ] );
+        add_action( 'wp_ajax_kalicart_provider_consent_status', [ __CLASS__, 'ajax_provider_consent_status' ] );
         add_action( 'wp_ajax_kalicart_external_visibility_check', [ __CLASS__, 'ajax_external_visibility_check' ] );
         add_filter( 'plugin_row_meta', [ __CLASS__, 'plugin_row_meta' ], 10, 2 );
     }
@@ -66,6 +69,8 @@ class KaliCart_Bridge_Admin {
             'robots_enabled' => (bool) get_option( 'kalicart_bridge_robots_enabled', true ),
             'global_consent' => (bool) get_option( 'kalicart_bridge_global_consent', false ),
             'federation_registered_at' => get_option( 'kalicart_bridge_federation_registered_at', '' ),
+            'provider_global_active'   => KaliCart_Bridge_Commerce_Consent::is_global_active(),
+            'provider_consent'         => KaliCart_Bridge_Commerce_Consent::current(),
             'sitemap_enabled' => (bool) get_option( 'kalicart_bridge_sitemap_enabled', true ),
             'return_policy_url'  => get_option( 'kalicart_bridge_return_policy_url', '' ),
             'coupons_agent_enabled'   => (bool) get_option( 'kalicart_bridge_coupons_agent_enabled', false ),
@@ -125,6 +130,19 @@ class KaliCart_Bridge_Admin {
             'federation_registered'        => __( 'Registered on', 'kalicart-bridge' ),
             'federation_consent_required'  => __( 'Tick the consent box above first.', 'kalicart-bridge' ),
             'federation_activate_failed'   => __( 'Activation failed. Please try again.', 'kalicart-bridge' ),
+            'provider_global_required'     => __( 'Activate the Federated Catalog before authorizing a distribution channel.', 'kalicart-bridge' ),
+            'provider_consent_required'    => __( 'Select the authorization checkbox first.', 'kalicart-bridge' ),
+            'provider_grant_failed'        => __( 'Authorization could not be recorded. Please try again.', 'kalicart-bridge' ),
+            'provider_revoke_failed'       => __( 'Revocation could not be recorded. Please try again.', 'kalicart-bridge' ),
+            'provider_authorized_on'       => __( 'Authorized on', 'kalicart-bridge' ),
+            'provider_revoked_on'          => __( 'Revoked on', 'kalicart-bridge' ),
+            'provider_receipt'             => __( 'Receipt', 'kalicart-bridge' ),
+            'provider_receipt_pending'     => __( 'pending delivery', 'kalicart-bridge' ),
+            'provider_receipt_accepted'    => __( 'accepted by KaliCart Global', 'kalicart-bridge' ),
+            'provider_receipt_failed'      => __( 'delivery failed', 'kalicart-bridge' ),
+            'provider_receipt_received'    => __( 'received by KaliCart Global; verification pending', 'kalicart-bridge' ),
+            'provider_receipt_verified'    => __( 'verified by KaliCart Global', 'kalicart-bridge' ),
+            'provider_receipt_rejected'    => __( 'rejected by KaliCart Global', 'kalicart-bridge' ),
             'external_check_failed'        => __( 'Could not reach KaliCart Global. Try again in a moment.', 'kalicart-bridge' ),
             'external_check_not_probed'    => __( 'Not observed from outside yet. Activate the Federated Catalog above to trigger a check.', 'kalicart-bridge' ),
             'external_check_label_reachable'   => __( 'Discovery reachable from outside:', 'kalicart-bridge' ),
@@ -386,6 +404,59 @@ class KaliCart_Bridge_Admin {
         // Il consenso e' gia' OFF: anche se il push fallisce, la revoca e' garantita al probe.
         $pushed = ! is_wp_error( $resp ) && wp_remote_retrieve_response_code( $resp ) < 300;
         wp_send_json_success( [ 'consent' => false, 'pushed' => $pushed ] );
+    }
+
+    /** Record the merchant's provider-specific positive authorization. */
+    public static function ajax_provider_consent_grant(): void {
+        check_ajax_referer( 'kalicart_bridge', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( [ 'reason' => 'forbidden' ], 403 );
+        }
+        $accepted = isset( $_POST['accepted'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['accepted'] ) );
+        if ( ! $accepted ) {
+            wp_send_json_error( [ 'reason' => 'explicit_acceptance_required' ], 400 );
+        }
+        self::record_provider_consent_action( 'granted' );
+    }
+
+    /** Record the merchant's provider-specific revocation without touching federation consent. */
+    public static function ajax_provider_consent_revoke(): void {
+        check_ajax_referer( 'kalicart_bridge', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( [ 'reason' => 'forbidden' ], 403 );
+        }
+        self::record_provider_consent_action( 'revoked' );
+    }
+
+    /** Refresh the acknowledgement state stored by KaliCart Global. */
+    public static function ajax_provider_consent_status(): void {
+        check_ajax_referer( 'kalicart_bridge', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( [ 'reason' => 'forbidden' ], 403 );
+        }
+        wp_send_json_success( [
+            'state'         => KaliCart_Bridge_Commerce_Consent::refresh_remote_status(),
+            'global_active' => KaliCart_Bridge_Commerce_Consent::is_global_active(),
+        ] );
+    }
+
+    private static function record_provider_consent_action( string $action ): void {
+        try {
+            $state = KaliCart_Bridge_Commerce_Consent::record_action(
+                KaliCart_Bridge_Commerce_Consent::PROVIDER_OPENAI,
+                $action,
+                get_current_user_id()
+            );
+            wp_send_json_success( [
+                'state'         => $state,
+                'global_active' => KaliCart_Bridge_Commerce_Consent::is_global_active(),
+            ] );
+        } catch ( InvalidArgumentException $error ) {
+            wp_send_json_error( [ 'reason' => sanitize_key( $error->getMessage() ) ], 400 );
+        } catch ( RuntimeException $error ) {
+            $reason = sanitize_key( $error->getMessage() );
+            wp_send_json_error( [ 'reason' => $reason ], 'global_not_active' === $reason ? 409 : 500 );
+        }
     }
 
 

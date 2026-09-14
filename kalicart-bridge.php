@@ -61,6 +61,7 @@ require_once KALICART_BRIDGE_DIR . 'includes/class-api.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-mcp.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-signals.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-acp-feed.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-commerce-consent.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-admin.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-checkout.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-shortcodes.php';
@@ -83,6 +84,7 @@ add_action( 'plugins_loaded', function () {
     KaliCart_Bridge_MCP::init();
     KaliCart_Bridge_Signals::init();
     KaliCart_Bridge_ACP_Feed::init();
+    KaliCart_Bridge_Commerce_Consent::init();
     // Version-gated migration — runs once per plugin version, on init (needs $wp_rewrite).
     // Removes legacy extension-less static files (served as text/plain by the webserver)
     // and flushes rewrite rules so serve_well_known() answers on every install.
@@ -180,6 +182,7 @@ register_activation_hook( __FILE__, function () {
     }
 
     kalicart_bridge_ensure_default_options();
+    KaliCart_Bridge_Commerce_Consent::ensure_schema();
     // Flush rewrite rules per registrare sitemap-agentic-bridge.xml
     flush_rewrite_rules();
     if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
@@ -192,6 +195,7 @@ register_deactivation_hook( __FILE__, function () {
 	wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
 	wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
 	wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
+	wp_clear_scheduled_hook( KaliCart_Bridge_Commerce_Consent::RETRY_HOOK );
     KaliCart_Bridge_Signals::remove_well_known_files();
     flush_rewrite_rules();
 } );

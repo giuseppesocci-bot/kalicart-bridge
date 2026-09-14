@@ -448,6 +448,7 @@
     if ( $( 'toggleRobots' ) )  $( 'toggleRobots' ).checked  = KaliBridge.robots_enabled;
     if ( $( 'toggleSitemap' ) ) $( 'toggleSitemap' ).checked = KaliBridge.sitemap_enabled;
     initFederation();
+    initProviderConsent();
     initExternalVisibility();
     initCoupons();
 
@@ -559,6 +560,138 @@
     }
   }
 
+  // ── Provider-specific federated distribution authorization ───────────────
+  function renderProviderConsent() {
+    const block       = $( 'providerConsentBlock' );
+    const grantPanel  = $( 'providerConsentGrantPanel' );
+    const currentBox  = $( 'providerConsentCurrent' );
+    const status      = $( 'providerConsentStatus' );
+    const required    = $( 'providerGlobalRequired' );
+    const checkbox    = $( 'providerConsentCheckbox' );
+    const grantBtn    = $( 'providerConsentGrantBtn' );
+    const revokeBtn   = $( 'providerConsentRevokeBtn' );
+    const confirmBox  = $( 'providerConsentRevokeConfirm' );
+    if ( ! block ) return;
+
+    const state        = KaliBridge.provider_consent || {};
+    const globalActive = Boolean( KaliBridge.provider_global_active );
+    const authorized   = state.authorized === true;
+    if ( required ) required.style.display = globalActive ? 'none' : '';
+    if ( grantPanel ) grantPanel.style.display = authorized ? 'none' : '';
+    if ( checkbox ) checkbox.disabled = ! globalActive;
+    if ( grantBtn ) grantBtn.disabled = ! globalActive || ! checkbox?.checked;
+    if ( revokeBtn ) revokeBtn.style.display = authorized ? '' : 'none';
+    if ( confirmBox ) confirmBox.style.display = 'none';
+
+    if ( ! state.consent_id ) {
+      if ( currentBox ) currentBox.style.display = 'none';
+      return;
+    }
+
+    if ( currentBox ) currentBox.style.display = '';
+    const rawDate = state.occurred_at || '';
+    const parsed  = rawDate ? new Date( rawDate ) : null;
+    const when    = parsed && ! isNaN( parsed ) ? parsed.toLocaleString() : rawDate;
+    const actionLabel = authorized
+      ? ( KaliBridge.i18n?.provider_authorized_on || 'Authorized on' )
+      : ( KaliBridge.i18n?.provider_revoked_on || 'Revoked on' );
+    const receiptLabels = {
+      pending:  KaliBridge.i18n?.provider_receipt_pending || 'pending delivery',
+      accepted: KaliBridge.i18n?.provider_receipt_accepted || 'accepted by KaliCart Global',
+      failed:   KaliBridge.i18n?.provider_receipt_failed || 'delivery failed',
+      global_pending:  KaliBridge.i18n?.provider_receipt_received || 'received by KaliCart Global; verification pending',
+      global_verified: KaliBridge.i18n?.provider_receipt_verified || 'verified by KaliCart Global',
+      global_rejected: KaliBridge.i18n?.provider_receipt_rejected || 'rejected by KaliCart Global'
+    };
+    const globalReceiptKey = state.global_receipt_status ? 'global_' + state.global_receipt_status : '';
+    const receipt = receiptLabels[ globalReceiptKey ] || receiptLabels[ state.receipt_status ] || state.receipt_status || '—';
+    if ( status ) {
+      status.innerHTML = '<strong>' + esc( actionLabel ) + ' ' + esc( when ) + '</strong>'
+        + '<div>' + esc( KaliBridge.i18n?.provider_receipt || 'Receipt' ) + ': ' + esc( receipt ) + '</div>'
+        + '<div><code>' + esc( state.terms_version || '' ) + '</code> &middot; <code>' + esc( state.consent_id ) + '</code></div>';
+    }
+  }
+
+  function providerConsentRequest( action, extra ) {
+    const fd = new FormData();
+    fd.append( 'action', action );
+    fd.append( 'nonce', KaliBridge.nonce );
+    Object.entries( extra || {} ).forEach( pair => fd.append( pair[0], pair[1] ) );
+    return fetch( KaliBridge.ajax_url, { method: 'POST', body: fd, credentials: 'same-origin' } )
+      .then( response => response.json() );
+  }
+
+  function initProviderConsent() {
+    const checkbox  = $( 'providerConsentCheckbox' );
+    const grantBtn  = $( 'providerConsentGrantBtn' );
+    const revokeBtn = $( 'providerConsentRevokeBtn' );
+    if ( ! grantBtn ) return;
+
+    renderProviderConsent();
+    checkbox?.addEventListener( 'change', renderProviderConsent );
+
+    grantBtn.addEventListener( 'click', () => {
+      if ( ! KaliBridge.provider_global_active ) {
+        alert( KaliBridge.i18n?.provider_global_required || 'Activate the Federated Catalog first.' );
+        return;
+      }
+      if ( ! checkbox?.checked ) {
+        alert( KaliBridge.i18n?.provider_consent_required || 'Select the authorization checkbox first.' );
+        return;
+      }
+      grantBtn.disabled = true;
+      providerConsentRequest( 'kalicart_provider_consent_grant', { accepted: '1' } )
+        .then( res => {
+          if ( ! res.success ) {
+            alert( res.data?.reason === 'global_not_active'
+              ? ( KaliBridge.i18n?.provider_global_required || 'Activate the Federated Catalog first.' )
+              : ( KaliBridge.i18n?.provider_grant_failed || 'Authorization could not be recorded.' ) );
+            return;
+          }
+          KaliBridge.provider_consent = res.data.state;
+          KaliBridge.provider_global_active = res.data.global_active;
+          checkbox.checked = false;
+          renderProviderConsent();
+        } )
+        .catch( () => alert( KaliBridge.i18n?.provider_grant_failed || 'Authorization could not be recorded.' ) )
+        .finally( renderProviderConsent );
+    } );
+
+    revokeBtn?.addEventListener( 'click', () => {
+      $( 'providerConsentRevokeConfirm' ).style.display = '';
+      revokeBtn.style.display = 'none';
+    } );
+    $( 'providerConsentRevokeCancelBtn' )?.addEventListener( 'click', renderProviderConsent );
+    $( 'providerConsentRevokeConfirmBtn' )?.addEventListener( 'click', () => {
+      const btn = $( 'providerConsentRevokeConfirmBtn' );
+      btn.disabled = true;
+      providerConsentRequest( 'kalicart_provider_consent_revoke' )
+        .then( res => {
+          if ( ! res.success ) {
+            alert( KaliBridge.i18n?.provider_revoke_failed || 'Revocation could not be recorded.' );
+            return;
+          }
+          KaliBridge.provider_consent = res.data.state;
+          KaliBridge.provider_global_active = res.data.global_active;
+          renderProviderConsent();
+        } )
+        .catch( () => alert( KaliBridge.i18n?.provider_revoke_failed || 'Revocation could not be recorded.' ) )
+        .finally( () => { btn.disabled = false; } );
+    } );
+
+    if ( KaliBridge.provider_consent?.consent_id ) {
+      providerConsentRequest( 'kalicart_provider_consent_status' )
+        .then( res => {
+          if ( res.success ) {
+            KaliBridge.provider_consent = res.data.state;
+            KaliBridge.provider_global_active = res.data.global_active;
+            renderProviderConsent();
+          }
+        } )
+        .catch( () => {} );
+    }
+  }
+
   function initExternalVisibility() {
     const btn = $( 'externalVisibilityBtn' );
     const out = $( 'externalVisibilityResult' );
@@ -652,7 +785,9 @@
           if ( res.success ) {
             KaliBridge.federation_registered_at = res.data.registered_at;
             KaliBridge.global_consent = true;
+            KaliBridge.provider_global_active = true;
             renderFederation();
+            renderProviderConsent();
           } else {
             actBtn.disabled = false;
             alert( KaliBridge.i18n?.federation_activate_failed || 'Activation failed. Please try again.' );
@@ -691,8 +826,10 @@
           if ( res.success ) {
             KaliBridge.global_consent = false;
             KaliBridge.federation_registered_at = '';
+            KaliBridge.provider_global_active = false;
           }
           renderFederation();
+          renderProviderConsent();
         } )
         .catch( () => {
           $( 'federationRevokeConfirmBtn' ).disabled = false;

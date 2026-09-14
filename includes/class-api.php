@@ -123,6 +123,14 @@ class KaliCart_Bridge_API {
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'discovery' ],
             'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
+            'args'                => [
+                // Used only by KaliCart Global's receipt verifier to bypass intermediary caches.
+                'kalicart_consent_probe' => [
+                    'required'          => false,
+                    'sanitize_callback' => 'absint',
+                    'validate_callback' => static fn( $value ): bool => is_numeric( $value ),
+                ],
+            ],
         ] );
 
         // UCP profile over REST — always reachable even when /.well-known/ucp is
@@ -217,7 +225,7 @@ class KaliCart_Bridge_API {
 		if ( $limited !== null ) {
 			return $limited;
 		}
-        $param_error = self::catalog_unknown_param_error( $req, [] );
+        $param_error = self::catalog_unknown_param_error( $req, [ 'kalicart_consent_probe' ] );
         if ( $param_error !== null ) {
             return $param_error;
         }
@@ -284,6 +292,8 @@ class KaliCart_Bridge_API {
                 'federated_search_source' => (bool) get_option( 'kalicart_bridge_global_consent', false ),
                 'agent_read_surface'      => true,
             ],
+
+            'commerce_distribution' => KaliCart_Bridge_Commerce_Consent::discovery_state(),
 
             'crawler_policy' => [
                 'allow_llm_training'   => false,

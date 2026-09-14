@@ -54,7 +54,7 @@ Documentation: https://bridge.kalicart.com/docs/
 
 * No LLM calls
 * No cloud dependency for core functionality
-* No data sent anywhere outside your server by default — the only optional exception is the Federated Catalog feature (see "External services" below), which you turn on explicitly
+* No data sent anywhere outside your server by default — the optional Federated Catalog and provider-specific distribution channels require separate explicit actions (see "External services" below)
 * No API key required for public endpoints
 
 **Normalization engine:**
@@ -107,7 +107,7 @@ No, by design. The feed is discovery-only (`is_eligible_checkout=false`): custom
 
 = Does this share my data with KaliCart or any third party? =
 
-Not unless you choose to. By default the plugin runs entirely on your server and sends nothing externally. The only exception is the optional Federated Catalog feature: if you explicitly activate it, the plugin sends your store's public URL (and nothing else) to KaliCart Global so your public catalog can be included in federated agent search. No customer, order, or private data is ever sent. See "External services" below, and the privacy notice at https://bridge.kalicart.com/privacy/.
+Not unless you choose to. By default the plugin runs entirely on your server and sends nothing externally. Activating the optional Federated Catalog sends your store's public URL to KaliCart Global. A provider-specific distribution channel is a second, separate opt-in: its tamper-evident receipt contains the public URL and authorization metadata and hashes, but never the administrator identity or localized consent text. No customer, order, payment or credential data is sent. See "External services" below, and the privacy notice at https://bridge.kalicart.com/privacy/.
 
 = Do I need a KaliCart account? =
 
@@ -147,20 +147,28 @@ The benefit is practical: chatbot builders can read a structured, machine-readab
 
 == External services ==
 
-This plugin works fully standalone. It connects to one external service **only if you explicitly opt in** by activating the optional Federated Catalog feature in WP Admin → KaliCart Bridge.
+This plugin works fully standalone. It connects to one external service **only after an explicit administrator action** in WP Admin → KaliCart Bridge. Federated Catalog participation and each provider-specific distribution authorization are separate choices; a provider channel cannot be authorized until the Federated Catalog is active.
 
 **Service:** KaliCart Global (https://dashboard.kalicart.com)
 
-**When data is sent:** Only when an administrator clicks "Activate Federated Catalog" (and, symmetrically, "Revoke consent"). Nothing is sent automatically, on activation, or in the background. With the feature off, the plugin makes no external requests.
+**When data is sent:** When an administrator activates or revokes the Federated Catalog, requests its external-visibility status, or explicitly grants or revokes a named federated distribution channel. After a provider receipt exists, opening the plugin page requests its processing status using the public site URL and consent ID. A failed provider-receipt delivery may be retried twice, after approximately one minute and five minutes. Nothing is sent merely because the plugin is installed or activated.
 
-**What is sent:** A single value — your site's public URL (e.g. https://yourstore.com). On revoke, the same URL is sent to withdraw. No customer data, orders, personal data, credentials, or API keys are ever transmitted.
+**What is sent:** Federated Catalog activation, revocation and visibility checks send the site's public URL (e.g. https://yourstore.com). A provider authorization receipt additionally sends its consent ID, provider, purpose, action, UTC timestamp, plugin and terms versions, consent locale, and SHA-256 evidence-chain hashes. The administrator's WordPress user ID and localized consent text remain only in the store's local evidence log. No customer, order, payment, credential or API-key data is transmitted.
 
-**What the service does:** The URL tells KaliCart Global your store wishes to be discovered. KaliCart Global then periodically reads your already-public catalog (the same data exposed by the Bridge's public REST endpoints) and includes it in federated agent search. It only reads; it never writes to your store. Revoking stops this and parks your catalog.
+**What the service does:** The URL tells KaliCart Global your store wishes to be discovered. KaliCart Global periodically reads your already-public catalog and includes it in federated agent search. For a separately authorized provider channel, KaliCart Global stores the minimal receipt and verifies the matching authorization against the store's public discovery document before the channel can become eligible. It only reads public catalog data; it never writes to your store. Revoking the provider channel does not revoke Federated Catalog participation, and revoking federation suspends distribution without rewriting the authorization history.
 
 **Privacy notice:** https://bridge.kalicart.com/privacy/
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.132 =
+* New: provider-specific federated distribution authorizations are displayed directly below the Federated Catalog panel, separate from both federation participation and the direct merchant feed. The first registered channel is OpenAI / ChatGPT product discovery and starts off on every upgrade.
+* Consent proof is append-only and tamper-evident: every grant and revocation records the administrator, native-English terms version, localized text, locale, timestamp and a chained SHA-256 record hash in a dedicated local table. Administrators can export the full proof as JSON or CSV.
+* Privacy boundary: KaliCart Global receives only the public site URL plus the minimal receipt metadata and hashes. It never receives the WordPress user ID or localized consent text. Failed delivery receives two bounded retries; the UI distinguishes receipt delivery from Global verification.
+* Safety: a provider grant is refused unless the Federated Catalog is locally active and registered. Revoking a provider leaves federation active; revoking federation suspends provider delivery without deleting or rewriting its authorization history.
+* Integration: `/discovery` accepts the single `kalicart_consent_probe` cache-busting parameter used by KaliCart Global to verify that a submitted receipt matches the authorization currently published by the merchant. Other unknown discovery parameters remain rejected.
+* Internationalization: all new consent, state and evidence-export strings originate in English and are translated and compiled for Italian, German, French and Spanish, with no fuzzy or missing entries.
 
 = 1.0.131 =
 **Contract hardening.** Compact catalog responses now carry enough evidence for an agent to distinguish a real match, a soft-filter no-op, a valid but unobserved value and a silently wrong request.
