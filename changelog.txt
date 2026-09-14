@@ -1,5 +1,15 @@
 *** KaliCart Bridge Changelog ***
 
+2026-09-14 - version 1.0.132
+
+* New: provider-specific federated distribution authorizations are displayed directly below the Federated Catalog panel, separate from both federation participation and the direct merchant feed. The first registered channel is OpenAI / ChatGPT product discovery and starts off on every upgrade.
+* Consent proof is append-only and tamper-evident: every grant and revocation records the administrator, native-English terms version, localized text, locale, timestamp and a chained SHA-256 record hash in a dedicated local table. Administrators can export the full proof as JSON or CSV.
+* Privacy boundary: KaliCart Global receives only the public site URL plus the minimal receipt metadata and hashes. It never receives the WordPress user ID or localized consent text. Failed delivery receives two bounded retries; the UI distinguishes receipt delivery from Global verification.
+* Safety: a provider grant is refused unless the Federated Catalog is locally active and registered. Revoking a provider leaves federation active; revoking federation suspends provider delivery without deleting or rewriting its authorization history.
+* Integration: `/discovery` accepts the single `kalicart_consent_probe` cache-busting parameter used by KaliCart Global to verify that a submitted receipt matches the authorization currently published by the merchant. Other unknown discovery parameters remain rejected.
+* Internationalization: all new consent, state and evidence-export strings originate in English and are translated and compiled for Italian, German, French and Spanish, with no fuzzy or missing entries.
+
+
 2026-09-13 - version 1.0.131
 
 * New: `fields=summary` always includes `gender`, explicitly `null` when it cannot be inferred. A gender-filtered scan reuses the evidence it already computed instead of inferring it twice.
