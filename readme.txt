@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.132
+Stable tag: 1.0.133
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,15 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.133 =
+**Physical or digital, disclosed and filterable.** Agent surfaces could not tell a shippable product from a digital one without opening every candidate, and WooCommerce's own parent-level flag answers this wrongly for variable products.
+
+* New: `fields=summary` includes `shipping_required` on every record. It answers one question — would WooCommerce ask for a shipping address — so an agent can tell a physical product from a virtual, downloadable or pickup-only one while ranking, instead of fetching product detail one candidate at a time. The shipping quote, zones and free-shipping thresholds stay in `/catalog/product/{id}`.
+* Fix: `shipping_required` is now correct for variable products. `WC_Product_Variable::get_virtual()` returns false unconditionally, so WooCommerce reports every variable product as needing shipping even when all of its variations are virtual or downloadable. The value is now decided by the variations: false only when none of them needs shipping. This corrects both the catalog response and the federated sync payload.
+* New: optional `physical_only=true` filter on `/catalog/search` and `/catalog/products`, and on the `search_products` and `list_products` MCP tools. It returns only products that need shipping. It is opt-in and has no default: omitted, the catalog is served exactly as the merchant published it. A caller bound to physical goods declares that constraint itself rather than the Bridge deciding it for every store.
+* Unknown stays physical: a product whose shipping requirement cannot be determined is reported and treated as needing shipping, so nothing is hidden by a lookup failure.
+* The new filter is announced in `/discovery`, `/catalog/meta` and the OpenAPI document, and `ProductSummary` declares the new field.
 
 = 1.0.132 =
 * New: provider-specific federated distribution authorizations are displayed directly below the Federated Catalog panel, separate from both federation participation and the direct merchant feed. The first registered channel is OpenAI / ChatGPT product discovery and starts off on every upgrade.

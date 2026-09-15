@@ -305,7 +305,7 @@ class KaliCart_Bridge_MCP {
 		}
 		$per_page = is_int( $args['per_page'] ?? null ) ? min( 100, max( 1, $args['per_page'] ) ) : 10;
 		$cost     = (int) ceil( $per_page / 50 ); // MCP list/search always request summary fields.
-		foreach ( [ 'gender', 'color', 'on_sale', 'min_price', 'max_price' ] as $derived ) {
+		foreach ( [ 'gender', 'color', 'on_sale', 'physical_only', 'min_price', 'max_price' ] as $derived ) {
 			if ( array_key_exists( $derived, $args ) && null !== $args[ $derived ] && false !== $args[ $derived ] && '' !== $args[ $derived ] ) {
 				$cost += 2;
 				break;
@@ -464,6 +464,7 @@ class KaliCart_Bridge_MCP {
 			'order'     => 'string',
 			'in_stock'  => 'boolean',
 			'on_sale'   => 'boolean',
+			'physical_only' => 'boolean',
 			'min_price' => 'number',
 			'max_price' => 'number',
 		);
@@ -634,7 +635,7 @@ class KaliCart_Bridge_MCP {
 	/** Build a WP_REST_Request from tool arguments and call a catalog callback. */
 	private static function via_api( string $callback, array $args ): array {
 		$req         = new WP_REST_Request( 'GET' );
-		$passthrough = array( 'q', 'category', 'gender', 'color', 'per_page', 'page', 'orderby', 'order', 'in_stock', 'on_sale', 'min_price', 'max_price' );
+		$passthrough = array( 'q', 'category', 'gender', 'color', 'per_page', 'page', 'orderby', 'order', 'in_stock', 'on_sale', 'physical_only', 'min_price', 'max_price' );
 		foreach ( $passthrough as $key ) {
 			if ( array_key_exists( $key, $args ) && null !== $args[ $key ] ) {
 				$req->set_param( $key, $args[ $key ] );
@@ -709,6 +710,10 @@ class KaliCart_Bridge_MCP {
 			'on_sale'   => array(
 				'type'        => 'boolean',
 				'description' => 'true returns products with an active WooCommerce sale price; for variable products only some variants may be discounted, so verify price.sale_scope and the selected variant (coupon-only savings excluded).',
+			),
+			'physical_only' => array(
+				'type'        => 'boolean',
+				'description' => 'true returns only products WooCommerce reports as needing shipping, excluding virtual, downloadable and pickup-only products; on a variable product the flag aggregates its variations. Opt-in: omit it and the catalog is returned as the merchant published it. Every summary record carries shipping_required either way, so this filter changes what is returned, never what is disclosed.',
 			),
 			'per_page'  => array(
 				'type'        => 'integer',

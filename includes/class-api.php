@@ -402,6 +402,7 @@ class KaliCart_Bridge_API {
                     'min_price'  => 'Minimum current price (numeric, merchant currency).',
                     'max_price'  => 'Maximum current price (numeric, merchant currency).',
                     'in_stock'   => 'Boolean. true = in_stock products only.',
+                    'physical_only' => 'Boolean. true returns only products WooCommerce reports as needing shipping (needs_shipping()), excluding virtual, downloadable and pickup-only products. On a variable product the flag aggregates its variations. Opt-in: omitted, the catalog is returned as the merchant published it. Every summary record carries shipping_required, so this filter changes what is returned, never what is disclosed.',
 					'on_sale'    => 'Boolean. true returns products with an active WooCommerce sale price. For variable products this can mean only some size/color variants; verify price.sale_scope and the selected variation. Coupon-only savings are not included.',
                     'per_page'   => 'Results per page (1–100, default 20).',
                     'page'       => 'Page number (1–' . self::catalog_max_page() . ', default 1).',
@@ -583,15 +584,16 @@ class KaliCart_Bridge_API {
             [ 'name' => 'max_price', 'in' => 'query', 'description' => 'Maximum catalog price in decimal major currency units. Product price intervals overlap the requested range.', 'schema' => [ 'type' => 'number' ] ],
             [ 'name' => 'in_stock',  'in' => 'query', 'description' => 'Only in-stock products when true.', 'schema' => [ 'type' => 'boolean' ] ],
             [ 'name' => 'on_sale',   'in' => 'query', 'description' => 'Only on-sale products when true.', 'schema' => [ 'type' => 'boolean' ] ],
+            [ 'name' => 'physical_only', 'in' => 'query', 'description' => 'Only products that need shipping when true (excludes virtual, downloadable and pickup-only). Opt-in; omitted, nothing is filtered.', 'schema' => [ 'type' => 'boolean' ] ],
             [ 'name' => 'orderby',   'in' => 'query', 'description' => 'Sort field.', 'schema' => [ 'type' => 'string', 'enum' => [ 'date', 'price', 'title', 'popularity' ], 'default' => 'date' ] ],
             [ 'name' => 'order',     'in' => 'query', 'description' => 'Sort direction.', 'schema' => [ 'type' => 'string', 'enum' => [ 'ASC', 'DESC' ], 'default' => 'DESC' ] ],
             [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100). Parameter name is per_page; do not use limit.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
             [ 'name' => 'page',      'in' => 'query', 'description' => 'Page number.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => self::catalog_max_page(), 'default' => 1 ] ],
         ];
 
-        $fields_param_search = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is summary: a slim per-item projection (id, sku, name, url, self-describing price, stock.in_stock, categories, gender including null, type, updated_at) for low-cost triage; open /catalog/product/{id} for verification. Pass fields=full for complete records.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'summary' ] ];
+        $fields_param_search = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is summary: a slim per-item projection (id, sku, name, url, self-describing price, stock.in_stock, shipping_required, categories, gender including null, type, updated_at) for low-cost triage; open /catalog/product/{id} for verification. Pass fields=full for complete records.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'summary' ] ];
 
-        $fields_param_products = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is full (complete records); when any filter parameter (category, gender, color, min_price, max_price, in_stock, on_sale, orderby, order) is present and fields is omitted, the response switches to summary for low-cost triage. Pass fields explicitly to override.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'full' ] ];
+        $fields_param_products = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is full (complete records); when any filter parameter (category, gender, color, min_price, max_price, in_stock, on_sale, physical_only, orderby, order) is present and fields is omitted, the response switches to summary for low-cost triage. Pass fields explicitly to override.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'full' ] ];
 
         $q_param = [ 'name' => 'q', 'in' => 'query', 'description' => 'Full-text search query. Parameter name is exactly q; do not use query. Use only on /catalog/search, never on /catalog/products.', 'schema' => [ 'type' => 'string' ] ];
 
@@ -758,6 +760,7 @@ class KaliCart_Bridge_API {
                         'url'                => [ 'type' => 'string', 'format' => 'uri' ],
                         'price'              => [ '$ref' => '#/components/schemas/CatalogPrice' ],
                         'stock'              => [ 'type' => 'object', 'additionalProperties' => true ],
+                        'shipping_required'  => [ 'type' => 'boolean', 'description' => 'Whether WooCommerce would ask for a shipping address for this product. false marks a virtual, downloadable or pickup-only product. On a variable product the variations decide: false only when none of them needs shipping. Unknown resolves to true, so a product is never understated as digital. Filter on it with physical_only; the shipping quote, zones and thresholds stay in /catalog/product/{id}.' ],
                         'categories'         => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
                         'gender'             => [ 'type' => [ 'string', 'null' ] ],
                         'type'               => [ 'type' => 'string' ],
@@ -833,6 +836,7 @@ class KaliCart_Bridge_API {
             'max_price'=> $args['max_price'],
             'in_stock' => $args['in_stock'],
             'on_sale'  => $args['on_sale'] ?? null,
+            'physical_only' => $args['physical_only'] ?? null,
         ], fn( $v ) => $v !== null && $v !== '' );
         self::add_price_query_interpretation( $result, $args );
 
@@ -1132,6 +1136,7 @@ class KaliCart_Bridge_API {
                 ],
                 'boolean'  => [
                     'in_stock' => 'true returns in-stock products only',
+                    'physical_only' => 'Boolean. true returns only products WooCommerce reports as needing shipping (needs_shipping()), excluding virtual, downloadable and pickup-only products. On a variable product the flag aggregates its variations. Opt-in: omitted, the catalog is returned as the merchant published it. Every summary record carries shipping_required, so this filter changes what is returned, never what is disclosed.',
 					'on_sale'  => 'true returns products with an active WooCommerce sale price. A variable product may have only some variants discounted; price.sale_scope and the selected variation are authoritative. Coupon-only savings not included.',
                 ],
                 'size_note' => 'size is not a search filter. Use product detail /catalog/product/{id} variations field after candidate selection.',
@@ -1296,7 +1301,7 @@ class KaliCart_Bridge_API {
 					$fields = 'full';
 				}
 				$cost     = 'full' === $fields ? (int) ceil( $per_page / 10 ) : (int) ceil( $per_page / 50 );
-				foreach ( [ 'gender', 'color', 'on_sale', 'min_price', 'max_price' ] as $derived ) {
+				foreach ( [ 'gender', 'color', 'on_sale', 'physical_only', 'min_price', 'max_price' ] as $derived ) {
 					if ( isset( $query[ $derived ] ) && '' !== (string) $query[ $derived ] && 'false' !== strtolower( (string) $query[ $derived ] ) ) {
 						$cost += 2;
 						break;
@@ -1337,6 +1342,7 @@ class KaliCart_Bridge_API {
             'gender'    => substr( sanitize_text_field( $req->get_param( 'gender' ) ?? '' ), 0, 64 ),
             'color'     => substr( sanitize_text_field( $req->get_param( 'color' ) ?? '' ), 0, 64 ),
             'modified_after' => self::sanitize_iso8601( $req->get_param( 'modified_after' ) ),
+            'physical_only' => $req->get_param( 'physical_only' ) !== null ? filter_var( $req->get_param( 'physical_only' ), FILTER_VALIDATE_BOOLEAN ) : null,
             'fields'    => $req->get_param( 'fields' ) === 'summary' ? 'summary' : 'full',
         ];
     }
@@ -1402,6 +1408,11 @@ class KaliCart_Bridge_API {
             // Incremental sync: federated indexers pass an ISO-8601 timestamp to fetch
             // only products modified since their last sync (post_modified_gmt). Read-only.
             'modified_after' => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $facet_text ],
+            // Opt-in, never a default. The Bridge serves the merchant's catalog as the
+            // merchant published it; a caller bound to physical goods (a distribution
+            // channel that refuses digital items, say) declares that constraint here
+            // instead of the Bridge deciding it for every merchant.
+            'physical_only' => [ 'default' => null ],
             'fields'    => [ 'default' => 'full', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( $v, [ 'full', 'summary' ], true ) ],
         ];
         if ( $with_q ) {
@@ -1465,7 +1476,7 @@ class KaliCart_Bridge_API {
     }
 
     private static function products_request_has_commerce_filters( WP_REST_Request $req ): bool {
-        foreach ( [ 'category', 'gender', 'color', 'min_price', 'max_price', 'in_stock', 'on_sale', 'orderby', 'order' ] as $name ) {
+        foreach ( [ 'category', 'gender', 'color', 'min_price', 'max_price', 'in_stock', 'on_sale', 'physical_only', 'orderby', 'order' ] as $name ) {
             if ( self::query_param_present( $req, $name ) ) {
                 return true;
             }
@@ -1495,7 +1506,7 @@ class KaliCart_Bridge_API {
             $invalid['q'] = '/catalog/search?q=...';
         }
 
-        $accepted = [ 'category', 'per_page', 'page', 'orderby', 'order', 'in_stock', 'on_sale', 'min_price', 'max_price', 'gender', 'color', 'modified_after', 'fields' ];
+        $accepted = [ 'category', 'per_page', 'page', 'orderby', 'order', 'in_stock', 'on_sale', 'physical_only', 'min_price', 'max_price', 'gender', 'color', 'modified_after', 'fields' ];
         if ( 'search' === $endpoint ) {
             $accepted[] = 'q';
         }
@@ -1552,7 +1563,7 @@ class KaliCart_Bridge_API {
             }
         }
 
-        foreach ( [ 'category', 'gender', 'color', 'min_price', 'max_price', 'in_stock', 'on_sale', 'orderby', 'order', 'page', 'modified_after' ] as $key ) {
+        foreach ( [ 'category', 'gender', 'color', 'min_price', 'max_price', 'in_stock', 'on_sale', 'physical_only', 'orderby', 'order', 'page', 'modified_after' ] as $key ) {
             if ( self::query_param_present( $req, $key ) ) {
                 $value = $req->get_param( $key );
                 if ( $value !== null && $value !== '' ) {
@@ -1603,6 +1614,7 @@ class KaliCart_Bridge_API {
             'max_price' => $args['max_price'],
             'in_stock'  => $args['in_stock'],
             'on_sale'   => $args['on_sale'] ?? null,
+            'physical_only' => $args['physical_only'] ?? null,
         ], fn( $v ) => $v !== null && $v !== '' );
 
         $generic = [
@@ -1705,6 +1717,9 @@ class KaliCart_Bridge_API {
         if ( ( $args['on_sale'] ?? null ) === true ) {
             $filters['on_sale'] = true;
         }
+        if ( ( $args['physical_only'] ?? null ) === true ) {
+            $filters['physical_only'] = true;
+        }
         return $filters;
     }
 
@@ -1716,7 +1731,7 @@ class KaliCart_Bridge_API {
             $args['max_price'] = null;
         } elseif ( in_array( $name, [ 'category', 'gender', 'color' ], true ) ) {
             $args[ $name ] = '';
-        } elseif ( in_array( $name, [ 'in_stock', 'on_sale' ], true ) ) {
+        } elseif ( in_array( $name, [ 'in_stock', 'on_sale', 'physical_only' ], true ) ) {
             $args[ $name ] = null;
         }
         return $args;
@@ -1757,8 +1772,12 @@ class KaliCart_Bridge_API {
             'response_mode' => 'summary',
             'next_step'     => 'rank_from_summary_then_verify_one_selected_product',
             'fact_coverage' => [
-                'complete_for' => [ 'product_identity', 'catalog_price', 'sale_status', 'availability_status', 'product_url', 'category', 'gender_or_explicit_null', 'selection_required' ],
-                'detail_required_for' => [ 'exact_variants_or_sizes', 'stock_precision_beyond_status', 'shipping', 'coupons', 'purchase_readiness', 'description', 'images' ],
+                // `shipping_requirement` is the yes/no fact (does this product ship at
+                // all) and the summary settles it. `shipping` stays in
+                // detail_required_for because the quote, zones and free-shipping
+                // thresholds are a different question and still need the detail call.
+                'complete_for' => [ 'product_identity', 'catalog_price', 'sale_status', 'availability_status', 'product_url', 'category', 'gender_or_explicit_null', 'selection_required', 'shipping_requirement' ],
+                'detail_required_for' => [ 'exact_variants_or_sizes', 'stock_precision_beyond_status', 'shipping_cost_and_zones', 'coupons', 'purchase_readiness', 'description', 'images' ],
             ],
             'detail_fetch_policy' => [
                 'default_max_products'       => 1,

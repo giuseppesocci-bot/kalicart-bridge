@@ -130,6 +130,7 @@ class KaliCart_Bridge_Catalog_Engine {
             'gender'         => '',
             'color'          => '',
             'modified_after' => '',
+            'physical_only'  => null,
             'fields'         => 'full',
         ];
         $args = wp_parse_args( $args, $defaults );
@@ -144,6 +145,7 @@ class KaliCart_Bridge_Catalog_Engine {
         // from the product object so variable-parent _price drift cannot leak through.
         $has_php_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] )
                               || $args['on_sale'] === true
+                              || $args['physical_only'] === true
                               || $args['min_price'] !== null || $args['max_price'] !== null;
         $order = strtoupper( $args['order'] ) === 'ASC' ? 'ASC' : 'DESC';
 		$lookup_price = $args['min_price'] !== null || $args['max_price'] !== null || $args['orderby'] === 'price';
@@ -467,6 +469,15 @@ class KaliCart_Bridge_Catalog_Engine {
         $categories = null;
         $tags       = null;
 
+        // Evaluated before colour and gender on purpose: this is a hard constraint
+        // declared by the caller, not an inference. Excluding here means the
+        // attribute and taxonomy work below is never paid for a product the caller
+        // has already ruled out. Strict, like every filter except gender: a product
+        // WooCommerce says needs no shipping is out, it is not "unknown".
+        if ( $args['physical_only'] === true && ! self::product_needs_shipping( $product ) ) {
+            return false;
+        }
+
         if ( ! empty( $args['color'] ) ) {
             $attributes = $attributes ?? self::get_normalized_attributes( $product );
             $tags       = $tags ?? self::get_product_tags( $product );
@@ -513,6 +524,49 @@ class KaliCart_Bridge_Catalog_Engine {
         }
 
         return true;
+    }
+
+    /**
+     * Whether WooCommerce would ask for a shipping address for this product.
+     *
+     * MISURATO 2026-09-15, WooCommerce 11.1.0 — `WC_Product_Variable::get_virtual()`
+     * returns `false` UNCONDITIONALLY (class-wc-product-variable.php: "Variable
+     * products themselves cannot be virtual"). The inherited
+     * `needs_shipping()` is `! is_virtual()`, so on a variable product it is
+     * ALWAYS true no matter how its variations are configured. A merchant selling
+     * digital goods as variations — course tiers, ebook formats, license sizes —
+     * is reported as physical by WooCommerce's own accessor. Federation-wide that
+     * blind spot covered 2.072 variable products out of 5.375, none of which could
+     * ever report false. The parent flag is therefore not a usable answer here and
+     * the variations have to be consulted.
+     *
+     * Semantics follow the cart: a product needs shipping if ANY of its variations
+     * does. That short-circuits on the first physical variation, so an ordinary
+     * variable product costs one variation load, not a full walk; only an
+     * entirely-digital product pays for the whole set. Unknown stays physical —
+     * no children, or none loadable, returns true, so a product is never hidden by
+     * a lookup failure.
+     */
+    private static function product_needs_shipping( WC_Product $p ): bool {
+        if ( ! $p->is_type( 'variable' ) ) {
+            return $p->needs_shipping();
+        }
+        $children = $p->get_children();
+        if ( empty( $children ) ) {
+            return true;
+        }
+        $inspected = 0;
+        foreach ( $children as $child_id ) {
+            $variation = wc_get_product( (int) $child_id );
+            if ( ! $variation ) {
+                continue;
+            }
+            $inspected++;
+            if ( $variation->needs_shipping() ) {
+                return true;
+            }
+        }
+        return $inspected > 0 ? false : true;
     }
 
     private static function postfilter_batch_size(): int {
@@ -678,6 +732,12 @@ class KaliCart_Bridge_Catalog_Engine {
                 'url'        => get_permalink( $p->get_id() ),
                 'price'      => $price_block,
                 'stock'      => [ 'in_stock' => $p->is_in_stock() ],
+                // SHIPPING-REQUIRED-v1 — false marks a product that is never handed over
+                // physically (virtual, downloadable, pickup-only). It is the ONE shipping
+                // fact the summary carries: the quote, zones and thresholds stay in
+                // /catalog/product/{id}. Without it an agent that must reason about
+                // physical goods has to open every candidate one by one to find out.
+                'shipping_required' => self::product_needs_shipping( $p ),
                 'categories' => $categories,
                 'gender'     => $gender,
                 'type'       => $p->get_type(),
@@ -976,7 +1036,7 @@ class KaliCart_Bridge_Catalog_Engine {
             }
         }
         return [
-            'shipping_required' => $p->needs_shipping(),
+            'shipping_required' => self::product_needs_shipping( $p ),
             'shipping_class' => $p->get_shipping_class() ?: null,
             'weight' => $p->get_weight() ? (float) $p->get_weight() : null,
             'weight_unit' => get_option( 'woocommerce_weight_unit', 'kg' ),
