@@ -402,7 +402,7 @@ class KaliCart_Bridge_API {
                     'min_price'  => 'Minimum current price (numeric, merchant currency).',
                     'max_price'  => 'Maximum current price (numeric, merchant currency).',
                     'in_stock'   => 'Boolean. true = in_stock products only.',
-                    'physical_only' => 'Boolean. true returns only products WooCommerce reports as needing shipping (needs_shipping()), excluding virtual, downloadable and pickup-only products. On a variable product the flag aggregates its variations. Opt-in: omitted, the catalog is returned as the merchant published it. Every summary record carries shipping_required, so this filter changes what is returned, never what is disclosed.',
+                    'physical_only' => 'Boolean. true returns only products that require shipping according to WooCommerce product semantics. It does NOT mean "physical": a downloadable product that still ships is kept, and a pickup-only product is not identified by this flag, because WooCommerce models collection as a shipping method and not as a product property. On a variable product the value is decided by the variations. Opt-in: omitted, the catalog is returned as the merchant published it. Every summary record carries shipping_required and fulfilment, so this filter changes what is returned, never what is disclosed. To tell shipped, downloadable and collected-in-store apart, read fulfilment.',
 					'on_sale'    => 'Boolean. true returns products with an active WooCommerce sale price. For variable products this can mean only some size/color variants; verify price.sale_scope and the selected variation. Coupon-only savings are not included.',
                     'per_page'   => 'Results per page (1–100, default 20).',
                     'page'       => 'Page number (1–' . self::catalog_max_page() . ', default 1).',
@@ -584,14 +584,14 @@ class KaliCart_Bridge_API {
             [ 'name' => 'max_price', 'in' => 'query', 'description' => 'Maximum catalog price in decimal major currency units. Product price intervals overlap the requested range.', 'schema' => [ 'type' => 'number' ] ],
             [ 'name' => 'in_stock',  'in' => 'query', 'description' => 'Only in-stock products when true.', 'schema' => [ 'type' => 'boolean' ] ],
             [ 'name' => 'on_sale',   'in' => 'query', 'description' => 'Only on-sale products when true.', 'schema' => [ 'type' => 'boolean' ] ],
-            [ 'name' => 'physical_only', 'in' => 'query', 'description' => 'Only products that need shipping when true (excludes virtual, downloadable and pickup-only). Opt-in; omitted, nothing is filtered.', 'schema' => [ 'type' => 'boolean' ] ],
+            [ 'name' => 'physical_only', 'in' => 'query', 'description' => 'Only products that require shipping when true, per WooCommerce product semantics. Not a physical/digital switch: read fulfilment for shipped vs downloadable vs collected in store. Opt-in; omitted, nothing is filtered.', 'schema' => [ 'type' => 'boolean' ] ],
             [ 'name' => 'orderby',   'in' => 'query', 'description' => 'Sort field.', 'schema' => [ 'type' => 'string', 'enum' => [ 'date', 'price', 'title', 'popularity' ], 'default' => 'date' ] ],
             [ 'name' => 'order',     'in' => 'query', 'description' => 'Sort direction.', 'schema' => [ 'type' => 'string', 'enum' => [ 'ASC', 'DESC' ], 'default' => 'DESC' ] ],
             [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100). Parameter name is per_page; do not use limit.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
             [ 'name' => 'page',      'in' => 'query', 'description' => 'Page number.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => self::catalog_max_page(), 'default' => 1 ] ],
         ];
 
-        $fields_param_search = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is summary: a slim per-item projection (id, sku, name, url, self-describing price, stock.in_stock, shipping_required, categories, gender including null, type, updated_at) for low-cost triage; open /catalog/product/{id} for verification. Pass fields=full for complete records.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'summary' ] ];
+        $fields_param_search = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is summary: a slim per-item projection (id, sku, name, url, self-describing price, stock.in_stock, shipping_required, fulfilment, discovery, categories, gender including null, type, updated_at) for low-cost triage; open /catalog/product/{id} for verification. Pass fields=full for complete records.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'summary' ] ];
 
         $fields_param_products = [ 'name' => 'fields', 'in' => 'query', 'description' => 'Response verbosity. Default is full (complete records); when any filter parameter (category, gender, color, min_price, max_price, in_stock, on_sale, physical_only, orderby, order) is present and fields is omitted, the response switches to summary for low-cost triage. Pass fields explicitly to override.', 'schema' => [ 'type' => 'string', 'enum' => [ 'summary', 'full' ], 'default' => 'full' ] ];
 
@@ -760,7 +760,9 @@ class KaliCart_Bridge_API {
                         'url'                => [ 'type' => 'string', 'format' => 'uri' ],
                         'price'              => [ '$ref' => '#/components/schemas/CatalogPrice' ],
                         'stock'              => [ 'type' => 'object', 'additionalProperties' => true ],
-                        'shipping_required'  => [ 'type' => 'boolean', 'description' => 'Whether WooCommerce would ask for a shipping address for this product. false marks a virtual, downloadable or pickup-only product. On a variable product the variations decide: false only when none of them needs shipping. Unknown resolves to true, so a product is never understated as digital. Filter on it with physical_only; the shipping quote, zones and thresholds stay in /catalog/product/{id}.' ],
+                        'shipping_required'  => [ 'type' => 'boolean', 'description' => 'Whether the product requires shipping according to WooCommerce product semantics. On a variable product the variations decide: false only when none of them requires shipping. Unknown resolves to true. Filter on it with physical_only; the shipping quote, zones and thresholds stay in /catalog/product/{id}.' ],
+                        'discovery'          => [ 'type' => 'object', 'additionalProperties' => true, 'description' => 'Where the merchant lets this product be found, mirroring WooCommerce catalog visibility one to one. in_catalog: listed in the shop catalog, so reachable by browsing and categories. in_search: returned for a text query. A product excluded from the catalog but kept in search is on sale and purchasable — it is looked up rather than browsed to, and its absence from category listings is not unavailability. A product excluded from both is not served at all.' ],
+                        'fulfilment'         => [ 'type' => 'string', 'enum' => [ 'shipped', 'downloadable', 'pickup_only' ], 'description' => 'How the buyer obtains this product. shipped: delivered to an address. downloadable: obtained as a download. pickup_only: requires no shipping and is not a download, so it is a physical item collected from the merchant. Derived from the product, not from the store shipping methods; /catalog/product/{id} names the collection methods the store has configured.' ],
                         'categories'         => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
                         'gender'             => [ 'type' => [ 'string', 'null' ] ],
                         'type'               => [ 'type' => 'string' ],
@@ -939,6 +941,21 @@ class KaliCart_Bridge_API {
         $p = wc_get_product( $id );
 
         if ( ! $p || $p->get_status() !== 'publish' ) {
+            return self::error( 'Product not found.', 404 );
+        }
+
+        // CATALOG-VISIBILITY-v1 — un prodotto che il merchant ha messo su "Nascosto"
+        // non esiste per un agente, nemmeno chiedendolo per ID: altrimenti basterebbe
+        // conoscere il numero per aggirare la scelta del merchant. Gli altri due stati
+        // NON sono esclusioni: "solo catalogo" e "solo ricerca" limitano DOVE si trova
+        // il prodotto, non se si puo' verificare quello che si e' gia' trovato, e la
+        // verifica per ID e' per definizione un accesso a colpo sicuro.
+        // "Nascosto" non si verifica nemmeno per ID: e' l'unico stato in cui il
+        // merchant dice "questo non si mostra", e conoscere il numero non deve
+        // bastare per aggirarlo. Gli altri due limitano DOVE si trova il prodotto,
+        // non se esiste: la verifica per ID arriva sempre dopo che lo si e' gia'
+        // trovato, quindi li' non toglie nulla a nessuno.
+        if ( 'hidden' === $p->get_catalog_visibility() ) {
             return self::error( 'Product not found.', 404 );
         }
 
@@ -1136,7 +1153,7 @@ class KaliCart_Bridge_API {
                 ],
                 'boolean'  => [
                     'in_stock' => 'true returns in-stock products only',
-                    'physical_only' => 'Boolean. true returns only products WooCommerce reports as needing shipping (needs_shipping()), excluding virtual, downloadable and pickup-only products. On a variable product the flag aggregates its variations. Opt-in: omitted, the catalog is returned as the merchant published it. Every summary record carries shipping_required, so this filter changes what is returned, never what is disclosed.',
+                    'physical_only' => 'Boolean. true returns only products that require shipping according to WooCommerce product semantics. It does NOT mean "physical": a downloadable product that still ships is kept, and a pickup-only product is not identified by this flag, because WooCommerce models collection as a shipping method and not as a product property. On a variable product the value is decided by the variations. Opt-in: omitted, the catalog is returned as the merchant published it. Every summary record carries shipping_required and fulfilment, so this filter changes what is returned, never what is disclosed. To tell shipped, downloadable and collected-in-store apart, read fulfilment.',
 					'on_sale'  => 'true returns products with an active WooCommerce sale price. A variable product may have only some variants discounted; price.sale_scope and the selected variation are authoritative. Coupon-only savings not included.',
                 ],
                 'size_note' => 'size is not a search filter. Use product detail /catalog/product/{id} variations field after candidate selection.',
@@ -1866,8 +1883,24 @@ class KaliCart_Bridge_API {
             'price'              => $compact_price( $product['price'] ?? [] ),
             'stock'              => $compact_stock( $product['stock'] ?? [] ),
             'attributes'         => $product['attributes'] ?? [],
-            'shipping'           => [
+            // La proiezione di verifica elencava le condizioni di spedizione SEMPRE,
+            // con `?? null`: anche quando il motore aveva gia' smesso di emetterle
+            // perche' il prodotto non si spedisce, qui rientravano dalla finestra e
+            // l'agente rileggeva la contraddizione. Si sceglie il blocco, non i
+            // singoli campi.
+            'shipping'           => ( ( $shipping['shipping_required'] ?? null ) === false )
+                ? [
+                    'shipping_required'      => false,
+                    'fulfilment'             => $shipping['fulfilment'] ?? 'no_shipping_required',
+                    'local_pickup_available' => $shipping['local_pickup_available'] ?? false,
+                    'local_pickup'           => $shipping['local_pickup'] ?? null,
+                    'delivery_note'          => $shipping['delivery_note'] ?? null,
+                    'merchant_policy_url'    => rest_url( KALICART_BRIDGE_API_NS . '/catalog/meta' ),
+                    'authority'              => $shipping['authority'] ?? 'woocommerce_checkout',
+                ]
+                : [
                 'shipping_required'                       => $shipping['shipping_required'] ?? null,
+                'fulfilment'                               => $shipping['fulfilment'] ?? 'shipped',
                 'free_shipping_available'                  => $shipping['free_shipping_available'] ?? null,
                 'free_shipping_thresholds'                 => $shipping['free_shipping_thresholds'] ?? [],
                 'free_shipping_eligible_by_product_price'  => $shipping['free_shipping_eligible_by_product_price'] ?? null,

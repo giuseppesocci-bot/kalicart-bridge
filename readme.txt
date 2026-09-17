@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.133
+Stable tag: 1.0.134
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,15 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.134 =
+**The catalog is a mirror of the shop.** It shows everything the merchant sells and says how each product is obtained; it hides what the merchant has hidden; and it no longer states shipping conditions for products that are not shipped.
+
+* New: every record carries `fulfilment` — `shipped`, `downloadable` or `pickup_only`. An agent can now tell what arrives at an address, what is downloaded and what is a physical item collected from the merchant, while ranking candidates and without opening each one. Decided from the product, not from the store's shipping methods.
+* Fix: a product that requires no shipping no longer carries the store's shipping conditions. It previously reported `shipping_required: false` and, in the same object, free-shipping availability, thresholds and how much was missing to reach one — facts that contradicted each other, where an agent reading the second concluded the opposite of the first. Those fields are now omitted and replaced by how the product is actually obtained, including the merchant's local pickup methods when configured.
+* Fix: `fulfilment` is correct for variable products. `WC_Product_Variable::get_downloadable()` returns false unconditionally, exactly like `get_virtual()`, so a variable product made entirely of downloadable variations was not recognised as a download. The variations now decide.
+* Fix: the catalog now respects WooCommerce catalog visibility. A product set to "Hidden" was still served, including by direct ID lookup — an explicit merchant decision silently ignored. "Hidden" is now excluded everywhere. "Shop only" and "Search results only" are honoured exactly as WooCommerce honours them, each limiting where the product is found rather than whether it exists: if the shop still sells it, the Bridge still shows it, in the same place the shop would. Every record now also reports `catalog_visibility`, so the federated index can see the merchant's choice instead of inferring it.
+* Fix: `shipping_required` and `physical_only` are documented for what they do. They described themselves as excluding "virtual, downloadable and pickup-only" products, and two of those three were wrong: a downloadable product that still ships requires shipping, and collection in store is a shipping method rather than a product property. Read `fulfilment` to tell the three cases apart.
 
 = 1.0.133 =
 **Physical or digital, disclosed and filterable.** Agent surfaces could not tell a shippable product from a digital one without opening every candidate, and WooCommerce's own parent-level flag answers this wrongly for variable products.

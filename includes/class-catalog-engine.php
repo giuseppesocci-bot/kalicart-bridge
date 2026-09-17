@@ -183,6 +183,31 @@ class KaliCart_Bridge_Catalog_Engine {
             $query_args['s'] = sanitize_text_field( $args['search'] );
         }
 
+        // CATALOG-VISIBILITY-v1 — il catalogo agentico e' lo SPECCHIO del negozio.
+        // Fino alla 1.0.133 qui si filtrava solo `post_status`, quindi un prodotto
+        // messo su "Nascosto" veniva servito lo stesso: una scelta esplicita del
+        // merchant ignorata in silenzio.
+        //
+        // Si rispettano i due termini di WooCommerce uno a uno, che e' anche il modo
+        // piu' semplice di scriverlo: in navigazione cade chi e' escluso dal
+        // catalogo, nella ricerca testuale chi e' escluso dalla ricerca. Ne segue da
+        // solo che "Nascosto" (entrambi i termini) sparisce da tutto, "Solo negozio"
+        // vive negli scaffali e "Solo risultati di ricerca" lo trova chi lo cerca —
+        // esattamente come sul sito del merchant. Se su WooCommerce il prodotto
+        // esiste e si vende, il Bridge lo mostra dove il negozio lo mostrerebbe.
+        //
+        // Non si va oltre finche' non si sa PERCHE' un merchant declassa un prodotto
+        // (ricambio fuori vetrina? articolo linkato da una campagna? fondo di
+        // magazzino?). Oggi quel dato non esiste: 0 prodotti su 5.373 federati lo
+        // portano, perche' il Bridge non lo ha mai inviato. Da questa versione lo
+        // invia, cosi' la domanda avra' una risposta misurata e non una supposizione.
+        $query_args['tax_query'][] = [
+            'taxonomy' => 'product_visibility',
+            'field'    => 'name',
+            'terms'    => [ empty( $args['search'] ) ? 'exclude-from-catalog' : 'exclude-from-search' ],
+            'operator' => 'NOT IN',
+        ];
+
         if ( ! empty( $args['category'] ) ) {
             $query_args['tax_query'][] = [
                 'taxonomy'         => 'product_cat',
@@ -732,12 +757,34 @@ class KaliCart_Bridge_Catalog_Engine {
                 'url'        => get_permalink( $p->get_id() ),
                 'price'      => $price_block,
                 'stock'      => [ 'in_stock' => $p->is_in_stock() ],
-                // SHIPPING-REQUIRED-v1 — false marks a product that is never handed over
-                // physically (virtual, downloadable, pickup-only). It is the ONE shipping
+                // SHIPPING-REQUIRED-v1 — dice se WooCommerce chiederebbe un indirizzo di
+                // spedizione, e SOLO quello: non e' "fisico contro digitale". Uno
+                // scaricabile che si spedisce comunque resta true, e il ritiro in negozio
+                // non lo distingue affatto, perche' Woo lo modella come metodo di
+                // spedizione e non come proprieta' del prodotto. Per le tre risposte che
+                // servono davvero c'e' `fulfilment`. E' la ONE shipping
                 // fact the summary carries: the quote, zones and thresholds stay in
                 // /catalog/product/{id}. Without it an agent that must reason about
                 // physical goods has to open every candidate one by one to find out.
                 'shipping_required' => self::product_needs_shipping( $p ),
+                // FULFILMENT-v1 — come si ottiene: shipped | downloadable | pickup_only.
+                // Il catalogo e' lo specchio del negozio, quindi non nasconde un
+                // prodotto perche' non si spedisce: dice cosa arriva a casa, cosa si
+                // scarica e cosa si ritira in sede. Sta nel summary perche' e' li'
+                // che l'agente sceglie, e scegliere senza questo significa proporre
+                // una consegna che non esiste.
+                'fulfilment' => self::product_fulfilment( $p ),
+                // DISCOVERY-SCOPE-v1 — il Bridge AFFERMA quel che afferma il negozio.
+                // Un prodotto fuori dal catalogo ma in ricerca non deve essere dedotto
+                // dall'assenza altrove: un agente che non lo vede navigando non puo'
+                // sapere se non esiste, se e' esaurito o se il merchant lo ha tolto
+                // dalla vetrina. Sono tre conclusioni diverse e solo una e' vera.
+                // I due booleani sono i due termini di WooCommerce resi leggibili,
+                // uno a uno, senza aggiungere significato.
+                'discovery' => [
+                    'in_catalog' => self::product_in_catalog( $p ),
+                    'in_search'  => self::product_in_search( $p ),
+                ],
                 'categories' => $categories,
                 'gender'     => $gender,
                 'type'       => $p->get_type(),
@@ -749,6 +796,7 @@ class KaliCart_Bridge_Catalog_Engine {
         // ── Compute once, reuse everywhere ───────────────────────────────────
         $id                 = $p->get_id();
         $type               = $p->get_type();
+
         $price_data         = self::compute_price( $p );
         $categories         = self::get_product_categories( $p );
         $tags               = self::get_product_tags( $p );
@@ -827,6 +875,19 @@ class KaliCart_Bridge_Catalog_Engine {
             'slug'            => $p->get_slug(),
             'url'             => get_permalink( $id ),
             'status'          => $p->get_status(),
+            // La superficie espone, non interpreta: Global riceve lo stato di
+            // visibilita' cosi' com'e' e potra' decidere con i dati invece che per
+            // deduzione. Oggi 0 prodotti su 5.373 federati lo portano.
+            'catalog_visibility' => $p->get_catalog_visibility(),
+            'discovery' => [
+                'in_catalog' => self::product_in_catalog( $p ),
+                'in_search'  => self::product_in_search( $p ),
+                'note' => self::product_in_catalog( $p )
+                    ? ( self::product_in_search( $p )
+                        ? 'Listed in the shop catalog and findable by search, like any ordinary product.'
+                        : 'The merchant lists this product in the shop catalog but keeps it out of search results. It is on the shelf; it is just not returned for a text query.' )
+                    : 'The merchant keeps this product out of the shop catalog but findable by search. It is on sale and purchasable: it is simply not browsed to, it is looked up. Do not read its absence from category listings as unavailability.',
+            ],
             'description'     => wp_strip_all_tags( $p->get_description() ) ?: null,
             'short_description' => wp_strip_all_tags( $p->get_short_description() ) ?: null,
             'price'           => $price_data,
@@ -1024,7 +1085,115 @@ class KaliCart_Bridge_Catalog_Engine {
         return $out;
     }
 
+    /**
+     * Se il prodotto si scarica.
+     *
+     * Stessa cecita' di `get_virtual()`: `WC_Product_Variable::get_downloadable()`
+     * ritorna `false` INCONDIZIONATAMENTE ("Variable products themselves cannot be
+     * downloadable", Woo 11.1.0), quindi sul parent non dice nulla e vanno lette
+     * le varianti.
+     *
+     * Per dire che il PRODOTTO si scarica devono scaricarsi TUTTE le varianti: se
+     * anche solo un modo di comprarlo non produce un download, il prodotto non e'
+     * un download. Ignoto -> non scaricabile, coerente con "ignoto resta fisico".
+     */
+    private static function product_is_downloadable( WC_Product $p ): bool {
+        if ( ! $p->is_type( 'variable' ) ) {
+            return $p->is_downloadable();
+        }
+        $inspected = 0;
+        foreach ( $p->get_children() as $child_id ) {
+            $variation = wc_get_product( (int) $child_id );
+            if ( ! $variation ) {
+                continue;
+            }
+            $inspected++;
+            if ( ! $variation->is_downloadable() ) {
+                return false;
+            }
+        }
+        return $inspected > 0;
+    }
+
+    /**
+     * Come si ottiene il prodotto, deciso dal PRODOTTO e non dal negozio.
+     *
+     * Tre casi, che sono le tre cose che un catalogo-specchio deve saper dire:
+     * cosa ti arriva a casa, cosa scarichi, cosa ritiri in sede.
+     *
+     * `pickup_only` non e' un'inferenza dalla configurazione del negozio — quello
+     * sarebbe un fatto del negozio applicato a un prodotto, e in un negozio con
+     * ritiro attivo avrebbe etichettato "si ritira in sede" anche un ebook. E'
+     * una deduzione dal prodotto: se non si spedisce e non si scarica, allora
+     * esiste fisicamente e da qualche parte si ritira. Dove, lo dicono i metodi
+     * di ritiro del negozio, che restano un fatto separato.
+     */
+    /** Il prodotto compare negli scaffali del negozio (navigazione e categorie). */
+    private static function product_in_catalog( WC_Product $p ): bool {
+        return ! in_array( $p->get_catalog_visibility(), [ 'search', 'hidden' ], true );
+    }
+
+    /** Il prodotto e' trovabile cercandolo. */
+    private static function product_in_search( WC_Product $p ): bool {
+        return ! in_array( $p->get_catalog_visibility(), [ 'catalog', 'hidden' ], true );
+    }
+
+    private static function product_fulfilment( WC_Product $p ): string {
+        if ( self::product_needs_shipping( $p ) ) {
+            return 'shipped';
+        }
+        return self::product_is_downloadable( $p ) ? 'downloadable' : 'pickup_only';
+    }
+
+    /**
+     * I metodi di ritiro in negozio configurati dal merchant, se ce ne sono.
+     * Le zone il Bridge le raccoglie gia'; qui si estrae solo il ritiro, che e'
+     * l'unico modo documentato di ottenere un prodotto che non viene spedito.
+     */
+    private static function local_pickup_methods(): array {
+        $out = [];
+        foreach ( self::get_shipping_zones() as $zone ) {
+            foreach ( $zone['methods'] ?? [] as $method ) {
+                if ( ( $method['id'] ?? $method['method_id'] ?? '' ) !== 'local_pickup' ) {
+                    continue;
+                }
+                $out[] = [
+                    'zone'  => $zone['zone'] ?? $zone['name'] ?? null,
+                    'title' => $method['title'] ?? null,
+                ];
+            }
+        }
+        return $out;
+    }
+
     private static function product_shipping_policy( WC_Product $p, array $price_data ): array {
+        // FULFILMENT-COHERENCE-v1 — un prodotto che non si spedisce non puo'
+        // portarsi dietro le condizioni di spedizione del negozio. Prima di questa
+        // versione il blocco diceva `shipping_required: false` e nella riga dopo
+        // `free_shipping_available: true` con quanto mancava alla soglia: due fatti
+        // che si contraddicono nello stesso oggetto, e un agente che legge il
+        // secondo conclude l'opposto del primo. La policy del negozio vale per
+        // cio' che il negozio spedisce; per il resto si dice come lo si ottiene.
+        if ( ! self::product_needs_shipping( $p ) ) {
+            $pickup      = self::local_pickup_methods();
+            $fulfilment  = self::product_fulfilment( $p );
+            $is_download = 'downloadable' === $fulfilment;
+            return [
+                'shipping_required' => false,
+                'fulfilment' => $fulfilment,
+                'local_pickup_available' => ! $is_download && ! empty( $pickup ),
+                'local_pickup' => $is_download ? null : ( $pickup ?: null ),
+                'delivery_note' => $is_download
+                    ? 'This product is downloaded, not delivered. Shipping costs, free-shipping thresholds and delivery estimates do not apply to it.'
+                    : ( $pickup
+                        ? 'This product is not shipped and is not a download: it is a physical item collected in store. Shipping costs, free-shipping thresholds and delivery estimates do not apply to it.'
+                        : 'This product is not shipped and is not a download, so it is collected from the merchant. The store has no local pickup method configured, so the collection point is not described here: ask the merchant. Shipping costs, free-shipping thresholds and delivery estimates do not apply to it.' ),
+                'zones'     => [],
+                'authority' => 'woocommerce_checkout',
+                'note' => 'Fulfilment for a product WooCommerce reports as not requiring shipping. Store shipping conditions are deliberately omitted: they do not apply here.',
+            ];
+        }
+
         $policy = self::merchant_shipping_policy();
         $price = self::effective_product_price_for_conditions( $price_data );
         $thresholds = $policy['free_shipping_thresholds'] ?? [];
@@ -1036,7 +1205,8 @@ class KaliCart_Bridge_Catalog_Engine {
             }
         }
         return [
-            'shipping_required' => self::product_needs_shipping( $p ),
+            'shipping_required' => true,
+            'fulfilment' => 'shipped',
             'shipping_class' => $p->get_shipping_class() ?: null,
             'weight' => $p->get_weight() ? (float) $p->get_weight() : null,
             'weight_unit' => get_option( 'woocommerce_weight_unit', 'kg' ),

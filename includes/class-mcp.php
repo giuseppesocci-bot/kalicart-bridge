@@ -713,7 +713,7 @@ class KaliCart_Bridge_MCP {
 			),
 			'physical_only' => array(
 				'type'        => 'boolean',
-				'description' => 'true returns only products WooCommerce reports as needing shipping, excluding virtual, downloadable and pickup-only products; on a variable product the flag aggregates its variations. Opt-in: omit it and the catalog is returned as the merchant published it. Every summary record carries shipping_required either way, so this filter changes what is returned, never what is disclosed.',
+				'description' => 'true returns only products that require shipping per WooCommerce product semantics; on a variable product the variations decide. It is not a physical/digital switch: a downloadable product that still ships is kept, and collection in store is a shipping method rather than a product property. Opt-in: omit it and the catalog is returned as the merchant published it. Read fulfilment (shipped | downloadable | pickup_only) to tell the three apart.',
 			),
 			'per_page'  => array(
 				'type'        => 'integer',
