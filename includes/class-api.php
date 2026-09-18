@@ -406,7 +406,8 @@ class KaliCart_Bridge_API {
 					'on_sale'    => 'Boolean. true returns products with an active WooCommerce sale price. For variable products this can mean only some size/color variants; verify price.sale_scope and the selected variation. Coupon-only savings are not included.',
                     'per_page'   => 'Results per page (1–100, default 20).',
                     'page'       => 'Page number (1–' . self::catalog_max_page() . ', default 1).',
-                    'orderby'    => 'Sort: date (default), price, title, popularity.',
+                    'orderby'    => 'Sort: date (default), price, title, popularity, id. Use id with order=asc, plus after_id, to walk the whole catalog in repeatable pages.',
+                    'after_id'   => 'Integer threshold: only products with a greater id. Meant for orderby=id&order=asc, to resume a walk without rereading or skipping.',
                     'order'      => 'ASC or DESC (default DESC).',
                     'fields'     => 'List/search verbosity. summary = slim per-item projection for low-cost triage; full = complete records. Single-product /catalog/product/{id} defaults to compact verification data; append ?fields=full only when description or images are required. per_page 1-100 applies to list/search.',
                 ],
@@ -585,7 +586,8 @@ class KaliCart_Bridge_API {
             [ 'name' => 'in_stock',  'in' => 'query', 'description' => 'Only in-stock products when true.', 'schema' => [ 'type' => 'boolean' ] ],
             [ 'name' => 'on_sale',   'in' => 'query', 'description' => 'Only on-sale products when true.', 'schema' => [ 'type' => 'boolean' ] ],
             [ 'name' => 'physical_only', 'in' => 'query', 'description' => 'Only products that require shipping when true, per WooCommerce product semantics. Not a physical/digital switch: read fulfilment for shipped vs downloadable vs collected in store. Opt-in; omitted, nothing is filtered.', 'schema' => [ 'type' => 'boolean' ] ],
-            [ 'name' => 'orderby',   'in' => 'query', 'description' => 'Sort field.', 'schema' => [ 'type' => 'string', 'enum' => [ 'date', 'price', 'title', 'popularity' ], 'default' => 'date' ] ],
+            [ 'name' => 'orderby',   'in' => 'query', 'description' => 'Sort field. Use id with order=asc to walk the whole catalog in repeatable pages: it is the only field that never changes, so pages already read do not shift under the reader.', 'schema' => [ 'type' => 'string', 'enum' => [ 'date', 'price', 'title', 'popularity', 'id' ], 'default' => 'date' ] ],
+            [ 'name' => 'after_id',  'in' => 'query', 'description' => 'Return only products whose id is greater than this. A threshold, not a pointer: if that product has since been deleted, the boundary still works. Intended with orderby=id&order=asc to resume a full catalog walk.', 'schema' => [ 'type' => 'integer', 'minimum' => 0 ] ],
             [ 'name' => 'order',     'in' => 'query', 'description' => 'Sort direction.', 'schema' => [ 'type' => 'string', 'enum' => [ 'ASC', 'DESC' ], 'default' => 'DESC' ] ],
             [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100). Parameter name is per_page; do not use limit.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
             [ 'name' => 'page',      'in' => 'query', 'description' => 'Page number.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => self::catalog_max_page(), 'default' => 1 ] ],
@@ -693,6 +695,52 @@ class KaliCart_Bridge_API {
                         'discount_pct_scope' => [ 'type' => [ 'string', 'null' ] ],
                         'sale_note'          => [ 'type' => [ 'string', 'null' ] ],
                         'display'            => [ 'type' => [ 'string', 'null' ] ],
+                        'range_over'         => [ 'type' => [ 'string', 'null' ], 'enum' => [ 'variants', 'group_components', null ], 'description' => 'What the extremes of a type=range price are taken over, and it changes how the range must be read. variants: the buyer picks ONE variation, so current is the cheapest choice available. group_components: this is a grouped product whose components are each bought on their own, so current is the cheapest item in the group and never the price of the product — see the group block. null on type=fixed.' ],
+                        'scheduled_promotion' => [
+                            'type'        => [ 'object', 'null' ],
+                            'description' => 'A sale price the merchant has recorded that is NOT the price charged now: its window has not opened yet, or it has closed. Present only in that case; null whenever the sale price is the price being charged, in which case it is already in sale/current. Never quote sale_price from here — quote price.current.',
+                            'additionalProperties' => false,
+                            'properties'  => [
+                                'sale_price' => [ 'type' => 'number' ],
+                                'state'      => [ 'type' => 'string', 'enum' => [ 'scheduled', 'ended', 'not_active' ], 'description' => 'scheduled: the window opens in the future. ended: it has closed. not_active: the merchant left a sale price recorded with no window that explains it.' ],
+                                'starts_at'  => [ 'type' => [ 'string', 'null' ], 'format' => 'date-time' ],
+                                'ends_at'    => [ 'type' => [ 'string', 'null' ], 'format' => 'date-time' ],
+                                'agent_note' => [ 'type' => 'string' ],
+                            ],
+                        ],
+                    ],
+                ],
+                'ProductGroup' => [
+                    'type'                 => 'object',
+                    'description'          => 'Present (non-null) when the product is a group: several products sold together. null on every ordinary product. Read sold_as first — it decides everything else.',
+                    'additionalProperties' => false,
+                    'properties'           => [
+                        'group_type'   => [ 'type' => 'string', 'description' => 'How the merchant built the group: grouped (native WooCommerce), woosb (WPC Product Bundles), or the name of a bundling plugin the Bridge recognises but cannot read.' ],
+                        'resolved'     => [ 'type' => 'boolean', 'description' => 'false when the components are stored by a plugin whose format the Bridge does not support: the product IS a group, but components, counts and totals are unknown and are reported as null rather than guessed.' ],
+                        'sold_as'      => [
+                            'type' => 'string',
+                            'enum' => [ 'one_item', 'individual_components' ],
+                            'description' => 'one_item: the whole group is bought in one go at price.current, and checkout_url adds it to the cart. individual_components: it is a display of products bought separately — there is no single price, price is a range over the components, and variants is empty by construction.',
+                        ],
+                        'components_count'         => [ 'type' => [ 'integer', 'null' ] ],
+                        'components'               => [
+                            'type'        => 'array',
+                            'description' => 'The products inside the group. quantity is how many of that component the group includes; min_quantity/max_quantity and optional describe what the buyer may change. url, price_current and price_regular are present on the product verification call.',
+                            'items'       => [ 'type' => 'object', 'additionalProperties' => true ],
+                        ],
+                        'components_list_total'    => [ 'type' => [ 'number', 'null' ], 'description' => 'Sum of the components list prices, quantities included. null when any component has no price.' ],
+                        'components_current_total' => [ 'type' => [ 'number', 'null' ], 'description' => 'Sum of what the same components cost bought separately TODAY, their own sales included. This — not components_list_total — is the number to compare with price.current to answer whether the group is worth it.' ],
+                        'group_discount'           => [
+                            'type'        => [ 'object', 'null' ],
+                            'description' => 'What the group takes off on top of the components own prices, when the merchant expresses it as a discount rather than a hand-written price. null when the group price is set directly: it is then already in price.current.',
+                            'additionalProperties' => false,
+                            'properties'  => [
+                                'type'       => [ 'type' => 'string', 'enum' => [ 'percentage', 'fixed_amount' ] ],
+                                'value'      => [ 'type' => 'number' ],
+                                'applies_to' => [ 'type' => 'string' ],
+                            ],
+                        ],
+                        'agent_note'   => [ 'type' => 'string' ],
                     ],
                 ],
                 'DealStatistics' => [
@@ -740,6 +788,7 @@ class KaliCart_Bridge_API {
                         'url'        => [ 'type' => 'string', 'format' => 'uri' ],
                         'price'      => [ '$ref' => '#/components/schemas/CatalogPrice' ],
                         'stock'      => [ 'type' => 'object', 'additionalProperties' => true ],
+                        'group'      => [ 'oneOf' => [ [ '$ref' => '#/components/schemas/ProductGroup' ], [ 'type' => 'null' ] ], 'description' => 'Non-null only on a group of products sold together. When it is non-null, read it before quoting anything: it says whether the group is one purchase or a shelf of separate ones.' ],
                         'categories' => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
                         'attributes' => [
                             'type'        => 'array',
@@ -766,7 +815,7 @@ class KaliCart_Bridge_API {
                         'categories'         => [ 'type' => 'array', 'items' => [ 'type' => 'string' ] ],
                         'gender'             => [ 'type' => [ 'string', 'null' ] ],
                         'type'               => [ 'type' => 'string' ],
-                        'selection_required' => [ 'type' => 'boolean' ],
+                        'selection_required' => [ 'type' => 'boolean', 'description' => 'true when the buyer cannot be quoted a single price from this record alone. Three causes, all of them here: a variable product whose variation must be chosen, a grouped product whose components are bought one by one (price.range_over = group_components), and a bundle with optional components. Verify with /catalog/product/{id} before quoting.' ],
                         'updated_at'         => [ 'type' => 'string', 'format' => 'date-time' ],
                     ],
                 ],
@@ -1350,7 +1399,10 @@ class KaliCart_Bridge_API {
             'category'  => substr( sanitize_text_field( $req->get_param( 'category' ) ?? '' ), 0, 200 ),
             'per_page'  => min( 100, max( 1, absint( $req->get_param( 'per_page' ) ?? 20 ) ) ),
             'page'      => max( 1, absint( $req->get_param( 'page' ) ?? 1 ) ),
-            'orderby'   => in_array( $req->get_param( 'orderby' ), [ 'date', 'price', 'title', 'popularity' ], true ) ? $req->get_param( 'orderby' ) : 'date',
+            'orderby'   => in_array( $req->get_param( 'orderby' ), [ 'date', 'price', 'title', 'popularity', 'id' ], true ) ? $req->get_param( 'orderby' ) : 'date',
+            // CAMMINATA-STABILE-v1 (1.0.135) — soglia, non puntatore: "dammi
+            // quelli dopo il numero N". Vedi il commento in query_products().
+            'after_id'  => $req->get_param( 'after_id' ) !== null ? absint( $req->get_param( 'after_id' ) ) : null,
             'order'     => strtoupper( $req->get_param( 'order' ) ?? 'DESC' ) === 'ASC' ? 'ASC' : 'DESC',
             'in_stock'  => $req->get_param( 'in_stock' ) !== null ? filter_var( $req->get_param( 'in_stock' ), FILTER_VALIDATE_BOOLEAN ) : null,
             'on_sale'   => $req->get_param( 'on_sale' ) !== null ? filter_var( $req->get_param( 'on_sale' ), FILTER_VALIDATE_BOOLEAN ) : null,
@@ -1408,7 +1460,8 @@ class KaliCart_Bridge_API {
             'category'  => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $short_text ],
             'per_page'  => [ 'default' => 20, 'sanitize_callback' => 'absint', 'validate_callback' => static fn( $v ): bool => filter_var( $v, FILTER_VALIDATE_INT ) !== false && (int) $v >= 1 && (int) $v <= 100 ],
             'page'      => [ 'default' => 1,  'sanitize_callback' => 'absint', 'validate_callback' => static fn( $v ): bool => filter_var( $v, FILTER_VALIDATE_INT ) !== false && (int) $v >= 1 && (int) $v <= $max_page ],
-            'orderby'   => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( $v, [ 'date', 'price', 'title', 'popularity' ], true ) ],
+            'orderby'   => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( $v, [ 'date', 'price', 'title', 'popularity', 'id' ], true ) ],
+            'after_id'  => [ 'default' => null, 'sanitize_callback' => 'absint', 'validate_callback' => static fn( $v ): bool => $v === null || ( filter_var( $v, FILTER_VALIDATE_INT ) !== false && (int) $v >= 0 ) ],
             'order'     => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( strtoupper( (string) $v ), [ 'ASC', 'DESC' ], true ) ],
             'in_stock'  => [ 'default' => null ],
             'on_sale'   => [ 'default' => null ],
@@ -1523,7 +1576,7 @@ class KaliCart_Bridge_API {
             $invalid['q'] = '/catalog/search?q=...';
         }
 
-        $accepted = [ 'category', 'per_page', 'page', 'orderby', 'order', 'in_stock', 'on_sale', 'physical_only', 'min_price', 'max_price', 'gender', 'color', 'modified_after', 'fields' ];
+        $accepted = [ 'category', 'per_page', 'page', 'orderby', 'order', 'in_stock', 'on_sale', 'physical_only', 'min_price', 'max_price', 'gender', 'color', 'modified_after', 'fields', 'after_id' ];
         if ( 'search' === $endpoint ) {
             $accepted[] = 'q';
         }
@@ -1580,7 +1633,7 @@ class KaliCart_Bridge_API {
             }
         }
 
-        foreach ( [ 'category', 'gender', 'color', 'min_price', 'max_price', 'in_stock', 'on_sale', 'physical_only', 'orderby', 'order', 'page', 'modified_after' ] as $key ) {
+        foreach ( [ 'category', 'gender', 'color', 'min_price', 'max_price', 'in_stock', 'on_sale', 'physical_only', 'orderby', 'order', 'page', 'modified_after', 'after_id' ] as $key ) {
             if ( self::query_param_present( $req, $key ) ) {
                 $value = $req->get_param( $key );
                 if ( $value !== null && $value !== '' ) {
@@ -1818,8 +1871,14 @@ class KaliCart_Bridge_API {
                 // PRICE-INTERVAL-v1 — vedi class-catalog-engine.php: su un variabile
                 // `current` e' l'estremo basso. `type` e `max_current` lo dichiarano.
                 'type'            => $price['type'] ?? null,
+                // `range_over` dice se gli estremi sono variazioni (se ne sceglie
+                // UNA) o componenti di un gruppo (si comprano uno per uno). Senza,
+                // i due intervalli sono indistinguibili e `current` viene letto
+                // come "il prezzo" in entrambi i casi.
+                'range_over'      => $price['range_over'] ?? null,
                 'current'         => $price['current'] ?? null,
                 'max_current'     => $price['max_current'] ?? null,
+                'sale_note'       => $price['sale_note'] ?? null,
                 'regular'         => $price['regular'] ?? $price['min_regular'] ?? null,
                 'max_regular'     => $price['max_regular'] ?? null,
                 'display'         => $price['display'] ?? null,
@@ -1910,6 +1969,11 @@ class KaliCart_Bridge_API {
             ],
             'active_coupons'     => $coupons,
             'purchase_readiness' => $product['purchase_readiness'] ?? null,
+            // `null` per chi gruppo non e'. Su un gruppo e' il solo posto in cui
+            // l'agente legge COSA sta comprando: per un `grouped` i variants sono
+            // vuoti per costruzione (non c'e' un pezzo unico da comprare) e senza
+            // questo blocco la verifica non direbbe nulla del contenuto.
+            'group'              => $product['group'] ?? null,
             'variants'           => $variants,
             'updated_at'         => $product['updated_at'] ?? null,
             'authority_note'     => 'Catalog verification data. attributes contains product-level WooCommerce attributes; variants[].attributes contains variation-level selections. Final shipping, coupon acceptance and payable total remain WooCommerce checkout authority.',

@@ -132,6 +132,10 @@ class KaliCart_Bridge_Catalog_Engine {
             'modified_after' => '',
             'physical_only'  => null,
             'fields'         => 'full',
+            // CAMMINATA-STABILE-v1 (1.0.135) — vedi map_orderby() e
+            // apply_after_id_clause(): soglia per riprendere una lettura a pagine
+            // senza che le pagine gia' lette si spostino sotto chi legge.
+            'after_id'       => null,
         ];
         $args = wp_parse_args( $args, $defaults );
 
@@ -158,6 +162,34 @@ class KaliCart_Bridge_Catalog_Engine {
             'orderby'        => $args['orderby'] === 'price' ? 'ID' : self::map_orderby( $args['orderby'] ),
             'order'          => $order,
         ];
+
+        // CAMMINATA-STABILE-v1 (1.0.135) — percorrere un catalogo a pagine con
+        // `orderby=date` non e' ripetibile. Attenzione al motivo, che non e' quello
+        // che verrebbe da dire: WP_Query ordina per `post_date`, la data di
+        // PUBBLICAZIONE, quindi modificare un prodotto non lo sposta. Sposta tutto
+        // invece **pubblicarne uno nuovo**: con `order=DESC` entra in testa e fa
+        // scorrere di una posizione ogni pagina successiva, cosi' chi sta leggendo
+        // la quinta rilegge un prodotto e ne salta un altro. Stesso effetto per un
+        // prodotto ripescato dal cestino o con la data di pubblicazione cambiata a
+        // mano. L'ID invece non cambia mai, e un prodotto nuovo
+        // ne prende uno piu' alto: quindi finisce in fondo, dove il lettore non e'
+        // ancora arrivato, senza spostare nulla di gia' letto. Verificato il
+        // 2026-09-18 su due negozi il cui ordine per ID NON coincide con l'ordine
+        // di creazione (illpumpyouup 1.104 discordanze su 1.231, residuo di una
+        // migrazione): anche li' i prodotti piu' recenti hanno gli ID piu' alti.
+        //
+        // `after_id` e' una SOGLIA, non un puntatore: si chiede "quelli dopo il
+        // numero N". Se il prodotto N nel frattempo e' stato cancellato, `ID > N`
+        // continua a funzionare, e la domanda "cosa rispondi se il cursore punta a
+        // un prodotto che non c'e' piu'" non si pone.
+        //
+        // Limite noto: un prodotto che RIENTRA con un ID gia' superato (ripescato
+        // dal cestino, o reimportato con ID esplicito) viene saltato fino alla
+        // lettura completa successiva. Errore limitato e che si sana da solo.
+        $after_id = $args['after_id'] === null ? null : (int) $args['after_id'];
+        if ( $after_id !== null && $after_id > 0 ) {
+            $query_args['kalicart_bridge_after_id'] = $after_id;
+        }
 
 		if ( $lookup_price ) {
 			$query_args['kalicart_bridge_price_lookup'] = [
@@ -432,16 +464,31 @@ class KaliCart_Bridge_Catalog_Engine {
 	 * private query var, so unrelated queries in the same request are untouched.
 	 */
 	private static function run_product_query( array $query_args ): WP_Query {
-		if ( empty( $query_args['kalicart_bridge_price_lookup'] ) ) {
+		$needs_price  = ! empty( $query_args['kalicart_bridge_price_lookup'] );
+		$needs_after  = ! empty( $query_args['kalicart_bridge_after_id'] );
+		if ( ! $needs_price && ! $needs_after ) {
 			return new WP_Query( $query_args );
 		}
 
-		add_filter( 'posts_clauses', [ __CLASS__, 'apply_price_lookup_clauses' ], 20, 2 );
+		if ( $needs_price ) { add_filter( 'posts_clauses', [ __CLASS__, 'apply_price_lookup_clauses' ], 20, 2 ); }
+		if ( $needs_after ) { add_filter( 'posts_clauses', [ __CLASS__, 'apply_after_id_clause' ], 21, 2 ); }
 		try {
 			return new WP_Query( $query_args );
 		} finally {
-			remove_filter( 'posts_clauses', [ __CLASS__, 'apply_price_lookup_clauses' ], 20 );
+			if ( $needs_price ) { remove_filter( 'posts_clauses', [ __CLASS__, 'apply_price_lookup_clauses' ], 20 ); }
+			if ( $needs_after ) { remove_filter( 'posts_clauses', [ __CLASS__, 'apply_after_id_clause' ], 21 ); }
 		}
+	}
+
+	/** Public because WordPress invokes filter callbacks outside class scope. */
+	public static function apply_after_id_clause( array $clauses, WP_Query $query ): array {
+		$after = (int) $query->get( 'kalicart_bridge_after_id' );
+		if ( $after <= 0 ) {
+			return $clauses;
+		}
+		global $wpdb;
+		$clauses['where'] .= $wpdb->prepare( " AND {$wpdb->posts}.ID > %d", $after );
+		return $clauses;
 	}
 
 	/** Public because WordPress invokes filter callbacks outside class scope. */
@@ -729,6 +776,7 @@ class KaliCart_Bridge_Catalog_Engine {
             // prodotto del catalogo, e fields=summary esiste per pesare poco. Stessa
             // scelta della card del global, che li omette sui fixed.
             $price_type  = $price['type'] ?? 'fixed';
+            $group_raw   = self::group_raw( $p );   // lettura a costo zero: id e minimi, nessun prodotto caricato
             $price_block = [
                 'currency' => get_woocommerce_currency(),
                 'encoding' => 'decimal_major_units',
@@ -738,6 +786,11 @@ class KaliCart_Bridge_Catalog_Engine {
                 'regular' => $price['regular'] ?? $price['min_regular'] ?? null,
             ];
             if ( 'range' === $price_type ) {
+                // `range_over` distingue i due intervalli che il summary puo'
+                // portare: su un variabile se ne sceglie UNO, su un grouped si
+                // comprano i componenti uno per uno. Senza, gli estremi sono
+                // identici e il triage non puo' sapere cosa sta confrontando.
+                $price_block['range_over']  = $price['range_over'] ?? 'variants';
                 $price_block['max_current'] = $price['max_current'] ?? null;
                 $price_block['max_regular'] = $price['max_regular'] ?? null;
             }
@@ -788,7 +841,17 @@ class KaliCart_Bridge_Catalog_Engine {
                 'categories' => $categories,
                 'gender'     => $gender,
                 'type'       => $p->get_type(),
-                'selection_required' => $p->is_type( 'variable' ),
+                // SCELTA-RICHIESTA-v1 (1.0.135) — era `is_type('variable')`, cioe'
+                // una sola delle tre ragioni per cui non si compra al volo. Sul
+                // grouped #489 il summary diceva selection_required=false accanto a
+                // un prezzo che era il minimo di 73-797: un agente in triage lo
+                // prendeva per un acquisto da un clic a 73 €. Le altre due ragioni
+                // sono i componenti da scegliere (bundle con opzionali) e i gruppi
+                // venduti pezzo per pezzo, che qui si leggono senza caricare nulla:
+                // il minimo sta gia' nel meta, e l'intervallo l'abbiamo appena
+                // calcolato. Il summary resta leggero e smette di mentire.
+                'selection_required' => 'range' === $price_type
+                    || ( $group_raw !== null && ! empty( $group_raw['has_optional'] ) ),
                 'updated_at' => $p->get_date_modified() ? $p->get_date_modified()->date( 'c' ) : null,
             ];
         }
@@ -805,18 +868,33 @@ class KaliCart_Bridge_Catalog_Engine {
         $gender             = self::infer_gender( $p, $categories, $tags, $attributes );
         $colors             = self::extract_colors( $attributes, $p->get_name(), $tags );
         $sizes              = self::extract_sizes( $attributes );
-        $quarantine         = self::compute_quarantine_flags( $p, $categories, $images );
+        $quarantine         = self::compute_quarantine_flags( $p, $categories, $images, $price_data );
         $stock              = self::compute_stock( $p );           // computed once
         $purchase_readiness = self::compute_purchase_readiness( $p ); // computed once
         $barcodes           = self::get_barcodes( $p );            // computed once
+        $group              = self::group_components( $p, $context ); // null se non e' un gruppo
         // variations only in detail context — avoids N×get_variations() queries in list/search
         $variations = ( $context === 'detail' && $type === 'variable' ) ? self::get_variations( $p ) : null;
 
-        // variants[] — detail: full list; list: lightweight single entry for simple, empty array for variable (UCP: always an array)
+        // variants[] — detail: full list; list: lightweight single entry, empty array for variable (UCP: always an array)
+        //
+        // RIGA-SINTETICA-v1 (1.0.135) — la voce unica con `variation_id === id` e'
+        // la promessa che esiste UNA cosa comprabile a UN prezzo. Sul grouped #489
+        // era falsa due volte: la cosa comprabile non c'e' (si comprano i tre
+        // componenti) e il prezzo era il minimo di un intervallo 73-797. Un agente
+        // che legge variants[0].price prendeva 73 € per un articolo da 797.
+        //
+        // La condizione non e' sul tipo — sarebbe l'ennesima toppa, e domani
+        // arriva il tipo che non abbiamo previsto — ma sul prezzo che abbiamo
+        // appena calcolato: la riga si emette dove il prezzo e' UNO. Dove e' un
+        // intervallo, variants resta [] e la verita' sta in `group.components`
+        // (gruppi) o in `variations` (variabili, contesto detail).
+        $single_priced = ( $price_data['type'] ?? 'fixed' ) === 'fixed';
+
         if ( $context === 'detail' ) {
             $variants = $type === 'variable'
                 ? $variations
-                : [ [
+                : ( ! $single_priced ? [] : [ [
                     'variation_id'        => $id,
                     'attributes'          => [],
                     'price'               => $price_data,
@@ -824,10 +902,11 @@ class KaliCart_Bridge_Catalog_Engine {
                     'availability_status' => $p->is_in_stock() ? 'in_stock' : 'out_of_stock',
                     'sku'                 => $p->get_sku() ?: null,
                     'barcodes'            => $barcodes,
-                ] ];
+                ] ] );
         } else {
-            // list context: simple products get single variant, variable products get [] (use /product/{id} for full variants)
-            $variants = $type !== 'variable'
+            // list context: a single priced product gets one synthetic variant;
+            // variable products and priced ranges get [] (use /product/{id}).
+            $variants = ( $type !== 'variable' && $single_priced )
                 ? [ [
                     'variation_id'        => $id,
                     'attributes'          => [],
@@ -911,6 +990,11 @@ class KaliCart_Bridge_Catalog_Engine {
             ],
             'quarantine'         => $quarantine,
             'purchase_readiness' => $purchase_readiness,
+            // I GRUPPI, DETTI PER QUELLO CHE SONO (1.0.135) — `null` per chi gruppo
+            // non e'. Prima di questa versione nel payload non esisteva la parola
+            // "componente": un bundle era un prodotto qualunque con un prezzo e
+            // nessun contenuto, e chi comprava non sapeva cosa stesse comprando.
+            'group'              => $group,
             'barcodes'           => $barcodes,
             'metadata'           => [
                 'purchase_readiness' => $purchase_readiness,
@@ -949,6 +1033,8 @@ class KaliCart_Bridge_Catalog_Engine {
 
         $out_zones = [];
         $free_thresholds = [];
+        $free_shipping_unconditional = false;
+        $free_shipping_coupon_only   = false;
         foreach ( $zones as $zone ) {
             $methods = [];
             foreach ( (array) ( $zone['shipping_methods'] ?? [] ) as $method ) {
@@ -964,11 +1050,40 @@ class KaliCart_Bridge_Catalog_Engine {
                     'enabled' => true,
                 ];
                 if ( $method_id === 'free_shipping' ) {
+                    // SOGLIA VERA O NIENTE (1.0.135) — qui si raccoglieva ogni
+                    // `min_amount` non nullo, zero compreso, e si ignorava
+                    // `requires`. Due conseguenze misurate il 2026-09-18 su
+                    // illpumpyouup.com, che ha DUE metodi free_shipping:
+                    //   requires='coupon'      min_amount=0   -> soglia "0"
+                    //   requires='min_amount'  min_amount=99  -> soglia 99
+                    // Quello zero entrava nell'elenco e rendeva ogni prodotto
+                    // "gia' idoneo per prezzo", mentre accanto restava scritto
+                    // quanto mancava ai 99. Risultato: 1.207 prodotti, il 22% della
+                    // federazione, che dicevano insieme "hai diritto alla spedizione
+                    // gratis" e "ti mancano 96,01".
+                    //
+                    // E il difetto vero non e' lo zero: e' che quel metodo chiede un
+                    // COUPON. Annunciarlo come gratuito per prezzo e' dire a un
+                    // agente una cosa che il negozio non concede.
+                    //
+                    // `requires` vale: '' o 'min_amount' -> il prezzo basta;
+                    // 'either' -> coupon OPPURE minimo, quindi il prezzo basta;
+                    // 'coupon' o 'both' -> il prezzo da solo non basta mai.
                     $min = isset( $method->min_amount ) && $method->min_amount !== '' ? (float) $method->min_amount : null;
+                    $requires = (string) ( $method->requires ?? '' );
                     $row['requires'] = $method->requires ?? null;
                     $row['min_amount'] = $min;
-                    if ( $min !== null ) {
+                    $price_alone_suffices = in_array( $requires, [ '', 'min_amount', 'either' ], true );
+                    if ( $price_alone_suffices && $min !== null && $min > 0 ) {
                         $free_thresholds[] = $min;
+                    }
+                    if ( $price_alone_suffices && ( $min === null || $min <= 0 ) ) {
+                        // Nessun minimo da raggiungere: non e' una soglia zero, e'
+                        // spedizione gratuita senza condizioni di importo.
+                        $free_shipping_unconditional = true;
+                    }
+                    if ( in_array( $requires, [ 'coupon', 'both' ], true ) ) {
+                        $free_shipping_coupon_only = true;
                     }
                 } elseif ( $method_id === 'flat_rate' ) {
                     $row['cost'] = isset( $method->cost ) && $method->cost !== '' ? self::normalize_cost( $method->cost ) : null;
@@ -1005,6 +1120,8 @@ class KaliCart_Bridge_Catalog_Engine {
             'calculation_model' => 'policy_snapshot_not_destination_quote',
             'free_shipping_available' => ! empty( $free_thresholds ),
             'free_shipping_thresholds' => $free_thresholds,
+            'free_shipping_unconditional' => $free_shipping_unconditional,
+            'free_shipping_requires_coupon' => $free_shipping_coupon_only,
             'zones' => $out_zones,
             'note' => 'Use this policy for agent reasoning. Exact shipping cost depends on destination, cart contents, coupons and WooCommerce checkout rules; checkout remains final authority.',
         ];
@@ -1212,11 +1329,22 @@ class KaliCart_Bridge_Catalog_Engine {
             'weight_unit' => get_option( 'woocommerce_weight_unit', 'kg' ),
             'free_shipping_available' => (bool) ( $policy['free_shipping_available'] ?? false ),
             'free_shipping_thresholds' => $thresholds,
-            'free_shipping_eligible_by_product_price' => $price !== null && ! empty( $thresholds )
-                ? array_reduce( $thresholds, fn( $carry, $t ) => $carry || $price >= (float) $t, false )
-                : null,
-            'amount_to_nearest_free_shipping_threshold' => ( $price !== null && $nearest !== null )
-                ? max( 0, round( $nearest - $price, 2 ) )
+            // Le soglie ora contengono solo minimi VERI e raggiungibili col solo
+            // prezzo (vedi merchant_shipping_policy). I due casi che prima ci si
+            // nascondevano dentro travestiti da zero hanno un campo proprio: il
+            // blocco dichiara quale condizione vale, non riempie i campi di null.
+            'free_shipping_unconditional' => (bool) ( $policy['free_shipping_unconditional'] ?? false ),
+            'free_shipping_requires_coupon' => (bool) ( $policy['free_shipping_requires_coupon'] ?? false ),
+            'free_shipping_eligible_by_product_price' => ! empty( $policy['free_shipping_unconditional'] )
+                ? true
+                : ( $price !== null && ! empty( $thresholds )
+                    ? array_reduce( $thresholds, fn( $carry, $t ) => $carry || $price >= (float) $t, false )
+                    : null ),
+            'amount_to_nearest_free_shipping_threshold' => ! empty( $policy['free_shipping_unconditional'] )
+                ? null
+                : ( ( $price !== null && $nearest !== null ) ? max( 0, round( $nearest - $price, 2 ) ) : null ),
+            'free_shipping_note' => ! empty( $policy['free_shipping_requires_coupon'] )
+                ? 'The store also offers free shipping that requires a coupon. That path is not reachable by cart value alone and is not reflected in the thresholds above.'
                 : null,
             'zones'     => self::get_shipping_zones(),
             'authority' => 'woocommerce_checkout',
@@ -1334,19 +1462,224 @@ class KaliCart_Bridge_Catalog_Engine {
         return $out;
     }
 
+    /**
+     * UN GRUPPO E' UN GRUPPO (1.0.135) — WooCommerce modella piu' prodotti venduti
+     * insieme, e il Bridge non lo modellava affatto: li schiacciava nella forma dei
+     * variabili, che significa l'opposto. Su un variabile `variants` vuol dire
+     * "scegline uno"; su un gruppo vorrebbe dire "li prendi tutti". Stessa chiave,
+     * significato rovesciato, e nessun segnale per distinguerli.
+     *
+     * Misurato il 2026-09-17 su grouped #489 e woosb #5623 di project2209: la voce
+     * fantasma in `variants` aveva `variation_id` UGUALE all'id del prodotto e
+     * `attributes` vuoto, `variation_summary` era null, e i componenti non
+     * comparivano da nessuna parte. Un agente leggeva "Offerta back to winter,
+     * 245,10 €" senza sapere che sono quattro prodotti, ne' quali.
+     *
+     * LA VIA DI LETTURA NON E' UNA SOLA e non puo' esserlo: il `grouped` nativo
+     * tiene i figli in get_children(), WPC Product Bundles nel meta `woosb_ids`,
+     * WooCommerce Product Bundles nella propria API. Sono lettori dichiarati e
+     * stretti — non toppe — perche' la forma ESPOSTA resta una: questo blocco.
+     *
+     * Del terzo tipo conosciamo il nome ma non abbiamo il plugin (a pagamento) e
+     * quindi non possiamo provarlo: lo si dichiara gruppo con `resolved: false`
+     * invece di indovinarne il formato. Il payload dice cio' che sappiamo, e dice
+     * anche cosa non sa.
+     */
+    /**
+     * LETTURA GREZZA — chi sono i componenti, senza caricarne nemmeno uno.
+     *
+     * Serve dove il costo conta (fields=summary gira su ogni riga di catalogo):
+     * gli id, le quantita' e i minimi stanno gia' nel meta o in get_children(),
+     * quindi sapere SE una scelta e' richiesta non deve costare N wc_get_product.
+     * Il caricamento vero resta in group_components(), che chiama questa.
+     */
+    private static function group_raw( WC_Product $p ): ?array {
+        static $memo = [];
+        $id = $p->get_id();
+        if ( array_key_exists( $id, $memo ) ) {
+            return $memo[ $id ];
+        }
+
+        $out  = null;
+        $type = $p->get_type();
+
+        if ( $p->is_type( 'grouped' ) ) {
+            $items = [];
+            foreach ( (array) $p->get_children() as $child_id ) {
+                $items[ (int) $child_id ] = [ 'qty' => 1, 'min' => null, 'max' => null ];
+            }
+            $out = [ 'group_type' => 'grouped', 'resolved' => true, 'items' => $items, 'has_optional' => false ];
+        } else {
+            $woosb = get_post_meta( $id, 'woosb_ids', true );
+            if ( ! empty( $woosb ) ) {
+                $items    = [];
+                $optional = false;
+                $list     = is_array( $woosb ) ? $woosb : maybe_unserialize( $woosb );
+                foreach ( (array) $list as $item ) {
+                    if ( ! is_array( $item ) || empty( $item['id'] ) ) { continue; }
+                    $min = isset( $item['min'] ) && $item['min'] !== '' ? (int) $item['min'] : null;
+                    if ( $min !== null && $min === 0 ) { $optional = true; }
+                    $items[ (int) $item['id'] ] = [
+                        'qty' => isset( $item['qty'] ) && $item['qty'] !== '' ? (int) $item['qty'] : 1,
+                        'min' => $min,
+                        'max' => isset( $item['max'] ) && $item['max'] !== '' ? (int) $item['max'] : null,
+                    ];
+                }
+                $out = [ 'group_type' => 'woosb', 'resolved' => true, 'items' => $items, 'has_optional' => $optional ];
+            } elseif ( in_array( $type, [ 'bundle', 'yith_bundle', 'composite' ], true ) ) {
+                $out = [ 'group_type' => $type, 'resolved' => false, 'items' => [], 'has_optional' => false ];
+            }
+        }
+
+        $memo[ $id ] = $out;
+        return $out;
+    }
+
+    /**
+     * SCONTO DEL GRUPPO — quello che il gruppo toglie DI SUO, sopra i componenti.
+     *
+     * Punto 8 del debito. Sul woosb #5623 di project2209 la catena e' 266 -> 258
+     * -> 245,10: il listino dei componenti, la somma dei loro prezzi di oggi (sono
+     * scontati singolarmente), e infine il 5% che il bundle toglie in piu'. Il
+     * payload pubblicava solo gli estremi, cioe' un 7,9% unico, e il 258 di mezzo
+     * spariva. Un agente non poteva rispondere alla domanda che conta — conviene
+     * il bundle o comprarli separati? — perche' i due sconti erano fusi in uno.
+     * Qui si legge il solo termine che manca; gli altri due li da' gia'
+     * group_components(). La superficie espone i tre numeri, non la conclusione.
+     */
+    private static function group_own_discount( WC_Product $p, string $group_type ): ?array {
+        if ( $group_type !== 'woosb' ) {
+            return null;
+        }
+        if ( get_post_meta( $p->get_id(), 'woosb_disable_auto_price', true ) === 'on' ) {
+            // Il prezzo del bundle e' scritto a mano: non c'e' uno sconto da
+            // dichiarare, c'e' un prezzo. Sta gia' in price.current.
+            return null;
+        }
+        $pct = get_post_meta( $p->get_id(), 'woosb_discount', true );
+        if ( $pct !== '' && $pct !== null && (float) $pct > 0 ) {
+            return [
+                'type'       => 'percentage',
+                'value'      => (float) $pct,
+                'applies_to' => 'components_current_total',
+            ];
+        }
+        $amt = get_post_meta( $p->get_id(), 'woosb_discount_amount', true );
+        if ( $amt !== '' && $amt !== null && (float) $amt > 0 ) {
+            return [
+                'type'       => 'fixed_amount',
+                'value'      => (float) $amt,
+                'applies_to' => 'components_current_total',
+            ];
+        }
+        return null;
+    }
+
+    private static function group_components( WC_Product $p, string $context = 'list' ): ?array {
+        static $memo = [];
+        $key = $p->get_id() . '|' . $context;
+        if ( array_key_exists( $key, $memo ) ) {
+            return $memo[ $key ];
+        }
+
+        $raw = self::group_raw( $p );
+        if ( $raw === null ) {
+            return $memo[ $key ] = null;
+        }
+
+        // Il terzo tipo: conosciamo il nome, non il formato, e il plugin e' a
+        // pagamento — non possiamo provarlo. Si dichiara gruppo con
+        // `resolved: false` invece di indovinare. Le chiavi restano le stesse del
+        // caso risolto: chi legge non deve ramificare sulla presenza dei campi,
+        // gli basta `resolved` per sapere di quali fidarsi.
+        if ( ! $raw['resolved'] ) {
+            return $memo[ $key ] = [
+                'group_type'               => $raw['group_type'],
+                'resolved'                 => false,
+                'sold_as'                  => $p->is_purchasable() ? 'one_item' : 'individual_components',
+                'components_count'         => null,
+                'components'               => [],
+                'components_list_total'    => null,
+                'components_current_total' => null,
+                'group_discount'           => null,
+                'agent_note'               => 'This product is a group sold together, but the Bridge cannot read its components: they are stored by a plugin whose format it does not support. Treat price as the price of the whole group and open the product page for the contents.',
+            ];
+        }
+
+        $components    = [];
+        $list_total    = 0.0;
+        $current_total = 0.0;
+        $totals_known  = ! empty( $raw['items'] );
+        foreach ( $raw['items'] as $cid => $meta ) {
+            $c = wc_get_product( $cid );
+            if ( ! $c ) { $totals_known = false; continue; }
+            $qty     = max( 1, (int) $meta['qty'] );
+            $regular = $c->get_regular_price() !== '' ? (float) $c->get_regular_price() : null;
+            $current = $c->get_price() !== '' ? (float) $c->get_price() : null;
+            if ( $regular === null || $current === null ) { $totals_known = false; }
+            else { $list_total += $regular * $qty; $current_total += $current * $qty; }
+            $row = [
+                'product_id'   => (int) $cid,
+                'sku'          => $c->get_sku() ?: null,
+                'name'         => $c->get_name(),
+                'quantity'     => $qty,
+                'min_quantity' => $meta['min'],
+                'max_quantity' => $meta['max'],
+                'optional'     => $meta['min'] !== null && (int) $meta['min'] === 0,
+                'in_stock'     => $c->is_in_stock(),
+            ];
+            if ( $context === 'detail' ) {
+                $row['url']           = get_permalink( $cid ) ?: null;
+                $row['price_current'] = $current;
+                $row['price_regular'] = $regular;
+            }
+            $components[] = $row;
+        }
+
+        $sold_as = $p->is_purchasable() ? 'one_item' : 'individual_components';
+
+        return $memo[ $key ] = [
+            'group_type'               => $raw['group_type'],
+            'resolved'                 => true,
+            'sold_as'                  => $sold_as,
+            'components_count'         => count( $components ),
+            'components'               => $components,
+            'components_list_total'    => $totals_known ? round( $list_total, 2 ) : null,
+            'components_current_total' => $totals_known ? round( $current_total, 2 ) : null,
+            'group_discount'           => self::group_own_discount( $p, $raw['group_type'] ),
+            'agent_note'               => $sold_as === 'one_item'
+                ? 'Sold as one item: price.current is what the buyer pays for the whole group. The saving has two separate parts, and merging them misreads the offer: components_list_total is what the components list at, components_current_total is what the same items cost bought separately TODAY (their own sales included), and group_discount is what this group takes off on top of that. Compare components_current_total with price.current to answer "is the group worth it compared with buying them separately".'
+                : 'A group of products presented together: it is NOT bought as one item, each component is purchased on its own, and price is the range of the components. components_current_total is the cost of taking all of them, not a price to quote.',
+        ];
+    }
+
     private static function compute_purchase_readiness( WC_Product $p ): array {
         $type = $p->get_type();
 
+        // ESAURITO-E-ESAURITO-v1 (1.0.135) — questo controllo stava DUE volte, nel
+        // ramo dei variabili e in quello dei gruppi, identico parola per parola, e
+        // non c'era nel ramo dei semplici. Cosi' lo stesso fatto usciva con due
+        // vocabolari diversi: misurato il 2026-09-18 su project2209, il #426 e' un
+        // `simple` esaurito e riceveva `requires_product_page` con la motivazione
+        // "external product, or not purchasable in its current state" — vaga dove
+        // ne esisteva una esatta, e per giunta falsa: non e' un external, e il
+        // prodotto e' acquistabile. E' finito. Un variabile esaurito, nella stessa
+        // risposta, riceveva `out_of_stock`.
+        //
+        // "Esaurito" non e' una proprieta' del TIPO di prodotto: e' la prima cosa
+        // vera di qualunque prodotto, e quindi si legge prima di ogni ramo. Due
+        // copie diventano una, e i semplici e gli external ereditano la parola
+        // giusta senza che nessuno debba ricordarsene.
+        if ( ! $p->is_in_stock() ) {
+            return [
+                'status'                   => 'out_of_stock',
+                'blocking_fields'          => [],
+                'can_add_to_cart_directly' => false,
+                'agent_rule'               => 'Product is out of stock. Do not present for purchase.',
+            ];
+        }
+
         if ( $type === 'variable' ) {
-            // B5: if the parent product is OOS, no variant selection makes sense
-            if ( ! $p->is_in_stock() ) {
-                return [
-                    'status'                   => 'out_of_stock',
-                    'blocking_fields'          => [],
-                    'can_add_to_cart_directly' => false,
-                    'agent_rule'               => 'Product is out of stock. Do not present for purchase.',
-                ];
-            }
             $attributes = $p->get_variation_attributes();
             $blocking   = array_keys( $attributes );
             return [
@@ -1357,6 +1690,79 @@ class KaliCart_Bridge_Catalog_Engine {
             ];
         }
 
+        // I GRUPPI, DETTI PER QUELLO CHE SONO (1.0.135) — prima cadevano tutti nel
+        // ramo finale, che dichiarava `can_add_to_cart_directly: false` con la
+        // motivazione "external, grouped or not purchasable". Sul woosb #5623 di
+        // project2209 era falsa su tutti e tre i punti, e il danno non era la prosa
+        // ma il flag: provato il 2026-09-17, `WC()->cart->add_to_cart(5623,1)`
+        // RIESCE e il carrello chiude a 245,10 €. Dicevamo a un agente che non si
+        // poteva comprare una cosa che si compra: una vendita persa.
+        //
+        // La regola non e' "i gruppi sono acquistabili" — sarebbe l'errore opposto.
+        // Si legge `is_purchasable()` e si guarda se c'e' davvero una scelta da
+        // fare, invece di dedurre dal tipo.
+        $group = self::group_components( $p );
+        if ( $group !== null ) {
+            if ( ! $p->is_purchasable() ) {
+                // Il `grouped` nativo: la vetrina di un insieme, dove si compra
+                // ogni pezzo per conto suo. Qui "requires_product_page" e' vero, ed
+                // e' l'unico caso in cui la vecchia frase non mentiva.
+                return [
+                    'status'                   => 'group_components_sold_individually',
+                    'blocking_fields'          => [],
+                    'can_add_to_cart_directly' => false,
+                    'agent_rule'               => 'This is a group of products presented together: it has no single price and is not bought as one item. Each component listed in group.components is purchased on its own.',
+                ];
+            }
+            // QUEL-CHE-NON-SAPPIAMO-v1 (1.0.135) — se non abbiamo potuto LEGGERE i
+            // componenti non possiamo nemmeno sapere se c'e' una scelta da fare,
+            // e quindi non possiamo promettere il carrello diretto. Senza questo
+            // ramo il codice cadeva dritto su `direct_cart_possible`: con
+            // `components` vuoto il filtro sugli opzionali non trova niente e
+            // l'assenza di prova diventava prova d'assenza.
+            //
+            // Non e' teoria: sono i 13 `bundle` di illpumpyouup.com, prodotti veri
+            // che con la 1.0.135 arrivano qui. WooCommerce Product Bundles ha
+            // componenti configurabili; dire a un agente "aggiungilo al carrello"
+            // su una cosa che potrebbe pretendere una configurazione e' lo stesso
+            // errore della 1.0.134 girato al contrario — prima negavamo un
+            // carrello che funziona, qui ne promettevamo uno che puo' fallire.
+            //
+            // `resolved: false` nel blocco `group` dice gia' che non sappiamo.
+            // Qui si smette di dedurre da quel vuoto.
+            if ( empty( $group['resolved'] ) ) {
+                return [
+                    'status'                   => 'requires_product_page',
+                    'blocking_fields'          => [],
+                    'can_add_to_cart_directly' => false,
+                    'agent_rule'               => 'This product is a group sold together, but the Bridge cannot read its components: it is stored by a plugin whose format it does not support. It may require a configuration before it can be bought, so do not add it to the cart directly. price is the price of the whole group; open the product page for the contents.',
+                ];
+            }
+
+            $optional = array_filter( (array) ( $group['components'] ?? [] ), static fn( $c ): bool => ! empty( $c['optional'] ) );
+            if ( ! empty( $optional ) ) {
+                return [
+                    'status'                   => 'component_selection_required',
+                    'blocking_fields'          => array_values( array_map( static fn( $c ) => 'component:' . $c['product_id'], $optional ) ),
+                    'can_add_to_cart_directly' => false,
+                    'agent_rule'               => 'This group contains optional components: the final price depends on what the buyer keeps. Do not quote a final price before the selection is made.',
+                ];
+            }
+            return [
+                'status'                   => 'direct_cart_possible',
+                'blocking_fields'          => [],
+                'can_add_to_cart_directly' => true,
+                'agent_rule'               => 'This group is sold as one item at a fixed price and can be added to cart directly. Use checkout_url. group.components lists what it contains.',
+            ];
+        }
+
+        // Il ramo "semplice" sta DOPO quello dei gruppi, e non e' un dettaglio di
+        // stile: e' piu' generico, quindi se viene prima vince su un caso che
+        // conosce meno. Provato il 2026-09-18 con un bundle a componente
+        // opzionale: rispondeva `direct_cart_possible` con blocking_fields vuoto
+        // mentre il summary, che legge i minimi, diceva gia' selection_required.
+        // Due superfici dello stesso prodotto che si contraddicono. Il fatto piu'
+        // specifico si legge per primo.
         if ( $p->is_type( 'simple' ) && $p->is_purchasable() && $p->is_in_stock() ) {
             return [
                 'status'                 => 'direct_cart_possible',
@@ -1370,12 +1776,29 @@ class KaliCart_Bridge_Catalog_Engine {
             'status'                 => 'requires_product_page',
             'blocking_fields'        => [],
             'can_add_to_cart_directly' => false,
-            'agent_rule'             => 'Product requires the product page for purchase (external, grouped or not purchasable).',
+            'agent_rule'             => 'Product requires the product page for purchase (external product, or not purchasable in its current state).',
         ];
     }
 
+    /**
+     * UNA-VERITA-SUL-CARRELLO-v1 (1.0.135) — qui c'era una seconda espressione,
+     * `is_type('simple') && is_purchasable() && is_in_stock()`, che rifaceva a
+     * mano il giudizio che compute_purchase_readiness() aveva gia' dato. Due
+     * calcoli indipendenti della stessa cosa divergono, sempre, prima o poi: il
+     * 2026-09-18, montando un banco per provare i gruppi illeggibili, si e' visto
+     * `can_add_to_cart_directly: false` accanto a un `checkout_url` che puntava
+     * al carrello. Nel caso reale il difetto non si vedeva — ma non si vedeva per
+     * fortuna, non per costruzione.
+     *
+     * Ora la domanda si fa una volta sola. `can_add_to_cart_directly` E' la
+     * risposta, e l'URL la segue: se e' vero si va al carrello, altrimenti alla
+     * scheda. Nessun tipo elencato, nessuna condizione ripetuta — e ogni stato
+     * futuro di purchase_readiness eredita l'URL giusto senza che nessuno debba
+     * ricordarsi di aggiornare anche questa riga.
+     */
     private static function checkout_url_for_product( WC_Product $p ): string {
-        if ( $p->is_type( 'simple' ) && $p->is_purchasable() && $p->is_in_stock() ) {
+        $readiness = self::compute_purchase_readiness( $p );
+        if ( ! empty( $readiness['can_add_to_cart_directly'] ) ) {
             $cart_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'cart' ) : '';
             if ( ! $cart_url || $cart_url === '#' ) {
                 $cart_url = home_url( '/cart/' );
@@ -1602,6 +2025,7 @@ class KaliCart_Bridge_Catalog_Engine {
 
             return [
                 'type'            => 'range',
+                'range_over'      => 'variants',
                 'currency'        => $currency,
                 'encoding'        => 'decimal_major_units',
                 'price_type'      => 'STATIC',
@@ -1628,6 +2052,83 @@ class KaliCart_Bridge_Catalog_Engine {
             ];
         }
 
+        // PREZZO-DI-GRUPPO-v1 (1.0.135) — un `grouped` nativo NON ha un prezzo:
+        // ha i prezzi dei suoi componenti, che si comprano uno per uno. Woo lo
+        // sa e lo scrive ("73,00 € - 797,00 €"); il Bridge invece cadeva nel ramo
+        // a prezzo fisso e pubblicava `current: 73` — il minimo spacciato per IL
+        // prezzo. Misurato sul #489 di project2209 il 2026-09-18:
+        //     get_regular_price()=''  get_sale_price()=''  get_price()='73'
+        //     figli 412,399,443 -> correnti 73 / 797, listini 75 / 799
+        // Un agente che quotava 73 € sbagliava di dieci volte su due articoli su
+        // tre. La forma giusta esiste gia' ed e' quella dei variabili: un
+        // intervallo. Non si aggiunge un tipo, si sceglie il blocco che c'e'.
+        //
+        // `range_over` dice su COSA e' costruito l'intervallo, perche' i due casi
+        // non si comprano allo stesso modo: su un variabile se ne sceglie uno, qui
+        // se ne compra quanti se ne vuole. I conteggi tengono i nomi che avevano —
+        // sono i membri dell'intervallo — e il campo nuovo ne dichiara la natura
+        // invece di duplicare il vocabolario.
+        $grouped_raw = self::group_raw( $p );
+        if ( $grouped_raw !== null && $grouped_raw['group_type'] === 'grouped' ) {
+            $regulars = [];
+            $currents = [];
+            $sales    = [];
+            $pcts     = [];
+            $amounts  = [];
+            foreach ( array_keys( $grouped_raw['items'] ) as $cid ) {
+                $c = wc_get_product( $cid );
+                if ( ! $c ) { continue; }
+                $c_reg = $c->get_regular_price() !== '' ? (float) $c->get_regular_price() : null;
+                $c_cur = $c->get_price() !== '' ? (float) $c->get_price() : null;
+                if ( $c_reg !== null ) { $regulars[] = $c_reg; }
+                if ( $c_cur === null ) { continue; }
+                $currents[] = $c_cur;
+                if ( $c_reg === null || $c_reg <= 0 || $c_cur >= $c_reg ) { continue; }
+                $pct = ( ( $c_reg - $c_cur ) / $c_reg ) * 100;
+                if ( $pct < 1 ) { continue; }   // stessa soglia dell'1% dei variabili
+                $sales[]   = $c_cur;
+                $pcts[]    = $pct;
+                $amounts[] = $c_reg - $c_cur;
+            }
+
+            $priced_count     = count( $currents );
+            $discounted_count = count( $sales );
+            $min_current      = $currents ? (float) min( $currents ) : null;
+            $max_current      = $currents ? (float) max( $currents ) : null;
+            $display = $min_current !== null
+                ? ( $min_current === $max_current ? wc_price( $min_current ) : wc_price( $min_current ) . ' – ' . wc_price( $max_current ) )
+                : null;
+
+            return [
+                'type'            => 'range',
+                'range_over'      => 'group_components',
+                'currency'        => $currency,
+                'encoding'        => 'decimal_major_units',
+                'price_type'      => 'STATIC',
+                'vat_included'    => wc_prices_include_tax(),
+                'tax_enabled'     => wc_tax_enabled(),
+                'current'         => $min_current,
+                'max_current'     => $max_current,
+                'min_regular'     => $regulars ? (float) min( $regulars ) : null,
+                'max_regular'     => $regulars ? (float) max( $regulars ) : null,
+                'min_sale'        => $sales ? (float) min( $sales ) : null,
+                'max_sale'        => $sales ? (float) max( $sales ) : null,
+                'on_sale'         => $discounted_count > 0,
+                'sale_scope'      => 0 === $discounted_count
+                    ? 'none'
+                    : ( $discounted_count === $priced_count ? 'all_variants' : 'some_variants' ),
+                'discounted_variations_count' => $discounted_count,
+                'priced_variations_count'     => $priced_count,
+                'variant_selection_required_for_sale' => $discounted_count > 0 && $discounted_count !== $priced_count,
+                'sale_note'       => 'These are the prices of the components, each bought on its own: there is no single price for the group. current is the cheapest component, max_current the dearest. Never quote current as the price of this product; see group.components.',
+                'discount_pct'    => $pcts ? round( (float) max( $pcts ), 1 ) : null,
+                'discount_pct_scope' => $pcts ? 'maximum_component_discount' : null,
+                'discount_amount' => $amounts ? round( (float) max( $amounts ), 2 ) : null,
+                'display'         => $display !== null ? str_replace( "\xc2\xa0", ' ', html_entity_decode( wp_strip_all_tags( $display ), ENT_QUOTES ) ) : null,
+                'scheduled_promotion' => null,
+            ];
+        }
+
         $regular = $p->get_regular_price() !== '' ? (float) $p->get_regular_price() : null;
         $sale    = $p->get_sale_price() !== '' ? (float) $p->get_sale_price() : null;
         $current = $p->get_price() !== '' ? (float) $p->get_price() : null;
@@ -1642,6 +2143,48 @@ class KaliCart_Bridge_Catalog_Engine {
             }
         }
 
+        // SALDO-OTTENIBILE-v1 (1.0.135) — `sale` esiste solo se e' il prezzo che si
+        // paga adesso. Prima si emetteva `get_sale_price()` cosi' com'era: se la
+        // finestra del saldo era chiusa o non ancora aperta, WooCommerce riportava
+        // giustamente `is_on_sale() = false` e `get_price()` al listino, ma il
+        // campo `sale` continuava a pubblicare il prezzo scontato. Misurato il
+        // 2026-09-17: 122 prodotti su 4 merchant, con sconti fino al 67%, cioe'
+        // un prezzo NON ottenibile messo in mano a chi deve comprare.
+        //
+        // Il test non e' "il saldo e' attivo" ma "il saldo e' quello che si paga":
+        // se `sale` non coincide con `current`, qualunque ne sia la ragione, non e'
+        // un prezzo di vendita. Cosi' la regola non dipende dalla soglia dell'1%
+        // (vedi punto 9 del debito) e resta vera anche se quella cambia.
+        //
+        // Il fatto che una promozione esista NON si nasconde — sarebbe interpretare
+        // invece che esporre: si dichiara per quello che e', in un blocco suo, con
+        // le sue date. Come la 1.0.134 per la spedizione: si sceglie il blocco, non
+        // si riempiono i campi con null.
+        $promotion = null;
+        if ( $sale !== null && $current !== null && abs( $current - $sale ) > 0.0001 ) {
+            $from = $p->get_date_on_sale_from();
+            $to   = $p->get_date_on_sale_to();
+            $now  = time();
+            $state = 'not_active';
+            if ( $from && $from->getTimestamp() > $now ) {
+                $state = 'scheduled';
+            } elseif ( $to && $to->getTimestamp() < $now ) {
+                $state = 'ended';
+            }
+            $promotion = [
+                'sale_price'  => $sale,
+                'state'       => $state,
+                'starts_at'   => $from ? $from->date( DATE_ATOM ) : null,
+                'ends_at'     => $to ? $to->date( DATE_ATOM ) : null,
+                'agent_note'  => 'The merchant has a sale price recorded for this product, but it is NOT the price charged now. Quote price.current, never this value.',
+            ];
+            $sale         = null;
+            $on_sale      = false;
+            $discount_pct = null;   // calcolato piu' sopra: senza questo resterebbe
+                                    // uno sconto dichiarato accanto a on_sale=false,
+                                    // cioe' la contraddizione che stiamo togliendo.
+        }
+
         $vat_included = wc_prices_include_tax();
         $tax_enabled  = wc_tax_enabled();
 
@@ -1651,6 +2194,7 @@ class KaliCart_Bridge_Catalog_Engine {
 
         return [
             'type'            => 'fixed',
+            'range_over'      => null,
             'currency'        => $currency,
             'encoding'        => 'decimal_major_units',
             'price_type'      => 'STATIC',
@@ -1664,6 +2208,7 @@ class KaliCart_Bridge_Catalog_Engine {
             'discount_pct'    => $discount_pct,
             'discount_amount' => $discount_amount_fixed,
             'display'         => $current !== null ? str_replace( "\xc2\xa0", ' ', html_entity_decode( wp_strip_all_tags( wc_price( $current ) ), ENT_QUOTES ) ) : null,
+            'scheduled_promotion' => $promotion,
         ];
     }
 
@@ -1918,7 +2463,7 @@ class KaliCart_Bridge_Catalog_Engine {
         return is_numeric( $cost ) ? (float) sprintf( '%.2f', (float) $cost ) : (string) $cost;
     }
 
-    public static function compute_quarantine_flags( WC_Product $p, array $categories, array $images ): array {
+    public static function compute_quarantine_flags( WC_Product $p, array $categories, array $images, ?array $price_data = null ): array {
         $flags = [];
 
         if ( self::title_word_count( $p->get_name() ) < 3 ) {
@@ -1933,9 +2478,47 @@ class KaliCart_Bridge_Catalog_Engine {
             $flags[] = [ 'code' => 'NO_CATEGORY', 'severity' => 'high', 'label' => 'No category assigned' ];
         }
 
-        $price = (float) $p->get_price();
-        if ( $price <= 0 && $p->get_status() === 'publish' ) {
-            $flags[] = [ 'code' => 'ZERO_PRICE', 'severity' => 'medium', 'label' => 'Price is zero or not set' ];
+        // OMAGGIO != SENZA PREZZO (1.0.135) — qui c'era
+        //     $price = (float) $p->get_price();
+        //     if ( $price <= 0 ) -> ZERO_PRICE, severity 'medium'
+        // e faceva due errori in una riga.
+        //
+        // Primo: il cast a float rende `''` identico a `'0.00'`, cioe' confonde un
+        // prodotto SENZA PREZZO con uno in OMAGGIO. WooCommerce invece li
+        // distingue gia', e in modo netto: `is_purchasable()` e' letteralmente
+        // `get_price() !== ''`. Misurato su project2209 il 2026-09-18:
+        //     #486 get_price()='0'  is_purchasable=TRUE   omaggio, si compra
+        //     #444 get_price()=''   is_purchasable=FALSE  non si compra
+        // Col vecchio controllo il #486 finiva in quarantena e restava fuori dalla
+        // federazione: un prodotto regalato, perfettamente vendibile, trattato
+        // come una scheda rotta.
+        //
+        // Secondo: la severita'. 'medium' vale -15, mentre un titolo corto vale
+        // -30. Cosi' il prodotto che NON SI PUO' COMPRARE prendeva 85/100 e quello
+        // scritto male 40/100 — il punteggio invertito proprio dove conta. Un
+        // titolo corto e una descrizione assente dicono quanto bene il prodotto e'
+        // descritto; un prezzo assente dice che non e' vendibile, e non e' una
+        // questione di stile.
+        //
+        // Terzo — e questo me lo sono trovato addosso il 2026-09-18, misurando i
+        // gruppi: `is_purchasable()` era la lettura sbagliata. Su project2209 i
+        // prodotti publish non acquistabili erano due, e uno solo era senza prezzo:
+        //     #444  grouped=no   get_price()=''    -> davvero invendibile
+        //     #489  grouped=si   get_price()='73'  -> prezzi 73-797, si vende
+        // Il `grouped` nativo non e' acquistabile COME UN PEZZO perche' i suoi
+        // componenti si comprano uno per uno: non e' un prezzo mancante, e' un
+        // prezzo per ciascuno. Col controllo su is_purchasable() sarebbe finito in
+        // quarantena — fuori dalla federazione — un prodotto con tre articoli in
+        // vendita. La stessa trappola aspettava gli external.
+        //
+        // La regola non va ristretta caso per caso: va riportata dove appartiene.
+        // La domanda e' "c'e' un prezzo da dire a chi compra?", e quel prezzo lo
+        // calcoliamo gia' una volta sola in compute_price(). Si legge quello. Cosi'
+        // il controllo resta uno, vale per tutti i tipi — presenti e futuri — e non
+        // puo' piu' divergere dal payload, perche' E' il payload.
+        $price_data = $price_data ?? self::compute_price( $p );
+        if ( ( $price_data['current'] ?? null ) === null && $p->get_status() === 'publish' ) {
+            $flags[] = [ 'code' => 'PRICE_MISSING', 'severity' => 'blocking', 'label' => 'No price set: the product cannot be purchased' ];
         }
 
         $improvement_flags = [];
@@ -1963,6 +2546,10 @@ class KaliCart_Bridge_Catalog_Engine {
         $deductions = 0;
         foreach ( $flags as $flag ) {
             $deductions += match ( $flag['severity'] ) {
+                // 'blocking' non e' un difetto di grado: e' l'impossibilita' di
+                // comprare. Azzera il punteggio invece di scalarlo, perche' nessuna
+                // qualita' di scheda rende vendibile un prodotto senza prezzo.
+                'blocking' => 100,
                 'high'   => 30,
                 'medium' => 15,
                 'low'    => 5,
@@ -2194,6 +2781,9 @@ class KaliCart_Bridge_Catalog_Engine {
             'price'      => 'meta_value_num',
             'title'      => 'title',
             'popularity' => 'comment_count',
+            // L'unico ordinamento su un campo che non cambia mai: e' quello che
+            // rende ripetibile la camminata di un catalogo intero.
+            'id'         => 'ID',
             default      => 'date',
         };
     }

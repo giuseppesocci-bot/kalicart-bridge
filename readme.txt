@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.134
+Stable tag: 1.0.135
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -161,6 +161,20 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.135 =
+**Products sold together are described as such, and no price is quoted that the buyer cannot pay.** Groups and bundles were served in the shape of a single ordinary product: no contents, one price where there was a range, and a purchase instruction that was wrong in both directions. Sale prices outside their active window were published as if they were the price being charged.
+
+* New: every record carries `group`, non-null only for products sold together — WooCommerce grouped products and supported bundle plugins. It lists the components with their quantities and which of them are optional, the total the same items cost bought separately today, and the discount the group itself applies. `sold_as` leads: `one_item` means the whole group is bought in one go at `price.current`; `individual_components` means it is a display of products each bought on its own. A bundle stored by a plugin whose format the Bridge cannot read is still declared a group, with `resolved: false`, rather than being guessed at.
+* Fix: a grouped product no longer reports the price of its cheapest component as its price. It now carries a price range, like a variable product, and `price.range_over` says which of the two kinds of range it is — `variants`, where the buyer picks one, or `group_components`, where each is bought separately. `fields=summary` carries it too, so triage is not misled before the product is ever opened.
+* Fix: `purchase_readiness` tells the truth about groups. It previously declared every group unbuyable, with a reason naming three things that were not the case; a fixed-price bundle can in fact be added to the cart directly, and now says so. A group whose components are sold one by one, a group with optional components still to be chosen, and a group whose contents cannot be read each get their own state and their own reason.
+* Fix: a sale price that is not the price being charged is no longer published as one. A sale whose window has not opened, or has already closed, left `sale` populated while `current` stayed at the regular price. The promotion is not hidden: it moves to `scheduled_promotion`, with its state and its dates, and `sale`, `on_sale` and `discount_pct` describe only what the buyer can actually pay today.
+* Fix: a product with no price set is reported as unsellable rather than as badly written. It was scored like a short title, fifteen points, while a product that cannot be bought at all now blocks. A free product priced at zero is not the same thing and is no longer confused with it: it is purchasable and is served normally.
+* Fix: free shipping is reported with the condition the merchant actually set. The method's `requires` setting was never read, so a free shipping offer available only with a coupon was announced as if the cart total alone were enough. Records now distinguish unconditional free shipping, a real order threshold, and free shipping that needs a coupon.
+* Fix: `get_product` returns a product over MCP. It answered with an "unknown query parameters" error instead of the product, on every request, making the verification step of the MCP surface unusable.
+* Fix: out of stock is said plainly whatever the product type. A simple product that had sold out was reported as requiring the product page, with a reason describing an external product, while a variable product in the same state was correctly reported as out of stock.
+* Fix: `variants` no longer carries a synthetic entry for products that do not have a single price to pay. That entry repeated the product as if it were one buyable line, which on a grouped product meant quoting the cheapest component as the price of an item that is not sold. The group's contents are in `group.components`.
+* New: `after_id` on `/catalog/products`, with `orderby=id`, walks a catalog without losing or repeating products when the shop changes mid-walk. Date ordering shifts under the reader as products are published or edited; an id cursor does not.
 
 = 1.0.134 =
 **The catalog is a mirror of the shop.** It shows everything the merchant sells and says how each product is obtained; it hides what the merchant has hidden; and it no longer states shipping conditions for products that are not shipped.

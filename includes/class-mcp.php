@@ -619,7 +619,24 @@ class KaliCart_Bridge_MCP {
 
 			case 'get_product':
 				$req = new WP_REST_Request( 'GET' );
-				$req->set_param( 'id', isset( $args['id'] ) ? absint( $args['id'] ) : 0 );
+				// ID-NEL-PERCORSO-v1 (1.0.135) — `id` e' un pezzo del PERCORSO
+				// (/catalog/product/{id}), non un parametro di query, e va messo
+				// dove il router lo metterebbe. Con `set_param()` finiva nel
+				// secchio GET, e catalog_product(), che legge
+				// `get_query_params()` per rifiutare i parametri sconosciuti, lo
+				// vedeva come intruso: `get_product` rispondeva
+				// KALICART_UNKNOWN_QUERY_PARAMETERS e NON tornava mai un
+				// prodotto. Provato il 2026-09-18 su illpumpyouup.com con la
+				// 1.0.134 in produzione: stesso errore, quindi valeva per ogni
+				// merchant della federazione.
+				//
+				// Non si allarga l'elenco dei parametri accettati per far passare
+				// `id`: sarebbe una toppa che apre davvero
+				// `/catalog/product/489?id=7` sull'HTTP pubblico. Si mette il
+				// valore nel secchio giusto, e la chiamata interna torna identica
+				// a quella che arriva dalla rete — che e' il presupposto
+				// dichiarato di run_tool().
+				$req->set_url_params( array( 'id' => isset( $args['id'] ) ? absint( $args['id'] ) : 0 ) );
 				$req->set_param( 'fields', 'verification' );
 				return self::unwrap( self::call_catalog_api( 'catalog_product', $req ) );
 
@@ -775,7 +792,7 @@ class KaliCart_Bridge_MCP {
 			array(
 				'name'        => 'get_product',
 				'title'       => 'Verify selected product',
-				'description' => 'After ranking summaries, call once for the final selected product. Returns compact price, stock, top-level product attributes, variants with variation-level attributes, shipping and coupon evidence.',
+				'description' => 'After ranking summaries, call once for the final selected product. Returns compact price, stock, top-level product attributes, variants with variation-level attributes, shipping and coupon evidence. When group is not null the product is several products sold together: read group.sold_as before quoting. one_item means price is the price of the whole group and checkout_url adds it to the cart; individual_components means there is no single price, price is a range over the components and each one is bought on its own.',
 				'inputSchema' => array(
 					'type'                 => 'object',
 					'properties'           => (object) array(
