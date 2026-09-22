@@ -1435,3 +1435,19 @@ msgstr ""
 #: kalicart-bridge.php:179
 msgid "WooCommerce required"
 msgstr ""
+
+#: admin/admin-page.php
+msgid "Your request has been recorded. Inclusion in the index built for OpenAI is not automatic: products or categories that OpenAI's commerce policies do not allow may keep your store out of that index. Your participation in the Federated Catalog does not change."
+msgstr ""
+
+#: includes/class-quarantine.php
+msgid "No price set: the product cannot be purchased"
+msgstr ""
+
+#: includes/class-quarantine.php
+msgid "Set a price on products that have none"
+msgstr ""
+
+#: includes/class-quarantine.php
+msgid "A product with no price cannot be purchased. A price of zero is different: it is a free product and stays purchasable."
+msgstr ""

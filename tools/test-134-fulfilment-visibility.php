@@ -56,15 +56,18 @@ foreach ( [ 'PDF', 'EPUB' ] as $fmt ) {
 }
 WC_Product_Variable::sync( $var_id );
 
-$ful = new ReflectionMethod( 'KaliCart_Bridge_Catalog_Engine', 'product_fulfilment' );
+// 1.0.136: product_fulfilment() e' confluita in product_delivery(), che rende anche i flag grezzi.
+$ful = new ReflectionMethod( 'KaliCart_Bridge_Catalog_Engine', 'product_delivery' );
 $ful->setAccessible( true );
-$fulfilment = static fn( int $id ): string => (string) $ful->invoke( null, wc_get_product( $id ) );
+$fulfilment = static fn( int $id ): string => (string) ( $ful->invoke( null, wc_get_product( $id ) )['fulfilment'] ?? '' );
 
 // ── 1. I tre modi di ottenere un prodotto ───────────────────────────────────
 $check( 'shipped'      === $fulfilment( $shipped ),      'un prodotto spedibile e\' shipped' );
 $check( 'shipped'      === $fulfilment( $ship_with_dl ), 'scaricabile MA spedibile resta shipped: downloadable non implica non spedibile' );
 $check( 'downloadable' === $fulfilment( $download ),     'virtuale e scaricabile e\' downloadable' );
-$check( 'pickup_only'  === $fulfilment( $pickup ),       'non spedibile e NON scaricabile e\' pickup_only: esiste, quindi si ritira' );
+// 1.0.136 (CONSEGNA-VIRTUALE-v1): questa asserzione diceva pickup_only, "esiste, quindi si
+// ritira". Era sbagliata: VIRTUALE e non scaricabile e' una chiave, un corso, un servizio.
+$check( 'virtual'      === $fulfilment( $pickup ),       'virtuale e NON scaricabile e\' virtual, non un oggetto da ritirare' );
 $check( 'downloadable' === $fulfilment( $var_id ),       'variabile con tutte le varianti scaricabili e\' downloadable (il parent Woo direbbe di no)' );
 
 // ── 2. Nessuna contraddizione sulla spedizione ──────────────────────────────
@@ -81,7 +84,7 @@ $check( array_key_exists( 'free_shipping_available', $shipped_block ), 'il prodo
 
 // ── 3. Il summary dichiara come si ottiene ──────────────────────────────────
 $sum = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $pickup ), 'summary' );
-$check( 'pickup_only' === ( $sum['fulfilment'] ?? null ), 'fulfilment e\' nel summary: e\' li\' che l\'agente sceglie' );
+$check( 'virtual' === ( $sum['fulfilment'] ?? null ), 'fulfilment e\' nel summary: e\' li\' che l\'agente sceglie' );
 
 // ── 4. Lo specchio: visibilita' di catalogo ─────────────────────────────────
 $ids_of = static function ( array $args ): array {

@@ -802,6 +802,8 @@ class KaliCart_Bridge_Catalog_Engine {
                 'variant_selection_required_for_sale' => (bool) ( $price['variant_selection_required_for_sale'] ?? false ),
             ];
 
+            $delivery = self::product_delivery( $p );
+
             return [
                 'id'         => $p->get_id(),
                 'sku'        => $p->get_sku() ?: null,
@@ -819,14 +821,26 @@ class KaliCart_Bridge_Catalog_Engine {
                 // fact the summary carries: the quote, zones and thresholds stay in
                 // /catalog/product/{id}. Without it an agent that must reason about
                 // physical goods has to open every candidate one by one to find out.
-                'shipping_required' => self::product_needs_shipping( $p ),
-                // FULFILMENT-v1 — come si ottiene: shipped | downloadable | pickup_only.
+                'shipping_required' => $delivery['shipping_required'],
+                // FULFILMENT-v1 — come si ottiene: shipped | downloadable | virtual | pickup_only.
                 // Il catalogo e' lo specchio del negozio, quindi non nasconde un
                 // prodotto perche' non si spedisce: dice cosa arriva a casa, cosa si
                 // scarica e cosa si ritira in sede. Sta nel summary perche' e' li'
                 // che l'agente sceglie, e scegliere senza questo significa proporre
                 // una consegna che non esiste.
-                'fulfilment' => self::product_fulfilment( $p ),
+                'fulfilment' => $delivery['fulfilment'],
+                // SOURCE-DELIVERY-v1 (1.0.136) — i due fatti di WooCommerce da cui
+                // `fulfilment` e' dedotto, cosi' come il merchant li ha spuntati.
+                // `fulfilment` risponde a "come lo ottieni" e per farlo deve
+                // riassumere: un prodotto scaricabile ma non virtuale diventa
+                // `shipped`, perche' WooCommerce lo spedisce. Senza i due flag, chi
+                // legge non puo' accorgersi che quel `shipped` porta con se' un
+                // download — un gioco in scatola con bonus digitale, oppure un
+                // gioco digitale a cui manca la spunta "virtuale" (il caso che ha
+                // aperto questa voce, 2026-09-21). Il Bridge non decide quale dei
+                // due: lo espone, e chi lo legge decide.
+                'virtual'      => $delivery['virtual'],
+                'downloadable' => $delivery['downloadable'],
                 // DISCOVERY-SCOPE-v1 — il Bridge AFFERMA quel che afferma il negozio.
                 // Un prodotto fuori dal catalogo ma in ricerca non deve essere dedotto
                 // dall'assenza altrove: un agente che non lo vede navigando non puo'
@@ -1202,49 +1216,6 @@ class KaliCart_Bridge_Catalog_Engine {
         return $out;
     }
 
-    /**
-     * Se il prodotto si scarica.
-     *
-     * Stessa cecita' di `get_virtual()`: `WC_Product_Variable::get_downloadable()`
-     * ritorna `false` INCONDIZIONATAMENTE ("Variable products themselves cannot be
-     * downloadable", Woo 11.1.0), quindi sul parent non dice nulla e vanno lette
-     * le varianti.
-     *
-     * Per dire che il PRODOTTO si scarica devono scaricarsi TUTTE le varianti: se
-     * anche solo un modo di comprarlo non produce un download, il prodotto non e'
-     * un download. Ignoto -> non scaricabile, coerente con "ignoto resta fisico".
-     */
-    private static function product_is_downloadable( WC_Product $p ): bool {
-        if ( ! $p->is_type( 'variable' ) ) {
-            return $p->is_downloadable();
-        }
-        $inspected = 0;
-        foreach ( $p->get_children() as $child_id ) {
-            $variation = wc_get_product( (int) $child_id );
-            if ( ! $variation ) {
-                continue;
-            }
-            $inspected++;
-            if ( ! $variation->is_downloadable() ) {
-                return false;
-            }
-        }
-        return $inspected > 0;
-    }
-
-    /**
-     * Come si ottiene il prodotto, deciso dal PRODOTTO e non dal negozio.
-     *
-     * Tre casi, che sono le tre cose che un catalogo-specchio deve saper dire:
-     * cosa ti arriva a casa, cosa scarichi, cosa ritiri in sede.
-     *
-     * `pickup_only` non e' un'inferenza dalla configurazione del negozio — quello
-     * sarebbe un fatto del negozio applicato a un prodotto, e in un negozio con
-     * ritiro attivo avrebbe etichettato "si ritira in sede" anche un ebook. E'
-     * una deduzione dal prodotto: se non si spedisce e non si scarica, allora
-     * esiste fisicamente e da qualche parte si ritira. Dove, lo dicono i metodi
-     * di ritiro del negozio, che restano un fatto separato.
-     */
     /** Il prodotto compare negli scaffali del negozio (navigazione e categorie). */
     private static function product_in_catalog( WC_Product $p ): bool {
         return ! in_array( $p->get_catalog_visibility(), [ 'search', 'hidden' ], true );
@@ -1255,12 +1226,86 @@ class KaliCart_Bridge_Catalog_Engine {
         return ! in_array( $p->get_catalog_visibility(), [ 'catalog', 'hidden' ], true );
     }
 
-    private static function product_fulfilment( WC_Product $p ): string {
-        if ( self::product_needs_shipping( $p ) ) {
-            return 'shipped';
+    /**
+     * Come si ottiene il prodotto, deciso dal PRODOTTO e non dal negozio.
+     *
+     *   shipped       WooCommerce lo spedisce (needs_shipping)
+     *   downloadable  non si spedisce e si scarica
+     *   virtual       non si spedisce, non si scarica, ed e' VIRTUALE: una chiave,
+     *                 un accesso, un servizio, un corso
+     *   pickup_only   non si spedisce, non si scarica e NON e' virtuale: WooCommerce
+     *                 dice che non va spedito un oggetto che esiste — lo si ritira
+     *
+     * CONSEGNA-VIRTUALE-v1 (1.0.136). Fino alla 1.0.135 il terzo caso non
+     * esisteva: tutto cio' che non si spediva e non si scaricava era `pickup_only`,
+     * "oggetto fisico da ritirare in sede". Il ragionamento ("altrimenti cosa
+     * ritira?") valeva per un oggetto, ma per WooCommerce "virtuale" vuol dire
+     * INTANGIBILE. Misurato il 2026-09-22: su avalon-natureart.de 476 prodotti
+     * `pickup_only` erano corsi e consulenze; e una chiave Steam — il modo piu'
+     * comune di vendere un gioco digitale — e' virtuale e non scaricabile, quindi
+     * veniva descritta come una scatola da ritirare. Un oggetto che si ritira in
+     * negozio non e' virtuale: e' un prodotto fisico con il ritiro fra i metodi
+     * di spedizione, e WooCommerce lo spedisce (`shipped`, con il ritiro elencato
+     * nei metodi). `pickup_only` resta per l'unico caso in cui e' vero.
+     *
+     * `virtual` e `downloadable` sono i flag del merchant, letti con
+     * `is_virtual()` / `is_downloadable()`, NON dedotti da `needs_shipping()`: un
+     * filtro su `woocommerce_product_needs_shipping` li separa, ed e' proprio
+     * quando si separano che servono.
+     *
+     * Su un variabile decidono le varianti: il parent dice sempre "fisico" (vedi
+     * product_needs_shipping()) e mai "scaricabile" — WC_Product_Variable::
+     * get_downloadable() ritorna false incondizionatamente dalla Woo 11.1.0:
+     * si spedisce se una qualsiasi si spedisce; e' virtuale / scaricabile solo se
+     * lo sono tutte. Il giro si ferma appena le tre risposte sono decise, quindi un
+     * variabile fisico ordinario costa UN caricamento di variante, come prima;
+     * paga il giro intero solo il prodotto interamente digitale. Ignoto -> fisico:
+     * senza varianti leggibili il prodotto e' `shipped`, mai nascosto per un errore
+     * di lettura.
+     */
+    private static function product_delivery( WC_Product $p ): array {
+        if ( ! $p->is_type( 'variable' ) ) {
+            $ships        = $p->needs_shipping();
+            $virtual      = $p->is_virtual();
+            $downloadable = $p->is_downloadable();
+        } else {
+            $ships = false; $virtual = true; $downloadable = true; $inspected = 0;
+            foreach ( $p->get_children() as $child_id ) {
+                $variation = wc_get_product( (int) $child_id );
+                if ( ! $variation ) {
+                    continue;
+                }
+                $inspected++;
+                $ships        = $ships || $variation->needs_shipping();
+                $virtual      = $virtual && $variation->is_virtual();
+                $downloadable = $downloadable && $variation->is_downloadable();
+                if ( $ships && ! $virtual && ! $downloadable ) {
+                    break;
+                }
+            }
+            if ( 0 === $inspected ) {
+                $ships = true; $virtual = false; $downloadable = false;
+            }
         }
-        return self::product_is_downloadable( $p ) ? 'downloadable' : 'pickup_only';
+
+        if ( $ships ) {
+            $fulfilment = 'shipped';
+        } elseif ( $downloadable ) {
+            $fulfilment = 'downloadable';
+        } elseif ( $virtual ) {
+            $fulfilment = 'virtual';
+        } else {
+            $fulfilment = 'pickup_only';
+        }
+
+        return [
+            'shipping_required' => $ships,
+            'virtual'           => $virtual,
+            'downloadable'      => $downloadable,
+            'fulfilment'        => $fulfilment,
+        ];
     }
+
 
     /**
      * I metodi di ritiro in negozio configurati dal merchant, se ce ne sono.
@@ -1291,20 +1336,29 @@ class KaliCart_Bridge_Catalog_Engine {
         // che si contraddicono nello stesso oggetto, e un agente che legge il
         // secondo conclude l'opposto del primo. La policy del negozio vale per
         // cio' che il negozio spedisce; per il resto si dice come lo si ottiene.
-        if ( ! self::product_needs_shipping( $p ) ) {
-            $pickup      = self::local_pickup_methods();
-            $fulfilment  = self::product_fulfilment( $p );
+        $delivery = self::product_delivery( $p );
+        if ( ! $delivery['shipping_required'] ) {
+            $fulfilment  = $delivery['fulfilment'];
             $is_download = 'downloadable' === $fulfilment;
+            $is_virtual  = 'virtual' === $fulfilment;
+            // Il ritiro in negozio riguarda solo cio' che esiste fisicamente: a un
+            // download o a una chiave non si applica, e nominarlo farebbe credere
+            // che ci sia qualcosa da andare a prendere.
+            $pickup      = ( $is_download || $is_virtual ) ? [] : self::local_pickup_methods();
             return [
                 'shipping_required' => false,
                 'fulfilment' => $fulfilment,
-                'local_pickup_available' => ! $is_download && ! empty( $pickup ),
-                'local_pickup' => $is_download ? null : ( $pickup ?: null ),
+                'virtual' => $delivery['virtual'],
+                'downloadable' => $delivery['downloadable'],
+                'local_pickup_available' => ! empty( $pickup ),
+                'local_pickup' => $pickup ?: null,
                 'delivery_note' => $is_download
                     ? 'This product is downloaded, not delivered. Shipping costs, free-shipping thresholds and delivery estimates do not apply to it.'
+                    : ( $is_virtual
+                    ? 'This product is virtual: it is neither shipped nor downloaded, and is obtained as a code, an access or a service provided by the merchant. Nothing is collected in store. Shipping costs, free-shipping thresholds and delivery estimates do not apply to it.'
                     : ( $pickup
                         ? 'This product is not shipped and is not a download: it is a physical item collected in store. Shipping costs, free-shipping thresholds and delivery estimates do not apply to it.'
-                        : 'This product is not shipped and is not a download, so it is collected from the merchant. The store has no local pickup method configured, so the collection point is not described here: ask the merchant. Shipping costs, free-shipping thresholds and delivery estimates do not apply to it.' ),
+                        : 'This product is not shipped and is not a download, so it is collected from the merchant. The store has no local pickup method configured, so the collection point is not described here: ask the merchant. Shipping costs, free-shipping thresholds and delivery estimates do not apply to it.' ) ),
                 'zones'     => [],
                 'authority' => 'woocommerce_checkout',
                 'note' => 'Fulfilment for a product WooCommerce reports as not requiring shipping. Store shipping conditions are deliberately omitted: they do not apply here.',
@@ -1324,6 +1378,8 @@ class KaliCart_Bridge_Catalog_Engine {
         return [
             'shipping_required' => true,
             'fulfilment' => 'shipped',
+            'virtual' => $delivery['virtual'],
+            'downloadable' => $delivery['downloadable'],
             'shipping_class' => $p->get_shipping_class() ?: null,
             'weight' => $p->get_weight() ? (float) $p->get_weight() : null,
             'weight_unit' => get_option( 'woocommerce_weight_unit', 'kg' ),
@@ -1748,6 +1804,14 @@ class KaliCart_Bridge_Catalog_Engine {
                     'agent_rule'               => 'This group contains optional components: the final price depends on what the buyer keeps. Do not quote a final price before the selection is made.',
                 ];
             }
+            if ( ! self::woo_allows_direct_add( $p ) ) {
+                return [
+                    'status'                   => 'requires_product_page',
+                    'blocking_fields'          => [],
+                    'can_add_to_cart_directly' => false,
+                    'agent_rule'               => 'This group is sold as one item, but the store does not accept it from a direct add-to-cart link: its own bundle plugin requires the product page. Open the product page to buy it. group.components lists what it contains.',
+                ];
+            }
             return [
                 'status'                   => 'direct_cart_possible',
                 'blocking_fields'          => [],
@@ -1763,7 +1827,7 @@ class KaliCart_Bridge_Catalog_Engine {
         // mentre il summary, che legge i minimi, diceva gia' selection_required.
         // Due superfici dello stesso prodotto che si contraddicono. Il fatto piu'
         // specifico si legge per primo.
-        if ( $p->is_type( 'simple' ) && $p->is_purchasable() && $p->is_in_stock() ) {
+        if ( self::woo_allows_direct_add( $p ) ) {
             return [
                 'status'                 => 'direct_cart_possible',
                 'blocking_fields'        => [],
@@ -1778,6 +1842,34 @@ class KaliCart_Bridge_Catalog_Engine {
             'can_add_to_cart_directly' => false,
             'agent_rule'             => 'Product requires the product page for purchase (external product, or not purchasable in its current state).',
         ];
+    }
+
+    /**
+     * IL-CARRELLO-LO-SA-WOOCOMMERCE-v1 (1.0.136) — se un prodotto si aggiunge al
+     * carrello con un link diretto non lo decidiamo piu' noi dal tipo: lo dice
+     * `WC_Product::add_to_cart_url()`, l'API con cui WooCommerce stessa sceglie,
+     * nel ciclo del negozio, fra "Aggiungi al carrello" e "vai alla scheda". Tiene
+     * conto del tipo, dello stock, dell'acquistabilita' e di cio' che il plugin
+     * del merchant ha configurato su QUEL sito — che da fuori non possiamo sapere.
+     *
+     * Misurato il 2026-09-18: su phytoactiva.it il woosb #4178 dava
+     * `direct_cart_possible`, ma `?add-to-cart=4178` lasciava il carrello vuoto
+     * (controllo: un semplice dello stesso sito, stessa sessione, entrava). Su
+     * project2209 l'API concordava con la nostra regola su tutti e sei i casi del
+     * banco: cambia solo dove noi sbagliavamo.
+     *
+     * Si legge l'URL, non `supports('ajax_add_to_cart')`: sul #426 esaurito e sul
+     * #444 senza prezzo quel flag e' true mentre l'URL manda alla scheda. L'URL
+     * che WooCommerce restituisce e' RELATIVO quando il prodotto si compra
+     * (`?add-to-cart=N`): qui serve solo come risposta si/no, e il link emesso
+     * resta quello assoluto costruito sotto contro la pagina carrello.
+     *
+     * Sostituisce SOLO l'ultimo passo. Esaurito, gruppi illeggibili, componenti
+     * opzionali e varianti da scegliere restano prima, perche' dicono cose che
+     * l'URL non dice.
+     */
+    private static function woo_allows_direct_add( WC_Product $p ): bool {
+        return false !== strpos( (string) $p->add_to_cart_url(), 'add-to-cart=' );
     }
 
     /**

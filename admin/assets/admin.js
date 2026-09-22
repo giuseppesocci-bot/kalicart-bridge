@@ -581,6 +581,9 @@
     if ( checkbox ) checkbox.disabled = ! globalActive;
     if ( grantBtn ) grantBtn.disabled = ! globalActive || ! checkbox?.checked;
     if ( revokeBtn ) revokeBtn.style.display = authorized ? '' : 'none';
+    // L'avviso sul pilot riguarda una richiesta in corso: dopo una revoca non vale.
+    const pilotNotice = $( 'providerConsentPilotNotice' );
+    if ( pilotNotice ) pilotNotice.style.display = authorized ? '' : 'none';
     if ( confirmBox ) confirmBox.style.display = 'none';
 
     if ( ! state.consent_id ) {

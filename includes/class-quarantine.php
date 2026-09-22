@@ -95,12 +95,16 @@ class KaliCart_Bridge_Quarantine {
             $uncategorized_id
         ) );
 
-        // ── Prezzo zero o mancante ────────────────────────────────────────────
+        // ── Prezzo mancante ───────────────────────────────────────────────────
+        // PREZZO-MANCANTE-v2 (1.0.136): un prezzo a zero e' un omaggio, e si
+        // compra; senza prezzo non si compra. Fino alla 1.0.135 questo pannello
+        // li contava insieme, mentre il payload del catalogo (PRICE_MISSING nel
+        // motore) li distingueva gia': stesso prodotto, 100 nel payload e 85 qui.
         $no_price = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT COUNT(*) FROM {$wpdb->posts} p
              LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_price'
              WHERE p.post_type='product' AND p.post_status='publish'
-             AND (pm.meta_value IS NULL OR pm.meta_value='' OR CAST(pm.meta_value AS DECIMAL(10,2))<=0)"
+             AND (pm.meta_value IS NULL OR pm.meta_value='')"
         );
 
         // ── Senza SKU ─────────────────────────────────────────────────────────
@@ -135,8 +139,9 @@ class KaliCart_Bridge_Quarantine {
 
         // ── Score qualità globale ─────────────────────────────────────────────
         // Quarantine reasons weigh more than improvement-only signals.
-        $issues_weighted = ( $bad_title * 25 + $no_desc * 30 + $no_cat * 30 + $no_price * 25 + $no_image * 8 + $no_sku * 4 );
-        $max_weighted    = $total * 122;
+        // Un prodotto invendibile pesa piu' di uno scritto male: 40, sopra descrizione e categoria.
+        $issues_weighted = ( $bad_title * 25 + $no_desc * 30 + $no_cat * 30 + $no_price * 40 + $no_image * 8 + $no_sku * 4 );
+        $max_weighted    = $total * 137;
         $avg_score       = $total > 0 ? max( 0, (int) round( 100 - ( $issues_weighted / max( 1, $max_weighted ) ) * 100 ) ) : 100;
         // Penalità store-level: return policy non configurata
         if ( empty( get_option( 'kalicart_bridge_return_policy_url', '' ) ) ) {
@@ -234,12 +239,12 @@ class KaliCart_Bridge_Quarantine {
             $uncategorized_id
         ) );
 
-        // Prezzo zero
+        // Prezzo mancante (non zero: vedi PREZZO-MANCANTE-v2 sopra)
         $no_price = $wpdb->get_col(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT p.ID FROM {$wpdb->posts} p
              LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_price'
              WHERE p.post_type='product' AND p.post_status='publish'
-             AND (pm.meta_value IS NULL OR pm.meta_value='' OR CAST(pm.meta_value AS DECIMAL(10,2))<=0)"
+             AND (pm.meta_value IS NULL OR pm.meta_value='')"
         );
 
         // Senza SKU
@@ -297,11 +302,12 @@ class KaliCart_Bridge_Quarantine {
                                                                    $flags[] = [ 'code' => 'NO_DESCRIPTION', 'severity' => 'high',   'label' => __( 'Description too short', 'kalicart-bridge' ) ];
             if ( ! self::product_has_real_category( (int) $row->ID, $uncategorized_id ) )
                                                                    $flags[] = [ 'code' => 'NO_CATEGORY',    'severity' => 'high',   'label' => __( 'No category', 'kalicart-bridge' ) ];
-            if ( empty( $row->price ) || (float) $row->price <= 0 ) $flags[] = [ 'code' => 'ZERO_PRICE',    'severity' => 'medium', 'label' => __( 'Price is zero or missing', 'kalicart-bridge' ) ];
+            // `empty('0')` e' TRUE in PHP: un omaggio veniva preso due volte. Solo l'assenza conta.
+            if ( $row->price === null || $row->price === '' ) $flags[] = [ 'code' => 'ZERO_PRICE',    'severity' => 'blocking', 'label' => __( 'No price set: the product cannot be purchased', 'kalicart-bridge' ) ];
 
             $deductions = 0;
             foreach ( $flags as $f ) {
-                $deductions += match( $f['severity'] ) { 'high' => 30, 'medium' => 15, default => 5 };
+                $deductions += match( $f['severity'] ) { 'blocking' => 100, 'high' => 30, 'medium' => 15, default => 5 };
             }
 
             $out[] = [
@@ -338,7 +344,7 @@ class KaliCart_Bridge_Quarantine {
             ...$ids
         ) );
 
-        $score_map = [ 'high' => 30, 'medium' => 15, 'low' => 5, 'image' => 8, 'sku' => 4 ];
+        $score_map = [ 'blocking' => 100, 'high' => 30, 'medium' => 15, 'low' => 5, 'image' => 8, 'sku' => 4 ];
         $deduction = $score_map[ $severity ] ?? 0;
 
         $out = [];
@@ -407,7 +413,7 @@ class KaliCart_Bridge_Quarantine {
         if ( $no_image > 0 )  $s[] = [ 'priority' => 'low',    'code' => 'NO_IMAGE',       'label' => __( 'Add product images', 'kalicart-bridge' ),       'detail' => __( 'Missing images reduce discoverability but do not block agent queries.', 'kalicart-bridge' ), 'affected' => $no_image, 'admin_url' => $admin_url ];
         if ( $no_desc > 0 )   $s[] = [ 'priority' => 'high',   'code' => 'NO_DESCRIPTION', 'label' => __( 'Add product descriptions', 'kalicart-bridge' ), 'detail' => __( 'Missing or very short descriptions are weak signals for AI agents.', 'kalicart-bridge' ),   'affected' => $no_desc,  'admin_url' => $admin_url ];
         if ( $no_cat > 0 )    $s[] = [ 'priority' => 'high',   'code' => 'NO_CATEGORY',    'label' => __( 'Assign categories', 'kalicart-bridge' ),        'detail' => __( 'Uncategorized products are invisible to category-based agent queries.', 'kalicart-bridge' ),'affected' => $no_cat,   'admin_url' => $admin_url ];
-        if ( $no_price > 0 )  $s[] = [ 'priority' => 'medium', 'code' => 'ZERO_PRICE',     'label' => __( 'Fix zero-price products', 'kalicart-bridge' ),  'detail' => __( 'Products with no price are excluded from commerce-intent pipelines.', 'kalicart-bridge' ),  'affected' => $no_price, 'admin_url' => $admin_url ];
+        if ( $no_price > 0 )  $s[] = [ 'priority' => 'high',   'code' => 'ZERO_PRICE',     'label' => __( 'Set a price on products that have none', 'kalicart-bridge' ),  'detail' => __( 'A product with no price cannot be purchased. A price of zero is different: it is a free product and stays purchasable.', 'kalicart-bridge' ),  'affected' => $no_price, 'admin_url' => $admin_url ];
         if ( $no_sku > 0 )    $s[] = [ 'priority' => 'low',    'code' => 'NO_SKU',         'label' => __( 'Add SKU codes', 'kalicart-bridge' ),            'detail' => __( 'SKUs enable precise product identification and deduplication by agents.', 'kalicart-bridge' ),'affected' => $no_sku,   'admin_url' => $admin_url ];
 
         // Brand: non richiesto dal catalogo (nessun impatto su score/quarantena),

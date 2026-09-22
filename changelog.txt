@@ -1,5 +1,14 @@
 *** KaliCart Bridge Changelog ***
 
+2026-09-22 - version 1.0.136
+
+* Fix: a virtual product that is not downloadable — a game key, a course, a consultation, an access — is now reported as fulfilment "virtual" instead of "pickup_only". It used to be described as a physical item to collect in store. "pickup_only" remains only for a product that is neither virtual nor downloadable and that WooCommerce does not ship.
+* New: every catalog record carries the merchant's own WooCommerce "virtual" and "downloadable" flags, as set, next to fulfilment. A product that is downloadable but not virtual is shipped by WooCommerce; the flags let a reader see that it also carries a download.
+* Fix: whether a product can be added to the cart in one step is now read from WooCommerce itself rather than inferred from the product type. A bundle that its own plugin does not allow to be added by URL was reported as a one-click purchase, and the checkout link silently did nothing. The catalog now reports what the store would actually do, including whatever the merchant's bundle plugin allows on that specific site.
+* Fix: the catalog health panel no longer reports a free product as a defect. A product priced at zero is a gift and is purchasable; a product with no price at all cannot be bought. The two were scored identically, and a product that cannot be sold was weighted below a short title. The panel now matches the catalog payload product by product.
+* New: after a federated distribution channel is authorized, the panel states that inclusion in the index built for OpenAI is not automatic, and that products or categories OpenAI's commerce policies do not allow may keep the store out of it. Participation in the Federated Catalog is unaffected. Translated in Italian, German, Spanish and French.
+
+
 2026-09-18 - version 1.0.135
 
 * New: every record carries `group`, non-null only for products sold together — WooCommerce grouped products and supported bundle plugins. It lists the components with their quantities and which of them are optional, the total the same items cost bought separately today, and the discount the group itself applies. `sold_as` leads: `one_item` means the whole group is bought in one go at `price.current`; `individual_components` means it is a display of products each bought on its own. A bundle stored by a plugin whose format the Bridge cannot read is still declared a group, with `resolved: false`, rather than being guessed at.

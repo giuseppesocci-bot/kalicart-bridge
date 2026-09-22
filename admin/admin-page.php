@@ -118,6 +118,17 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
 
     <div id="providerConsentCurrent" class="kali-provider-consent__current" style="display:none">
       <div id="providerConsentStatus"></div>
+      <?php
+      // AVVISO-DOPO-LA-RICHIESTA-v1 (1.0.136): il consenso non basta a entrare
+      // nell'indice per OpenAI, e il Global non ha un canale per dirlo al
+      // plugin. Si dice qui, DOPO la richiesta, perche' il testo firmato
+      // (localized_consent_text) e' quello di cui ogni ricevuta porta l'impronta
+      // sotto commerce-consent-1.0: cambiarlo romperebbe la verifica di chi ha
+      // gia' autorizzato. Il blocco resta visibile anche dopo una REVOCA ("Revocato
+      // il ..."): li' la nota sarebbe falsa, quindi admin.js la mostra solo se il
+      // canale e' autorizzato adesso.
+      ?>
+      <p id="providerConsentPilotNotice" class="kali-provider-consent__notice"><?php esc_html_e( 'Your request has been recorded. Inclusion in the index built for OpenAI is not automatic: products or categories that OpenAI\'s commerce policies do not allow may keep your store out of that index. Your participation in the Federated Catalog does not change.', 'kalicart-bridge' ); ?></p>
       <div class="kali-provider-consent__actions">
         <button type="button" class="kali-btn kali-btn--secondary" id="providerConsentRevokeBtn"><?php esc_html_e( 'Revoke channel authorization', 'kalicart-bridge' ); ?></button>
         <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'json' ) ); ?>"><?php esc_html_e( 'Export proof (JSON)', 'kalicart-bridge' ); ?></a>

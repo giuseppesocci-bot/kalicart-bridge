@@ -1002,11 +1002,15 @@
   font-weight: 600;
 }
 .kali-provider-consent__notice {
-  margin: 0 0 12px;
+  margin: 12px 0;
   padding: 10px 12px;
-  border-left: 4px solid #b26b00;
+  border-left: 4px solid #e5b600;
   background: #fff8e5;
   font-size: 13px;
+  border-radius: 6px;
+}
+#providerConsentStatus {
+  line-height: 24px;
 }
 .kali-provider-consent__check { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.55; }
 .kali-provider-consent__check input { flex: 0 0 auto; margin-top: 3px; }

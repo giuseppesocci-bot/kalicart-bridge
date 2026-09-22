@@ -2033,3 +2033,19 @@ msgstr "WooCommerce necesario"
 #~ msgstr ""
 #~ "Marca primero la casilla de consentimiento de indexación Global en "
 #~ "Ajustes."
+
+#: admin/admin-page.php
+msgid "Your request has been recorded. Inclusion in the index built for OpenAI is not automatic: products or categories that OpenAI's commerce policies do not allow may keep your store out of that index. Your participation in the Federated Catalog does not change."
+msgstr "Tu solicitud ha quedado registrada. La inclusión en el índice destinado a OpenAI no es automática: los productos o categorías que las políticas comerciales de OpenAI no admiten pueden dejar tu tienda fuera de ese índice. Tu participación en el Catálogo Federado no cambia."
+
+#: includes/class-quarantine.php
+msgid "No price set: the product cannot be purchased"
+msgstr "Sin precio: el producto no se puede comprar"
+
+#: includes/class-quarantine.php
+msgid "Set a price on products that have none"
+msgstr "Asigna un precio a los productos que no lo tienen"
+
+#: includes/class-quarantine.php
+msgid "A product with no price cannot be purchased. A price of zero is different: it is a free product and stays purchasable."
+msgstr "Un producto sin precio no se puede comprar. Un precio de cero es distinto: es un producto gratuito y sigue siendo comprable."
