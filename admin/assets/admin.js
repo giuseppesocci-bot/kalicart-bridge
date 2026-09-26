@@ -378,7 +378,6 @@
     if ( $( 'headLinkTag' ) ) $( 'headLinkTag' ).textContent = headLink;
 
     const endpoints = [
-      { path: '/.well-known/ucp.json',       desc: STR.ep_ucp,  auth: false, example: '', wellknown: true },
       { path: '/.well-known/kalicart-bridge.json', desc: STR.ep_wellknown, auth: false, example: '', wellknown: true },
       { path: '/discovery',            desc: STR.ep_discovery,           auth: false, example: '' },
       { path: '/mcp',              desc: STR.ep_mcp, auth: false, example: '', method: 'POST' },
@@ -724,10 +723,41 @@
           const yes = KaliBridge.i18n?.yes || 'Yes';
           const no  = KaliBridge.i18n?.no  || 'No';
           const isReachable = ( d.probe_status === 'ok' );
-          // Stato 1/2 di 3: raggiungibile (verde) vs non raggiungibile (rosso) - mai lo stesso grigio del "mai controllato".
-          const dotColor  = isReachable ? 'var(--kb-ok,#00a32a)' : '#d63638';
-          const reachable = isReachable ? ( KaliBridge.i18n?.external_check_reachable || 'Reachable' ) : ( KaliBridge.i18n?.external_check_unreachable || 'Not reachable' );
-          const detected  = d.bridge_detected ? yes : no;
+          // 1.0.137: a blocked check is not "not a Bridge". The value is colored
+          // like its dot and always carries its cause; a second line says what
+          // it means for the store. The cause comes from KaliCart Global
+          // (challenge_provider), so a new detector never needs a plugin release.
+          const T = KaliBridge.i18n || {};
+          const isChallenged = ( d.probe_status === 'blocked_by_bot_challenge' );
+          const isRobots     = ( d.probe_status === 'disallowed_by_robots' );
+          const isLimited    = isChallenged || isRobots;
+          const dotColor  = isReachable ? 'var(--kb-ok,#00a32a)' : ( isLimited ? '#b26b00' : '#d63638' );
+          const providerName = ( slug ) => {
+            const known = { cloudflare: 'Cloudflare' };
+            const s = String( slug || '' ).trim();
+            return known[ s.toLowerCase() ] || ( s ? s.charAt( 0 ).toUpperCase() + s.slice( 1 ) : '' );
+          };
+          const cause = isChallenged
+            ? ( d.challenge_provider
+                ? ( T.external_check_cause_named || 'anti-bot challenge from %s' ).replace( '%s', providerName( d.challenge_provider ) )
+                : ( T.external_check_cause_generic || 'anti-bot challenge from the service that protects the site' ) )
+            : isRobots ? ( T.external_check_cause_robots || 'disallowed by your robots.txt' ) : '';
+          const valueText = isReachable ? ( T.external_check_reachable || 'Reachable' )
+            : isLimited ? ( T.external_check_challenged || 'Limited external access' )
+            : ( T.external_check_unreachable || 'Not reachable' );
+          const reachable = '<strong style="color:' + dotColor + '">' + esc( valueText ) + '</strong>' + ( cause ? ' — ' + esc( cause ) : '' );
+          const inCatalog = d.consent_global_indexing === true && d.consent_federated_search === true && d.serving_status === 'active';
+          let limitDetail = '';
+          if ( isLimited ) {
+            limitDetail = inCatalog
+              ? ( T.external_check_in_catalog || 'Your store stays in the KaliCart Federated Catalog with the last catalog read; price and availability cannot be verified live.' )
+              : ( T.external_check_not_in_catalog || 'Your catalog is not in the KaliCart Federated Catalog, because KaliCart Global cannot read it.' );
+            limitDetail += ' ' + ( isChallenged
+              ? ( T.external_check_others_too || 'Other automated clients, including AI agents, may receive the same challenge.' )
+              : ( T.external_check_robots_note || 'KaliCart Global respects your robots.txt and does not read the Bridge paths it disallows.' ) );
+          }
+          const detected  = d.bridge_detected ? yes
+            : ( isLimited ? ( T.external_check_detected_unknown || 'Unknown (the check was blocked)' ) : no );
 
           // Eta' relativa + soglia di staleness a 7 giorni (stesso valore che Global usa
           // internamente, LIVENESS_STALE_DAYS, per decidere quando un merchant e' "sospeso"
@@ -758,7 +788,8 @@
           const when = d.last_probed_at ? new Date( d.last_probed_at ).toLocaleString() + ' (' + ago + ')' : '—';
 
           out.innerHTML = ''
-            + '<div><span style="color:' + dotColor + '">&#9679;</span> ' + ( KaliBridge.i18n?.external_check_label_reachable || 'Discovery reachable from outside:' ) + ' <strong>' + reachable + '</strong></div>'
+            + '<div><span style="color:' + dotColor + '">&#9679;</span> ' + ( KaliBridge.i18n?.external_check_label_access || 'Access from outside:' ) + ' ' + reachable + '</div>'
+            + ( limitDetail ? '<div style="margin:2px 0 4px;color:var(--kb-muted,#646970)">' + esc( limitDetail ) + '</div>' : '' )
             + '<div>' + ( KaliBridge.i18n?.external_check_label_detected  || 'Bridge detected:' )                  + ' <strong>' + detected  + '</strong></div>'
             + '<div>' + ( KaliBridge.i18n?.external_check_label_checked   || 'Last checked:' )                     + ' ' + when + '</div>'
             + staleWarning;

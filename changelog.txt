@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-09-26 - version 1.0.137
+
+* Change: the plugin no longer publishes a UCP profile (/.well-known/ucp, /.well-known/ucp.json and the /ucp REST route). It declared a UCP REST service that the plugin does not implement, so a UCP client following it failed. UCP Catalog is served by KaliCart Global for stores that join the Federated Catalog. The old ucp.json file written by earlier versions is removed on update; a file placed there by someone else is never touched.
+* Fix: the external visibility check no longer reports "Not reachable" and "Bridge detected: No" when KaliCart Global's check receives an anti-bot challenge from your site or is disallowed by your robots.txt. It now shows "Limited external access" in orange with its cause (for example "anti-bot challenge from Cloudflare", as detected by KaliCart Global) and what it means for your store: whether it stays in the Federated Catalog with the last catalog read, or is not in it. Translated in Italian, German, Spanish and French.
+* Docs: new FAQ on UCP and ACP compatibility.
+
+
 2026-09-22 - version 1.0.136
 
 * Fix: a virtual product that is not downloadable — a game key, a course, a consultation, an access — is now reported as fulfilment "virtual" instead of "pickup_only". It used to be described as a physical item to collect in store. "pickup_only" remains only for a product that is neither virtual nor downloadable and that WooCommerce does not ship.

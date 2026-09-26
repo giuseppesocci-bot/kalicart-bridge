@@ -35,7 +35,7 @@ KaliCart Bridge installs on any WooCommerce store and exposes five things:
 
 3. **Agent discovery signals** — `<link rel="kalicart-agent">` in the storefront `<head>`, `.well-known/kalicart-bridge.json`, `.well-known/agent-catalog.json`, `robots.txt` entries, and an agentic sitemap — so agents that land on the storefront can find the API without scraping.
 
-4. **UCP interoperability** — `/.well-known/ucp.json` declares `catalog.search` and `catalog.lookup` capabilities for UCP-compliant agents (ChatGPT, Copilot, Gemini).
+4. **UCP through KaliCart Global** — since 1.0.137 the plugin publishes no UCP profile of its own (earlier versions declared a UCP REST service the plugin does not implement). Stores that join the Federated Catalog are served to UCP shopping agents by KaliCart Global (`https://global.kalicart.com/.well-known/ucp`, UCP Catalog 2026-08-25), with price and availability read live from the Bridge.
 
 5. **Optional federated discovery** — after explicit merchant consent, the plugin announces the public store URL to [KaliCart Global](https://global.kalicart.com), a read-only multi-merchant index that AI agents can query without knowing an individual merchant in advance. Consent can be revoked from the plugin settings.
 
@@ -202,7 +202,7 @@ ARC/1.0 defines:
 - Catalog endpoint requirements
 - The product object schema (price encoding, stock confidence levels, variant contract)
 - Consent model for federated indexing
-- UCP interoperability
+- UCP interoperability (ARC/1.0.1: never declare a UCP binding you do not implement)
 - Security rules (read-only, no API keys on public surfaces)
 
 Any e-commerce platform can implement ARC/1.0. KaliCart Bridge does it for WooCommerce.

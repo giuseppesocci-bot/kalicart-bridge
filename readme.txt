@@ -1,15 +1,15 @@
 === KaliCart Bridge – Product Feed for ChatGPT & AI Agents ===
 Contributors: carthub
-Tags: chatgpt, woocommerce, ai agents, agentic commerce, product feed
+Tags: chatgpt, woocommerce, ai agents, agentic commerce, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.136
+Stable tag: 1.0.137
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Validated OpenAI-compatible product feed for ChatGPT product discovery (ACP), plus catalog API, MCP server and UCP discovery for AI agents.
+Validated OpenAI-compatible product feed for ChatGPT product discovery (ACP), plus catalog API, MCP server and UCP Catalog via KaliCart Global.
 
 == Description ==
 
@@ -121,6 +121,12 @@ There are two discovery paths. Local signals — `.well-known` files, robots.txt
 
 End to end: from WP Admin → KaliCart Bridge you activate the Federated Catalog; the plugin sends only your public site URL; KaliCart Global pulls the public catalog read-only; matching results route agents back to your store. Authoritative price, availability and checkout stay on your WooCommerce site, served live by your Bridge. If you revoke consent, your catalog leaves federated results while direct agent access to your store remains active.
 
+= Is this UCP or ACP compatible? =
+
+ACP: the plugin builds the OpenAI-compatible product feed for ChatGPT product discovery (see "ChatGPT Product Discovery Feed" above).
+
+UCP: the plugin does not publish a UCP profile on your store, because it does not implement the UCP binding on your site. If you join the Federated Catalog, KaliCart Global serves your products to UCP shopping agents in the UCP Catalog format (specification 2026-08-25), with price and availability read live from your Bridge when an agent opens a product and your store answers in time. There is nothing extra to configure.
+
 = Who can access the catalog endpoints? =
 
 Public endpoints (discovery, search, products, categories) are accessible without authentication — same as the WooCommerce REST API public surfaces. The `/health` endpoint requires `manage_woocommerce` capability.
@@ -161,6 +167,13 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.137 =
+**The plugin declares only what it implements, and the panel tells a blocked check apart from a missing Bridge.**
+
+* Change: the plugin no longer publishes a UCP profile (/.well-known/ucp, /.well-known/ucp.json and the /ucp REST route). It declared a UCP REST service that the plugin does not implement, so a UCP client following it failed. UCP Catalog is served by KaliCart Global for stores that join the Federated Catalog. The old ucp.json file written by earlier versions is removed on update; a file placed there by someone else is never touched.
+* Fix: the external visibility check no longer reports "Not reachable" and "Bridge detected: No" when KaliCart Global's check receives an anti-bot challenge from your site or is disallowed by your robots.txt. It now shows "Limited external access" in orange with its cause (for example "anti-bot challenge from Cloudflare", as detected by KaliCart Global) and what it means for your store: whether it stays in the Federated Catalog with the last catalog read, or is not in it. Translated in Italian, German, Spanish and French.
+* Docs: new FAQ on UCP and ACP compatibility.
 
 = 1.0.136 =
 **How a product is obtained is reported as the merchant configured it, and a game key is no longer described as a box to collect in store.** A virtual product that is not downloadable was reported as a physical item collected from the merchant; the catalog now says it is virtual, and carries the merchant's own WooCommerce flags next to it.

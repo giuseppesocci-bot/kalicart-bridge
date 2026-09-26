@@ -133,15 +133,6 @@ class KaliCart_Bridge_API {
             ],
         ] );
 
-        // UCP profile over REST — always reachable even when /.well-known/ucp is
-        // intercepted by the webserver static .well-known location. Mirror of
-        // /.well-known/ucp.json.
-        register_rest_route( $ns, '/ucp', [
-            'methods'             => 'GET',
-            'callback'            => [ __CLASS__, 'ucp_profile' ],
-            'permission_callback' => '__return_true', // Read-only public catalog data — no authentication required by design
-        ] );
-
         register_rest_route( $ns, '/catalog/search', [
             'methods'             => 'GET',
             'callback'            => [ __CLASS__, 'catalog_search' ],
@@ -418,8 +409,6 @@ class KaliCart_Bridge_API {
                 ],
             ],
 
-            'ucp_profile_url'  => home_url( '/.well-known/ucp.json' ),
-
             'checkout_session' => [
                 'enabled'     => (bool) get_option( 'kalicart_bridge_checkout_enabled', false ),
                 'endpoint'    => rest_url( KALICART_BRIDGE_API_NS . '/checkout/session' ),
@@ -446,8 +435,7 @@ class KaliCart_Bridge_API {
                 'current_format'        => 'major_units_decimal',
                 'autonomous_checkout_format' => 'minor_units_integer',
                 'note'                  => 'Catalog prices are decimal float in major currency units. Examples: 553 = 553.00 EUR, 29.99 = 29.99 EUR. NOT ISO 4217 minor units. Use price.display for unambiguous human-readable string.',
-                'autonomous_checkout_note' => 'Autonomous checkout (roadmap) will use minor units per AP2/UCP standard (e.g. 55300 = 553.00 EUR for EUR with exponent 2). Current catalog prices must be multiplied by 100 to convert.',
-                'ucp_compatibility'     => 'UCP catalog uses minor units. Bridge uses major units for WooCommerce compatibility. price.currency and price.display eliminate ambiguity.',
+                'autonomous_checkout_note' => 'Autonomous checkout (roadmap) will use ISO 4217 minor units (e.g. 55300 = 553.00 EUR for EUR with exponent 2). Current catalog prices must be multiplied by 100 to convert.',
             ],
 
             'autonomous_checkout' => [
@@ -464,7 +452,6 @@ class KaliCart_Bridge_API {
                     'currency_exponent'  => 2,
                 ],
                 'activate_when' => 'WooCommerce exposes programmatic payment API or Stripe AP2 mandate integration is available.',
-                'ucp_equivalent' => 'dev.ucp.shopping.checkout with AP2 Mandates Extension',
             ],
 
             'stock_rule'   => 'If stock.quantity is null, report availability status only. Do not invent or imply numeric inventory. stock.confidence clarifies the precision level.',
@@ -545,7 +532,6 @@ class KaliCart_Bridge_API {
             'well_known' => [
                 'kalicart_bridge' => home_url( '/.well-known/kalicart-bridge.json' ),
                 'agent_catalog'   => home_url( '/.well-known/agent-catalog.json' ),
-                'ucp_profile'     => home_url( '/.well-known/ucp.json' ),
                 'agent_json'      => home_url( '/.well-known/agent.json' ),
                 'note'            => 'Standard /.well-known/ discovery mirrors, served with application/json on every host. The REST discovery endpoint above is the always-reachable canonical entry point.',
             ],
@@ -825,21 +811,6 @@ class KaliCart_Bridge_API {
         ];
 
         $response = new WP_REST_Response( $spec, 200 );
-        $response->header( 'Cache-Control', 'public, max-age=3600' );
-        return $response;
-    }
-
-    public static function ucp_profile( WP_REST_Request $req ): WP_REST_Response {
-		$limited = self::catalog_rate_limit( $req );
-		if ( $limited !== null ) {
-			return $limited;
-		}
-        $param_error = self::catalog_unknown_param_error( $req, [] );
-        if ( $param_error !== null ) {
-            return $param_error;
-        }
-        $data     = json_decode( KaliCart_Bridge_Signals::ucp_profile_json(), true );
-        $response = new WP_REST_Response( is_array( $data ) ? $data : [], 200 );
         $response->header( 'Cache-Control', 'public, max-age=3600' );
         return $response;
     }

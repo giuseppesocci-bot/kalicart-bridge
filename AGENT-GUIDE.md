@@ -325,7 +325,6 @@ ARC-compliant stores serve these stable paths for agent bootstrapping — no HTM
 |---|---|
 | `/.well-known/kalicart-bridge.json` | KaliCart Bridge discovery pointer |
 | `/.well-known/agent-catalog.json` | Alias |
-| `/.well-known/ucp.json` | UCP profile (ChatGPT, Copilot, Gemini) |
 
 **Check `.well-known/` before checking `<head>`** — it works even when the agent does not have an HTML parser.
 

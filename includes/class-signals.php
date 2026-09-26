@@ -970,7 +970,6 @@ class KaliCart_Bridge_Signals {
         $output .= "Allow: /.well-known/agent.json\n";
         $output .= "Allow: /.well-known/kalicart-bridge.json\n";
         $output .= "Allow: /.well-known/agent-catalog.json\n";
-        $output .= "Allow: /.well-known/ucp.json\n";
         $output .= "Content-Signal: " . self::content_signal_value() . "\n";
         $output .= "Sitemap: " . $sitemap_url . "\n";
 
@@ -1080,7 +1079,7 @@ class KaliCart_Bridge_Signals {
 
 
     public static function register_well_known_rewrite(): void {
-        add_rewrite_rule( '^\.well-known/(kalicart-bridge|agent-catalog|api-catalog|agent\.json|ucp)(?:\.json)?$', 'index.php?kalicart_well_known=$matches[1]', 'top' );
+        add_rewrite_rule( '^\.well-known/(kalicart-bridge|agent-catalog|api-catalog|agent\.json)(?:\.json)?$', 'index.php?kalicart_well_known=$matches[1]', 'top' );
     }
 
     public static function add_well_known_query_var( array $vars ): array {
@@ -1088,44 +1087,11 @@ class KaliCart_Bridge_Signals {
         return $vars;
     }
 
-    public static function ucp_profile_json(): string {
-        $base     = rest_url( KALICART_BRIDGE_API_NS );
-        $checkout = (bool) get_option( 'kalicart_bridge_checkout_enabled', false );
-
-        return wp_json_encode( [
-            'ucp' => [
-                'version'      => '2026-04-08',
-                'services'     => [
-                    'dev.ucp.shopping' => [ [
-                        'version'   => '2026-04-08',
-                        'transport' => 'rest',
-                        'endpoint'  => $base,
-                    ] ],
-                ],
-                'capabilities' => [
-                    'dev.ucp.shopping.catalog.search' => [ [
-                        'version' => '2026-04-08',
-                        'spec'    => 'https://ucp.dev/2026-04-08/specification/catalog/search',
-                        'note'    => 'Endpoint: GET ' . $base . '/catalog/search — supports q, category, gender, color, on_sale, in_stock, min_price, max_price filters.',
-                    ] ],
-                    'dev.ucp.shopping.catalog.lookup' => [ [
-                        'version' => '2026-04-08',
-                        'spec'    => 'https://ucp.dev/2026-04-08/specification/catalog/lookup',
-                        'note'    => 'Endpoint: GET ' . $base . '/catalog/product/{id} — returns full product detail with variations.',
-                    ] ],
-                ],
-            ],
-            'kalicart_bridge' => [
-                'type'          => 'kalicart-merchant-bridge-v1',
-                'version'       => KALICART_BRIDGE_VERSION,
-                'discovery'     => $base . '/discovery',
-                'checkout_note' => $checkout
-                    ? 'Checkout sessions available via POST ' . $base . '/checkout/session — returns cart_url and checkout_url for buyer handoff (WooCommerce is payment authority).'
-                    : 'Checkout sessions not enabled on this store. Use product URLs for purchase.',
-                'documentation' => 'https://bridge.kalicart.com/docs/',
-            ],
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
-    }
+    // UCP profile removed in 1.0.137: the Bridge does not implement the UCP
+    // REST binding it used to declare (a UCP client POSTing catalog/search got
+    // 404). UCP Catalog is served by KaliCart Global for opted-in stores.
+    // Declare only what is implemented. Legacy ucp / ucp.json files written by
+    // earlier versions are removed by write_well_known_files().
 
     /**
      * Shared entry-point discovery document, served at /.well-known/kalicart-bridge,
@@ -1140,7 +1106,6 @@ class KaliCart_Bridge_Signals {
             'name'          => get_bloginfo( 'name' ),
             'discovery'     => $base . '/discovery',
             'catalog_api'   => $base . '/catalog',
-            'ucp_profile'   => home_url( '/.well-known/ucp.json' ),
             'agent_note'    => 'GET discovery URL first. Contains capabilities, filter rules, shipping policy and agent instructions.',
             'documentation' => 'https://bridge.kalicart.com/docs/',
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
@@ -1167,9 +1132,6 @@ class KaliCart_Bridge_Signals {
                     ],
                     'service-doc'  => [
                         [ 'href' => 'https://bridge.kalicart.com/docs/', 'type' => 'text/html', 'title' => 'KaliCart Bridge documentation' ],
-                    ],
-                    'service-meta' => [
-                        [ 'href' => home_url( '/.well-known/ucp.json' ), 'type' => 'application/json', 'title' => 'UCP profile' ],
                     ],
                     'item'         => [
                         [ 'href' => $base . '/catalog', 'type' => 'application/json', 'title' => 'Read-only WooCommerce catalog API' ],
@@ -1199,10 +1161,7 @@ class KaliCart_Bridge_Signals {
         }
 
         $content_type = 'application/json; charset=utf-8';
-        if ( $file === 'ucp' ) {
-            // UCP profile — declares catalog capabilities, checkout via continue_url.
-            $payload = self::ucp_profile_json();
-        } elseif ( $file === 'api-catalog' ) {
+        if ( $file === 'api-catalog' ) {
             // RFC 9727 API Catalog — linkset (RFC 9264) of this site's agent APIs.
             $payload      = self::api_catalog_linkset();
             $content_type = 'application/linkset+json; charset=utf-8';
@@ -1290,11 +1249,19 @@ class KaliCart_Bridge_Signals {
             wp_mkdir_p( $dir );
         }
 
-        // Extension-less convention paths (kalicart-bridge, agent-catalog, ucp)
+        // Extension-less convention paths (kalicart-bridge, agent-catalog)
         // are served by the rewrite -> serve_well_known() handler, which sets
         // Content-Type: application/json on every stack. A physical extension-less
         // file would be served as text/plain, so remove any of ours.
         self::cleanup_well_known_static_files();
+
+        // 1.0.137: the UCP profile is no longer published (see the note above
+        // bridge_discovery_payload()). Remove our old ucp.json mirror; a file
+        // placed there by someone else is never touched.
+        $ucp_mirror = $dir . 'ucp.json';
+        if ( file_exists( $ucp_mirror ) && strpos( (string) @file_get_contents( $ucp_mirror ), 'kalicart' ) !== false ) {
+            wp_delete_file( $ucp_mirror );
+        }
 
         // Physical .json mirrors: the .json extension maps to application/json in
         // every default mime table, so these stay reachable WITH the correct
@@ -1306,7 +1273,6 @@ class KaliCart_Bridge_Signals {
             'agent.json'           => $bridge,
             'kalicart-bridge.json' => $bridge,
             'agent-catalog.json'   => $bridge,
-            'ucp.json'             => self::ucp_profile_json(),
             'api-catalog.json'     => self::api_catalog_linkset(),
         ];
         foreach ( $mirrors as $fname => $body ) {
@@ -1409,7 +1375,7 @@ class KaliCart_Bridge_Signals {
         }
 
         // .well-known discovery files
-        foreach ( [ '/.well-known/kalicart-bridge.json', '/.well-known/agent-catalog.json', '/.well-known/ucp.json' ] as $wk_path ) {
+        foreach ( [ '/.well-known/kalicart-bridge.json', '/.well-known/agent-catalog.json' ] as $wk_path ) {
             $out .= "  <url>\n";
             $out .= '    <loc>' . esc_url( home_url( $wk_path ) ) . "</loc>\n";
             $out .= '    <lastmod>' . $now . "</lastmod>\n";

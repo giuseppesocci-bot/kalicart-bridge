@@ -694,7 +694,7 @@ class KaliCart_Bridge_ACP_Feed {
 		echo '<div class="kali-acp-card">';
 		echo '<h2>' . esc_html__( 'ChatGPT Product Feed (OpenAI)', 'kalicart-bridge' ) . '</h2>';
 		echo '<p>' . esc_html__( 'This optional export follows OpenAI’s direct product feed specification. Application and approval are required; after approval, OpenAI provides the delivery channel. Checkout stays on your storefront.', 'kalicart-bridge' ) . '</p>';
-		echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'ChatGPT feed only:', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Every status and setting in this section refers only to the optional file delivered to OpenAI. It does not enable, disable or limit KaliCart search, REST API, MCP, UCP or the federated catalog.', 'kalicart-bridge' ) . '</p></div>';
+		echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'ChatGPT feed only:', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Every status and setting in this section refers only to the optional file delivered to OpenAI. It does not enable, disable or limit KaliCart search, REST API, MCP or the federated catalog.', 'kalicart-bridge' ) . '</p></div>';
 
 		if ( $stats && ! empty( $stats['error'] ) ) {
 			$details = $stats['config_errors'] ?? [ $stats['detail'] ?? '' ];
@@ -704,13 +704,13 @@ class KaliCart_Bridge_ACP_Feed {
 			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Feed readiness has not been checked with the current settings. Save and generate a snapshot to run the validator.', 'kalicart-bridge' ) . '</p></div>';
 		}
 		if ( $stats && empty( $stats['error'] ) && (int) ( $stats['rows_missing_brand'] ?? 0 ) > 0 ) {
-			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Rows submitted without brand.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Brand is required by OpenAI’s direct product feed specification. These rows are included in the file without the brand field: OpenAI may accept or reject them - by submitting the feed you knowingly assume that responsibility. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API, MCP and UCP surfaces.', 'kalicart-bridge' ) . '</p></div>';
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Rows submitted without brand.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Brand is required by OpenAI’s direct product feed specification. These rows are included in the file without the brand field: OpenAI may accept or reject them - by submitting the feed you knowingly assume that responsibility. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API and MCP surfaces.', 'kalicart-bridge' ) . '</p></div>';
 		}
 		if ( $stats && empty( $stats['error'] ) && (int) ( $stats['fallback_brand_rows'] ?? 0 ) > 0 ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Merchant brand fallback applied.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'These rows do not contain a product-level brand in WooCommerce. The merchant is responsible for declaring that the fallback is accurate for every affected product.', 'kalicart-bridge' ) . '</p></div>';
 		}
 		if ( $stats && empty( $stats['error'] ) && (int) ( $stats['fallback_description_rows'] ?? 0 ) > 0 ) {
-			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Products using the name as description.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'These feed rows have no product description in WooCommerce and use the product name in its place. Add a product description to provide complete product information. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API, MCP and UCP surfaces.', 'kalicart-bridge' ) . '</p></div>';
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Products using the name as description.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'These feed rows have no product description in WooCommerce and use the product name in its place. Add a product description to provide complete product information. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API and MCP surfaces.', 'kalicart-bridge' ) . '</p></div>';
 		}
 		if ( $stats && empty( $stats['error'] ) && (int) ( $stats['excluded_no_image'] ?? 0 ) > 0 ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Missing primary product image.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'A primary product image is required by OpenAI’s direct product feed specification. Affected feed rows remain available in the agent-readable catalog but are excluded from the ChatGPT product feed.', 'kalicart-bridge' ) . '</p></div>';
@@ -753,7 +753,7 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 		if ( $live_counts['brand'] || $live_counts['image'] ) {
 			echo '<div class="kali-acp-card"><h2>' . esc_html__( 'ChatGPT feed data gaps', 'kalicart-bridge' ) . '</h2>';
-			echo '<p>' . esc_html__( 'Live counts on your current catalog. Products without a primary image are excluded from the ChatGPT feed; products without a brand are submitted without that field, at your responsibility. None of this affects the agent-readable catalog, search, REST API, MCP or UCP surfaces.', 'kalicart-bridge' ) . '</p>';
+			echo '<p>' . esc_html__( 'Live counts on your current catalog. Products without a primary image are excluded from the ChatGPT feed; products without a brand are submitted without that field, at your responsibility. None of this affects the agent-readable catalog, search, REST API or MCP surfaces.', 'kalicart-bridge' ) . '</p>';
 			echo '<div class="kali-acp-list">';
 			$kb_rows = [
 				'brand' => [ __( 'Missing brand (submitted without it)', 'kalicart-bridge' ), __( 'These rows enter the feed without the brand field; OpenAI may reject them. Assign a brand (WooCommerce Brands taxonomy or a brand attribute) to make them fully conformant.', 'kalicart-bridge' ) ],
