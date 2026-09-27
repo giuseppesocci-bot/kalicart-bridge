@@ -1,15 +1,15 @@
-=== KaliCart Bridge – Product Feed for ChatGPT & AI Agents ===
+=== KaliCart Bridge – Agentic Commerce Catalog, ChatGPT Product Feed & MCP ===
 Contributors: carthub
-Tags: chatgpt, woocommerce, ai agents, agentic commerce, ucp
+Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.137
+Stable tag: 1.0.138
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Validated OpenAI-compatible product feed for ChatGPT product discovery (ACP), plus catalog API, MCP server and UCP Catalog via KaliCart Global.
+Agent-readable WooCommerce catalog: product feed checked against the OpenAI spec, MCP server, catalog API and UCP Catalog via KaliCart Global.
 
 == Description ==
 
@@ -79,7 +79,7 @@ The same read-only catalog is also exposed as an MCP server at `/wp-json/kalicar
 
 == ChatGPT Product Discovery Feed ==
 
-1. **Configure and generate.** Set your return policy URL and target countries (derived from your WooCommerce selling locations); optionally set a brand fallback for own-label stores. The plugin validates every row against the OpenAI Product Feed specification: incomplete store configuration blocks generation entirely, products without image or brand are excluded and counted, and a failed run never destroys the last valid feed.
+1. **Configure and generate.** Optionally set your return policy URL and target countries (derived from your WooCommerce selling locations) and, for own-label stores, a brand fallback. The plugin validates every row against the current OpenAI Product Feed specification - neither looser nor stricter: required fields are required, optional fields are included only when known and valid, products without image or brand are excluded and counted, and a failed run never destroys the last valid feed.
 2. **Apply at chatgpt.com/merchants.** Application and approval are required and decided by OpenAI.
 3. **Deliver after approval.** Upload the generated file (stable filename, `jsonl.gz` supported) on the delivery channel OpenAI assigns. The plugin regenerates a full daily snapshot via WP-Cron.
 
@@ -157,16 +157,32 @@ This plugin works fully standalone. It connects to one external service **only a
 
 **Service:** KaliCart Global (https://dashboard.kalicart.com)
 
-**When data is sent:** When an administrator activates or revokes the Federated Catalog, requests its external-visibility status, or explicitly grants or revokes a named federated distribution channel. After a provider receipt exists, opening the plugin page requests its processing status using the public site URL and consent ID. A failed provider-receipt delivery may be retried twice, after approximately one minute and five minutes. Nothing is sent merely because the plugin is installed or activated.
+**When data is sent:** When an administrator activates or revokes the Federated Catalog, requests its external-visibility status, or explicitly grants or revokes a named federated distribution channel. After a provider receipt exists, opening the plugin page requests its processing status using the public site URL and consent ID. A failed provider-receipt delivery may be retried twice, after approximately one minute and five minutes. While the Federated Catalog is active, the plugin also proves this installation's identity once and then sends a signed status signal about once a day; it sends a signed leaving signal when the plugin is deactivated or deleted, and a signed consent-off signal when federation is revoked. Nothing is sent merely because the plugin is installed or activated.
 
-**What is sent:** Federated Catalog activation, revocation and visibility checks send the site's public URL (e.g. https://yourstore.com). A provider authorization receipt additionally sends its consent ID, provider, purpose, action, UTC timestamp, plugin and terms versions, consent locale, and SHA-256 evidence-chain hashes. The administrator's WordPress user ID and localized consent text remain only in the store's local evidence log. No customer, order, payment, credential or API-key data is transmitted.
+**What is sent:** Federated Catalog activation, revocation and visibility checks send the site's public URL (e.g. https://yourstore.com). A provider authorization receipt additionally sends its consent ID, provider, purpose, action, UTC timestamp, plugin and terms versions, consent locale, and SHA-256 evidence-chain hashes. The administrator's WordPress user ID and localized consent text remain only in the store's local evidence log. The identity signals send the site's host, a random installation ID, this installation's public key, a one-time verification code, the consent state and the plugin, WordPress and PHP versions; when the plugin itself hit a fatal error, a normalized error code, the time and a short non-reversible hash - never the error message, file paths or stack traces. The private key never leaves the site. No customer, order, payment, credential or API-key data is transmitted.
 
-**What the service does:** The URL tells KaliCart Global your store wishes to be discovered. KaliCart Global periodically reads your already-public catalog and includes it in federated agent search. For a separately authorized provider channel, KaliCart Global stores the minimal receipt and verifies the matching authorization against the store's public discovery document before the channel can become eligible. It only reads public catalog data; it never writes to your store. Revoking the provider channel does not revoke Federated Catalog participation, and revoking federation suspends distribution without rewriting the authorization history.
+**What the service does:** The URL tells KaliCart Global your store wishes to be discovered. KaliCart Global periodically reads your already-public catalog and includes it in federated agent search. For a separately authorized provider channel, KaliCart Global stores the minimal receipt and verifies the matching authorization against the store's public discovery document before the channel can become eligible. It only reads public catalog data; it never writes to your store. For identity, KaliCart Global reads the verification code this plugin publishes in its own discovery and `/.well-known/kalicart-bridge.json`, and keeps the verification state and the latest status signal; the status signal details are deleted when the plugin sends its leaving signal. Revoking the provider channel does not revoke Federated Catalog participation, and revoking federation suspends distribution without rewriting the authorization history.
 
 **Privacy notice:** https://bridge.kalicart.com/privacy/
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.138 =
+**The ChatGPT product feed follows the current OpenAI specification: neither looser nor stricter.**
+
+* Change: products without a brand are no longer written to the ChatGPT feed. Brand is required by the OpenAI specification; affected products are excluded, counted and listed in the panel. A merchant-declared brand fallback for own-label stores still applies. The catalog, search, REST API and MCP are unaffected.
+* Fix: additional product images are written as a list, as the specification requires in JSONL. They were written as one comma-separated text.
+* Fix: return policy, store country and target countries are optional in the specification and no longer block feed generation when missing. When set, they are included and validated.
+* Fix: a GTIN is included only with an accepted length (8, 12, 13 or 14 digits) and a valid check digit; otherwise the field is left out and the product stays in the feed.
+* Fix: a sale price must be lower than the regular price, prices must be positive, star ratings use two decimals, and variant rows must carry their variant options - as the specification requires.
+* Change: absolute http and https URLs are accepted (https preferred), and no length limit the specification does not state is applied to brand or seller name.
+* New: installation identity. While the Federated Catalog is active, the plugin creates one signing key for this installation (the private key stays on the site, encrypted) and proves to KaliCart Global that it runs on this domain: KaliCart Global reads a one-time code the plugin publishes in its own discovery and in `/.well-known/kalicart-bridge.json`. This also works when an anti-bot service blocks dynamic pages but serves static files. Verified is not the same as listed: if KaliCart Global still cannot read the catalog from outside, the panel says so.
+* New: a signed status signal about once a day and a signed leaving signal on deactivation or deletion, so KaliCart Global can tell a store that left from a store that is broken. No error messages or paths are sent: at most a normalized error code of this plugin. See "External services".
+* New: the external visibility check shows the store identity (verified, pending or failed) and whether the catalog can be received.
+* Nothing in the identity can block the plugin, the catalog or the feed; failures are retried automatically. It runs only on production sites installed at the domain root.
+* Fix: the plugin description on the Plugins screen no longer says "no external service". The optional KaliCart Global connection is an external service and is described under "External services".
+* Translated in Italian, German, Spanish and French.
 
 = 1.0.137 =
 **The plugin declares only what it implements, and the panel tells a blocked check apart from a missing Bridge.**

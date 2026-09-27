@@ -8,6 +8,19 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
+// 1.0.138: signed "leaving" (uninstalled) before the identity key is deleted. Best effort.
+if ( ! defined( 'KALICART_BRIDGE_GLOBAL' ) ) {
+	define( 'KALICART_BRIDGE_GLOBAL', 'https://dashboard.kalicart.com' );
+}
+if ( ! defined( 'KALICART_BRIDGE_DIR' ) ) {
+	define( 'KALICART_BRIDGE_DIR', plugin_dir_path( __FILE__ ) );
+}
+if ( ! defined( 'KALICART_BRIDGE_VERSION' ) ) {
+	define( 'KALICART_BRIDGE_VERSION', 'uninstall' );
+}
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-identity.php';
+KaliCart_Bridge_Identity::leaving( 'uninstalled' );
+
 // Capture the token before deleting its option so the generated public feed can
 // be removed without scanning or recursively deleting anything in uploads.
 $kalicart_bridge_acp_options = get_option( 'kalicart_bridge_acp_feed', [] );
@@ -44,6 +57,8 @@ $kalicart_bridge_options = [
 	'kalicart_bridge_acp_feed',
 	'kalicart_bridge_commerce_consents',
 	'kalicart_bridge_commerce_schema_version',
+	'kalicart_bridge_identity',
+	'kalicart_bridge_identity_fatal',
     'kalicart_rate_guard_checkout',
 	'kalicart_rate_guard_checkout_long',
 	'kalicart_rate_guard_checkout_access',
@@ -67,6 +82,7 @@ wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
 wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
 wp_clear_scheduled_hook( 'kalicart_bridge_federation_announce' );
 wp_clear_scheduled_hook( 'kalicart_bridge_provider_consent_retry' );
+wp_clear_scheduled_hook( 'kalicart_bridge_identity_tick' );
 
 // Checkout session claim rows (kalicart_session_claimed_{id}): dynamically keyed, one per
 // attributed checkout — not in the fixed options list above, needs a LIKE-pattern sweep.

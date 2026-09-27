@@ -147,8 +147,8 @@ msgstr "Formato di esportazione non supportato."
 
 #. Plugin Name of the plugin
 #: kalicart-bridge.php
-msgid "KaliCart Bridge – Product Feed for ChatGPT & AI Agents"
-msgstr "KaliCart Bridge – Product Feed per ChatGPT e Agenti AI"
+msgid "KaliCart Bridge – Agentic Commerce Catalog, ChatGPT Product Feed & MCP"
+msgstr "KaliCart Bridge – Catalogo per l'Agentic Commerce, Feed prodotti ChatGPT e MCP"
 
 #. Plugin URI of the plugin
 #: kalicart-bridge.php
@@ -1931,6 +1931,88 @@ msgstr ""
 "che vieta."
 
 #, php-format
+
+#: includes/class-acp-feed.php
+msgid "Excluded: brand missing"
+msgstr "Escluse: brand mancante"
+
+#: includes/class-acp-feed.php
+msgid "%d feed rows excluded in the last run: brand is required by the OpenAI specification. Assign a brand to include them."
+msgstr "%d righe del feed escluse nell'ultima generazione: il brand è obbligatorio per la specifica OpenAI. Assegna un brand per includerle."
+
+#: includes/class-acp-feed.php
+msgid "%d rows filled by the merchant-declared brand fallback."
+msgstr "%d righe completate con il brand di riserva dichiarato dal merchant."
+
+#: includes/class-acp-feed.php
+msgid "Products without brand excluded."
+msgstr "Prodotti senza brand esclusi."
+
+#: includes/class-acp-feed.php
+msgid "Brand is required by OpenAI’s direct product feed specification, so these rows are not in the file. Assign a brand (WooCommerce Brands taxonomy or a brand attribute) to include them. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API and MCP surfaces."
+msgstr "Il brand è obbligatorio per la specifica del feed prodotti diretto di OpenAI, quindi queste righe non sono nel file. Assegna un brand (tassonomia Brand di WooCommerce o un attributo brand) per includerle. I prodotti restano pienamente disponibili nel catalogo leggibile dagli agenti, nella ricerca, nell'API REST e nelle superfici MCP di KaliCart."
+
+#: includes/class-acp-feed.php
+msgid "Optional"
+msgstr "Facoltativo"
+
+#: includes/class-acp-feed.php
+msgid "Optional in the OpenAI specification. Configure it in the Settings tab to include it in every row."
+msgstr "Facoltativa nella specifica OpenAI. Configurala nella scheda Impostazioni per includerla in ogni riga."
+
+#: includes/class-acp-feed.php
+msgid "The configured URL is not an absolute http(s) URL; feed generation is blocked until it is fixed."
+msgstr "L'URL configurato non è un URL http(s) assoluto: la generazione del feed è bloccata finché non viene corretto."
+
+#: includes/class-acp-feed.php
+msgid "Optional in the OpenAI specification (depends on market setup). Use ISO 3166-1 alpha-2 country codes."
+msgstr "Facoltativo nella specifica OpenAI (dipende dalla configurazione del mercato). Usa codici paese ISO 3166-1 alpha-2."
+
+#: includes/class-acp-feed.php
+msgid "Live counts on your current catalog. Products without a primary image are excluded from the ChatGPT feed; products without a brand are excluded too, because brand is required. None of this affects the agent-readable catalog, search, REST API or MCP surfaces."
+msgstr "Conteggi in tempo reale sul catalogo attuale. I prodotti senza immagine principale sono esclusi dal feed ChatGPT; anche quelli senza brand sono esclusi, perché il brand è obbligatorio. Nulla di questo tocca il catalogo leggibile dagli agenti, la ricerca, l'API REST o le superfici MCP."
+
+#: includes/class-acp-feed.php
+msgid "Missing brand (excluded)"
+msgstr "Brand mancante (esclusi)"
+
+#: includes/class-acp-feed.php
+msgid "Brand is required by the OpenAI specification: these products are excluded from the ChatGPT feed. Assign a brand (WooCommerce Brands taxonomy or a brand attribute) to include them."
+msgstr "Il brand è obbligatorio per la specifica OpenAI: questi prodotti sono esclusi dal feed ChatGPT. Assegna un brand (tassonomia Brand di WooCommerce o un attributo brand) per includerli."
+
+
+#: includes/class-admin.php
+msgid "Store identity:"
+msgstr "Identità del negozio:"
+
+#: includes/class-admin.php
+msgid "Verified"
+msgstr "Verificata"
+
+#: includes/class-admin.php
+msgid "Verification pending"
+msgstr "Verifica in attesa"
+
+#: includes/class-admin.php
+msgid "Verification failed"
+msgstr "Verifica non riuscita"
+
+#: includes/class-admin.php
+msgid "Identity verified, but the catalog cannot be received yet: KaliCart Global cannot read it from outside."
+msgstr "Identità verificata, ma il catalogo non si può ancora ricevere: KaliCart Global non riesce a leggerlo dall'esterno."
+
+#: includes/class-admin.php
+msgid "KaliCart Global could not read this site to verify it. It retries automatically."
+msgstr "KaliCart Global non è riuscito a leggere questo sito per verificarlo. Riprova in automatico."
+
+#: includes/class-admin.php
+msgid "KaliCart Global read this site but did not find this installation’s key. It retries automatically."
+msgstr "KaliCart Global ha letto questo sito ma non ha trovato la chiave di questa installazione. Riprova in automatico."
+
+#: includes/class-admin.php
+msgid "KaliCart Global has not received a signal from this store in the last 7 days."
+msgstr "KaliCart Global non riceve segnali da questo negozio da oltre 7 giorni."
+
 #~ msgid "No assistant has visited your store yet in the last %d days observed."
 #~ msgstr ""
 #~ "Nessun assistente ha ancora visitato il tuo negozio negli ultimi %d giorni "

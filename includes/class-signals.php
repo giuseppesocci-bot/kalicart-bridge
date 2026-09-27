@@ -1108,7 +1108,9 @@ class KaliCart_Bridge_Signals {
             'catalog_api'   => $base . '/catalog',
             'agent_note'    => 'GET discovery URL first. Contains capabilities, filter rules, shipping policy and agent instructions.',
             'documentation' => 'https://bridge.kalicart.com/docs/',
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        ] + ( class_exists( 'KaliCart_Bridge_Identity' ) && KaliCart_Bridge_Identity::discovery_block()
+            ? [ 'kalicart_identity' => KaliCart_Bridge_Identity::discovery_block() ] // 1.0.138: domain proof, read by KaliCart Global
+            : [] ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
     }
 
     /**

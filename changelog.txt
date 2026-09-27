@@ -1,5 +1,21 @@
 *** KaliCart Bridge Changelog ***
 
+2026-09-27 - version 1.0.138
+
+* Change: products without a brand are no longer written to the ChatGPT feed. Brand is required by the OpenAI specification; affected products are excluded, counted and listed in the panel. A merchant-declared brand fallback for own-label stores still applies. The catalog, search, REST API and MCP are unaffected.
+* Fix: additional product images are written as a list, as the specification requires in JSONL. They were written as one comma-separated text.
+* Fix: return policy, store country and target countries are optional in the specification and no longer block feed generation when missing. When set, they are included and validated.
+* Fix: a GTIN is included only with an accepted length (8, 12, 13 or 14 digits) and a valid check digit; otherwise the field is left out and the product stays in the feed.
+* Fix: a sale price must be lower than the regular price, prices must be positive, star ratings use two decimals, and variant rows must carry their variant options - as the specification requires.
+* Change: absolute http and https URLs are accepted (https preferred), and no length limit the specification does not state is applied to brand or seller name.
+* New: installation identity. While the Federated Catalog is active, the plugin creates one signing key for this installation (the private key stays on the site, encrypted) and proves to KaliCart Global that it runs on this domain: KaliCart Global reads a one-time code the plugin publishes in its own discovery and in `/.well-known/kalicart-bridge.json`. This also works when an anti-bot service blocks dynamic pages but serves static files. Verified is not the same as listed: if KaliCart Global still cannot read the catalog from outside, the panel says so.
+* New: a signed status signal about once a day and a signed leaving signal on deactivation or deletion, so KaliCart Global can tell a store that left from a store that is broken. No error messages or paths are sent: at most a normalized error code of this plugin. See "External services".
+* New: the external visibility check shows the store identity (verified, pending or failed) and whether the catalog can be received.
+* Nothing in the identity can block the plugin, the catalog or the feed; failures are retried automatically. It runs only on production sites installed at the domain root.
+* Fix: the plugin description on the Plugins screen no longer says "no external service". The optional KaliCart Global connection is an external service and is described under "External services".
+* Translated in Italian, German, Spanish and French.
+
+
 2026-09-26 - version 1.0.137
 
 * Change: the plugin no longer publishes a UCP profile (/.well-known/ucp, /.well-known/ucp.json and the /ucp REST route). It declared a UCP REST service that the plugin does not implement, so a UCP client following it failed. UCP Catalog is served by KaliCart Global for stores that join the Federated Catalog. The old ucp.json file written by earlier versions is removed on update; a file placed there by someone else is never touched.

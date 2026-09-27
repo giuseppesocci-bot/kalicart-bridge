@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       KaliCart Bridge – Product Feed for ChatGPT & AI Agents
+ * Plugin Name:       KaliCart Bridge – Agentic Commerce Catalog, ChatGPT Product Feed & MCP
  * Plugin URI:        https://bridge.kalicart.com
- * Description:       Makes your WooCommerce catalog machine-readable and agent-accessible. Exposes normalized product data via REST API — no LLM, no external service, no cloud dependency.
- * Version:           1.0.137
+ * Description:       Makes your WooCommerce catalog agent-readable: product feed checked against the OpenAI spec, catalog REST API and MCP server, with the optional KaliCart Global connection. No LLM inside the plugin.
+ * Version:           1.0.138
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.137' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.138' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
@@ -62,6 +62,7 @@ require_once KALICART_BRIDGE_DIR . 'includes/class-mcp.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-signals.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-acp-feed.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-commerce-consent.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-identity.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-admin.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-checkout.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-shortcodes.php';
@@ -85,6 +86,7 @@ add_action( 'plugins_loaded', function () {
     KaliCart_Bridge_Signals::init();
     KaliCart_Bridge_ACP_Feed::init();
     KaliCart_Bridge_Commerce_Consent::init();
+    KaliCart_Bridge_Identity::init();
     // Version-gated migration — runs once per plugin version, on init (needs $wp_rewrite).
     // Removes legacy extension-less static files (served as text/plain by the webserver)
     // and flushes rewrite rules so serve_well_known() answers on every install.
@@ -196,6 +198,9 @@ register_deactivation_hook( __FILE__, function () {
 	wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
 	wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
 	wp_clear_scheduled_hook( KaliCart_Bridge_Commerce_Consent::RETRY_HOOK );
+	wp_clear_scheduled_hook( KaliCart_Bridge_Identity::CRON_HOOK );
+	// 1.0.138: signed "leaving" BEFORE the well-known files disappear (best effort, 5 s).
+	KaliCart_Bridge_Identity::leaving( 'deactivated' );
     KaliCart_Bridge_Signals::remove_well_known_files();
     flush_rewrite_rules();
 } );

@@ -13,9 +13,16 @@ defined( 'ABSPATH' ) || exit;
  * - Delivery is PUSH on a channel OpenAI assigns after merchant approval
  *   (application at chatgpt.com/merchants). The plugin generates and
  *   validates the file; it never claims a "submit this URL" flow.
- * - Row policy: missing GLOBAL config (return policy, countries) = full
- *   generation block; product missing image or brand = excluded + counted;
- *   every emitted row = schema-conformant (per-row validator, hard gate).
+ * - SPEC-IS-CONTRACT (1.0.138, decided 2026-09-26): the current stable spec
+ *   is the contract - the plugin is neither looser nor stricter. Required:
+ *   item_id, title, description, url, brand, seller_name, image_url,
+ *   availability, price (+ group_id, listing_has_variations, variant_dict on
+ *   variant rows). Everything else is optional: emitted only when known and
+ *   valid, validated when present, never a reason to block the whole feed.
+ * - Row policy: product missing image or brand = excluded + counted (brand
+ *   is Required; the merchant-declared brand_fallback is the only fallback,
+ *   never fabricated); every emitted row = schema-conformant (per-row
+ *   validator, hard gate). Generator and validator read the same SCHEMA.
  * - Atomic: build+validate a temp file, stream-gzip it, replace the last
  *   good snapshot ONLY if everything passes. A failure never destroys the
  *   previous valid feed. Transient lock against concurrent runs.
@@ -34,6 +41,22 @@ class KaliCart_Bridge_ACP_Feed {
 	const OPTION    = 'kalicart_bridge_acp_feed';
 	const CRON_HOOK = 'kalicart_bridge_acp_feed_generate';
 	const LOCK      = 'kalicart_bridge_acp_feed_lock';
+
+	/**
+	 * Single schema map (spec developers.openai.com/commerce/specs/file-upload/products,
+	 * read 2026-09-26). The validator enforces exactly this; the generator emits
+	 * optional fields only when known and valid under the same rules.
+	 */
+	const SCHEMA = [
+		'required'         => [ 'item_id', 'title', 'description', 'url', 'brand', 'seller_name', 'image_url', 'availability', 'price' ],
+		'variant_required' => [ 'group_id', 'listing_has_variations', 'variant_dict' ],
+		'max_len'          => [ 'title' => 150, 'description' => 5000 ],
+		'url_fields'       => [ 'url', 'image_url', 'seller_url', 'return_policy' ], // absolute http(s); https preferred
+		'availability'     => [ 'in_stock', 'out_of_stock', 'pre_order', 'backorder', 'unknown' ],
+		'condition'        => [ 'new', 'refurbished', 'used' ],
+		'weight_unit'      => [ 'g', 'kg', 'oz', 'lb' ],
+		'gtin_lengths'     => [ 8, 12, 13, 14 ],
+	];
 
 	public static function init(): void {
 		add_action( self::CRON_HOOK, [ __CLASS__, 'generate' ] );
@@ -136,26 +159,24 @@ class KaliCart_Bridge_ACP_Feed {
 	private static function generate_inner(): array {
 		$opts  = self::get_options();
 		$stats = [
-			'rows' => 0, 'products' => 0, 'excluded_no_image' => 0, 'rows_missing_brand' => 0, 'fallback_brand_rows' => 0, 'fallback_description_rows' => 0,
+			'rows' => 0, 'products' => 0, 'excluded_no_image' => 0, 'excluded_no_brand' => 0, 'fallback_brand_rows' => 0, 'gtin_omitted' => 0, 'fallback_description_rows' => 0,
 			'excluded_invalid' => 0, 'invalid_examples' => [], 'generated_at' => gmdate( 'c' ),
 		];
 
-		// GLOBAL config gate: incomplete required store config = full block.
+		// Config gate (1.0.138): return policy, store country and target countries
+		// are OPTIONAL in the spec ("requires market setup"): their absence never
+		// blocks the feed. Only a value that is present AND malformed blocks, since
+		// it would make every row non-conformant.
 		$countries = array_values( array_filter( array_map( 'trim', explode( ',', strtoupper( (string) $opts['target_countries'] ) ) ) ) );
 		$config_errors = [];
-		if ( '' === (string) $opts['return_policy_url'] ) {
-			$config_errors[] = 'return_policy_url is required (set it in this page or publish the Woo Refund/Returns page)';
-		}
-		if ( '' === self::store_country() ) {
-			$config_errors[] = 'WooCommerce store base country is not set';
-		}
 		foreach ( $countries as $c ) {
 			if ( ! preg_match( '/^[A-Z]{2}$/', $c ) ) {
 				$config_errors[] = 'invalid target country code: ' . $c;
 			}
 		}
-		if ( ! $countries ) {
-			$config_errors[] = 'target_countries is empty';
+		$rp = (string) $opts['return_policy_url'];
+		if ( '' !== $rp && ! self::is_http_url( $rp ) ) {
+			$config_errors[] = 'return policy URL is not an absolute http(s) URL';
 		}
 		if ( $config_errors ) {
 			$stats['error'] = 'config_incomplete';
@@ -296,12 +317,12 @@ class KaliCart_Bridge_ACP_Feed {
 		if ( '' === $brand ) {
 			$brand = trim( (string) $opts['brand_fallback'] ); // explicit opt-in only
 			if ( '' === $brand ) {
-				// NON-BLOCKING (merchant decision, 2026-07-02): the row is
-				// submitted WITHOUT the brand field - absent, never an empty
-				// string, never fabricated. The spec marks brand Required;
-				// enforcement is OpenAI's. The tab warns, the merchant
-				// knowingly assumes the onus of submitting these rows.
-				$stats['rows_missing_brand']++;
+				// SPEC-IS-CONTRACT (1.0.138): brand is Required, so a row without
+				// it does not enter the file - excluded and counted, listed in
+				// the panel. Supersedes the 2026-07-02 choice (row submitted
+				// without brand). Never fabricated.
+				$stats['excluded_no_brand']++;
+				return null;
 			} else {
 				$stats['fallback_brand_rows']++;
 			}
@@ -342,31 +363,41 @@ class KaliCart_Bridge_ACP_Feed {
 			'price'                => wc_format_decimal( $priceval, 2 ) . ' ' . $currency,
 			'availability'         => self::availability( $p ),
 			'condition'            => 'new',
-			'seller_name'          => self::clip( get_bloginfo( 'name' ), 70 ),
-			'seller_url'           => home_url( '/' ),
-			'return_policy'        => (string) $opts['return_policy_url'],
-			'target_countries'     => $countries,
-			'store_country'        => self::store_country(),
+			'seller_name'          => (string) get_bloginfo( 'name' ),
+			'brand'                => $brand,
 		];
-
-		if ( '' !== $brand ) {
-			$row['brand'] = self::clip( $brand, 70 );
+		// Optional in the spec: emitted only when known and valid.
+		$seller_url = home_url( '/' );
+		if ( self::is_http_url( $seller_url ) ) {
+			$row['seller_url'] = $seller_url;
+		}
+		if ( '' !== (string) $opts['return_policy_url'] ) {
+			$row['return_policy'] = (string) $opts['return_policy_url'];
+		}
+		if ( $countries ) {
+			$row['target_countries'] = $countries;
+		}
+		if ( '' !== self::store_country() ) {
+			$row['store_country'] = self::store_country();
 		}
 		if ( $p->is_on_sale() && '' !== (string) $p->get_sale_price() ) {
 			$sale = (float) $p->get_sale_price();
-			if ( $sale > 0 && $sale <= (float) $priceval ) {
+			if ( $sale > 0 && $sale < (float) $priceval ) { // spec: strictly less than price
 				$row['sale_price'] = wc_format_decimal( $sale, 2 ) . ' ' . $currency;
 			}
 		}
 		$gallery = array_filter( array_map( fn( $id ) => wp_get_attachment_image_url( $id, 'full' ), $display->get_gallery_image_ids() ) );
 		if ( $gallery ) {
-			// spec: comma-separated String, not an array
-			$row['additional_image_urls'] = implode( ',', array_slice( $gallery, 0, 10 ) );
+			// spec: in JSONL additional_image_urls is an ARRAY of URLs
+			$row['additional_image_urls'] = array_values( array_slice( $gallery, 0, 10 ) );
 		}
 		if ( method_exists( $p, 'get_global_unique_id' ) ) {
-			$gtin = preg_replace( '/\D/', '', (string) $p->get_global_unique_id() );
-			if ( preg_match( '/^\d{8,14}$/', $gtin ) ) {
-				$row['gtin'] = $gtin; // only if valid: 8-14 digits, no dashes/spaces
+			$raw_gtin = (string) $p->get_global_unique_id();
+			$gtin     = preg_replace( '/[\s-]/', '', $raw_gtin );
+			if ( self::is_valid_gtin( $gtin ) ) {
+				$row['gtin'] = $gtin; // spec: 8/12/13/14 digits with a valid check digit
+			} elseif ( '' !== trim( $raw_gtin ) ) {
+				$stats['gtin_omitted']++; // optional field: omitted, the row stays
 			}
 		}
 		$cats = wp_get_post_terms( $display->get_id(), 'product_cat', [ 'fields' => 'names' ] );
@@ -383,7 +414,7 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 		if ( $display->get_review_count() > 0 ) {
 			$row['review_count'] = (int) $display->get_review_count();
-			$row['star_rating']  = number_format( (float) $display->get_average_rating(), 1, '.', '' ); // spec: String
+			$row['star_rating']  = number_format( (float) $display->get_average_rating(), 2, '.', '' ); // spec: decimal String, two decimals
 		}
 		return $row;
 	}
@@ -424,69 +455,100 @@ class KaliCart_Bridge_ACP_Feed {
 		return mb_strlen( $s ) > $max ? rtrim( mb_substr( $s, 0, $max ) ) : $s;
 	}
 
+	/** Absolute http(s) URL (spec: "absolute HTTP or HTTPS URLs; prefer HTTPS"). */
+	public static function is_http_url( $url ): bool {
+		$url = (string) $url;
+		return ( 0 === strpos( $url, 'https://' ) || 0 === strpos( $url, 'http://' ) ) && (bool) filter_var( $url, FILTER_VALIDATE_URL );
+	}
+
+	/** GS1 GTIN: 8, 12, 13 or 14 digits and a valid mod-10 check digit. */
+	public static function is_valid_gtin( $gtin ): bool {
+		$gtin = (string) $gtin;
+		if ( ! preg_match( '/^\d+$/', $gtin ) || ! in_array( strlen( $gtin ), self::SCHEMA['gtin_lengths'], true ) ) {
+			return false;
+		}
+		$digits = array_map( 'intval', str_split( $gtin ) );
+		$check  = array_pop( $digits );
+		$sum    = 0;
+		foreach ( array_reverse( $digits ) as $i => $d ) {
+			$sum += $d * ( 0 === $i % 2 ? 3 : 1 );
+		}
+		return ( 10 - ( $sum % 10 ) ) % 10 === $check;
+	}
+
 	// ── per-row schema validator (hard gate) ────────────────────────────────
 
 	/** Returns a list of violations; empty array = conformant row. */
 	public static function validate_row( array $row ): array {
 		$e = [];
-		foreach ( [ 'item_id', 'title', 'description', 'url', 'image_url', 'price', 'availability', 'seller_name', 'seller_url', 'return_policy', 'store_country' ] as $f ) {
+		foreach ( self::SCHEMA['required'] as $f ) {
 			if ( ! isset( $row[ $f ] ) || '' === (string) $row[ $f ] ) {
 				$e[] = "missing required $f";
 			}
 		}
-		if ( empty( $row['target_countries'] ) || ! is_array( $row['target_countries'] ) ) {
-			$e[] = 'missing required target_countries';
-		} else {
-			foreach ( $row['target_countries'] as $c ) {
-				if ( ! preg_match( '/^[A-Z]{2}$/', (string) $c ) ) {
-					$e[] = 'bad country code ' . $c;
+		if ( isset( $row['target_countries'] ) ) {
+			if ( ! is_array( $row['target_countries'] ) || ! $row['target_countries'] ) {
+				$e[] = 'target_countries must be a non-empty array when present';
+			} else {
+				foreach ( $row['target_countries'] as $c ) {
+					if ( ! preg_match( '/^[A-Z]{2}$/', (string) $c ) ) {
+						$e[] = 'bad country code ' . $c;
+					}
 				}
 			}
 		}
-		if ( ! isset( $row['is_eligible_search'], $row['is_eligible_checkout'] ) || ! is_bool( $row['is_eligible_search'] ) || ! is_bool( $row['is_eligible_checkout'] ) ) {
-			$e[] = 'eligibility flags must be boolean';
+		foreach ( [ 'is_eligible_search', 'is_eligible_checkout' ] as $f ) {
+			if ( isset( $row[ $f ] ) && ! is_bool( $row[ $f ] ) ) {
+				$e[] = "$f must be boolean";
+			}
 		}
-		foreach ( [ 'item_id' => 100, 'title' => 150, 'description' => 5000, 'brand' => 70, 'seller_name' => 70 ] as $f => $max ) {
+		foreach ( self::SCHEMA['max_len'] as $f => $max ) {
 			if ( isset( $row[ $f ] ) && mb_strlen( (string) $row[ $f ] ) > $max ) {
 				$e[] = "$f exceeds $max chars";
 			}
 		}
-		foreach ( [ 'url', 'image_url', 'seller_url', 'return_policy' ] as $f ) {
-			if ( isset( $row[ $f ] ) && ( 0 !== strpos( (string) $row[ $f ], 'https://' ) || ! filter_var( $row[ $f ], FILTER_VALIDATE_URL ) ) ) {
-				$e[] = "$f must be a valid https URL";
+		foreach ( self::SCHEMA['url_fields'] as $f ) {
+			if ( isset( $row[ $f ] ) && ! self::is_http_url( $row[ $f ] ) ) {
+				$e[] = "$f must be an absolute http(s) URL";
 			}
 		}
 		if ( isset( $row['additional_image_urls'] ) ) {
-			if ( ! is_string( $row['additional_image_urls'] ) ) {
-				$e[] = 'additional_image_urls must be a comma-separated string';
+			if ( ! is_array( $row['additional_image_urls'] ) ) {
+				$e[] = 'additional_image_urls must be an array in JSONL';
 			} else {
-				foreach ( explode( ',', $row['additional_image_urls'] ) as $u ) {
-					if ( 0 !== strpos( trim( $u ), 'https://' ) ) {
-						$e[] = 'additional_image_urls contains a non-https URL';
+				foreach ( $row['additional_image_urls'] as $u ) {
+					if ( ! self::is_http_url( $u ) ) {
+						$e[] = 'additional_image_urls contains an invalid URL';
 						break;
 					}
 				}
 			}
 		}
 		$price_re = '/^\d+(\.\d{1,2})? [A-Z]{3}$/';
-		if ( isset( $row['price'] ) && ! preg_match( $price_re, (string) $row['price'] ) ) {
-			$e[] = 'price format must be "N.NN CUR"';
+		if ( isset( $row['price'] ) ) {
+			if ( ! preg_match( $price_re, (string) $row['price'] ) ) {
+				$e[] = 'price format must be "N.NN CUR"';
+			} elseif ( (float) $row['price'] <= 0 ) {
+				$e[] = 'price must be positive';
+			}
 		}
 		if ( isset( $row['sale_price'] ) ) {
 			if ( ! preg_match( $price_re, (string) $row['sale_price'] ) ) {
 				$e[] = 'sale_price format must be "N.NN CUR"';
-			} elseif ( (float) $row['sale_price'] > (float) $row['price'] ) {
-				$e[] = 'sale_price greater than price';
+			} elseif ( (float) $row['sale_price'] <= 0 || (float) $row['sale_price'] >= (float) ( $row['price'] ?? 0 ) ) {
+				$e[] = 'sale_price must be greater than zero and strictly less than price';
+			} elseif ( substr( (string) $row['sale_price'], -3 ) !== substr( (string) ( $row['price'] ?? '' ), -3 ) ) {
+				$e[] = 'sale_price currency differs from price';
 			}
 		}
-		if ( isset( $row['availability'] ) && ! in_array( $row['availability'], [ 'in_stock', 'out_of_stock', 'pre_order', 'backorder', 'unknown' ], true ) ) {
+		if ( isset( $row['availability'] ) && ! in_array( $row['availability'], self::SCHEMA['availability'], true ) ) {
 			$e[] = 'availability not in enum';
 		}
-		if ( isset( $row['condition'] ) && ! in_array( $row['condition'], [ 'new', 'refurbished', 'used' ], true ) ) {
+		if ( isset( $row['condition'] ) && ! in_array( $row['condition'], self::SCHEMA['condition'], true ) ) {
 			$e[] = 'condition not in enum';
 		}
-		if ( isset( $row['gtin'] ) && ! preg_match( '/^\d{8,14}$/', (string) $row['gtin'] ) ) {
-			$e[] = 'gtin must be 8-14 digits';
+		if ( isset( $row['gtin'] ) && ! self::is_valid_gtin( $row['gtin'] ) ) {
+			$e[] = 'gtin must be 8, 12, 13 or 14 digits with a valid check digit';
 		}
 		if ( isset( $row['store_country'] ) && ! preg_match( '/^[A-Z]{2}$/', (string) $row['store_country'] ) ) {
 			$e[] = 'store_country must be ISO 3166-1 alpha-2';
@@ -495,15 +557,37 @@ class KaliCart_Bridge_ACP_Feed {
 			if ( ! is_string( $row['star_rating'] ) || ! is_numeric( $row['star_rating'] ) || (float) $row['star_rating'] < 0 || (float) $row['star_rating'] > 5 ) {
 				$e[] = 'star_rating must be a numeric string 0-5';
 			}
+			if ( empty( $row['review_count'] ) ) {
+				$e[] = 'star_rating requires a positive review_count';
+			}
 		}
-		if ( isset( $row['weight'] ) && empty( $row['item_weight_unit'] ) ) {
-			$e[] = 'item_weight_unit required when weight is set';
+		if ( isset( $row['review_count'] ) && ( ! is_int( $row['review_count'] ) || $row['review_count'] < 0 ) ) {
+			$e[] = 'review_count must be a nonnegative integer';
 		}
-		if ( isset( $row['item_weight_unit'] ) && ! in_array( $row['item_weight_unit'], [ 'kg', 'g', 'lb', 'oz' ], true ) ) {
+		if ( isset( $row['weight'] ) ) {
+			if ( ! is_numeric( $row['weight'] ) || (float) $row['weight'] <= 0 ) {
+				$e[] = 'weight must be a positive decimal';
+			}
+			if ( empty( $row['item_weight_unit'] ) ) {
+				$e[] = 'item_weight_unit required when weight is set';
+			}
+		}
+		if ( isset( $row['item_weight_unit'] ) && ! in_array( $row['item_weight_unit'], self::SCHEMA['weight_unit'], true ) ) {
 			$e[] = 'item_weight_unit not in enum';
 		}
-		if ( ! empty( $row['listing_has_variations'] ) && empty( $row['group_id'] ) ) {
-			$e[] = 'group_id required for variation rows';
+		$is_variant = ! empty( $row['listing_has_variations'] ) || isset( $row['group_id'] ) || isset( $row['variant_dict'] );
+		if ( $is_variant ) {
+			foreach ( self::SCHEMA['variant_required'] as $f ) {
+				if ( empty( $row[ $f ] ) ) {
+					$e[] = "$f required for variant rows";
+				}
+			}
+			if ( isset( $row['group_id'], $row['item_id'] ) && (string) $row['group_id'] === (string) $row['item_id'] ) {
+				$e[] = 'group_id must differ from item_id';
+			}
+			if ( isset( $row['variant_dict'] ) && ! is_array( $row['variant_dict'] ) ) {
+				$e[] = 'variant_dict must be an object';
+			}
 		}
 		return $e;
 	}
@@ -640,30 +724,30 @@ class KaliCart_Bridge_ACP_Feed {
 		$stats     = isset( $opts['last_stats'] ) && is_array( $opts['last_stats'] ) ? $opts['last_stats'] : null;
 		$generated = $stats && empty( $stats['error'] );
 		$countries = array_values( array_filter( array_map( 'trim', explode( ',', strtoupper( (string) $opts['target_countries'] ) ) ) ) );
-		$countries_ready = (bool) $countries;
+		$countries_ready = $countries ? true : null; // optional: absent = not configured, never an error
 		foreach ( $countries as $country ) {
 			if ( ! preg_match( '/^[A-Z]{2}$/', $country ) ) {
 				$countries_ready = false;
 				break;
 			}
 		}
-		$return_ready = 0 === strpos( (string) $opts['return_policy_url'], 'https://' )
-			&& (bool) filter_var( $opts['return_policy_url'], FILTER_VALIDATE_URL );
+		$return_ready = '' === (string) $opts['return_policy_url'] ? null : self::is_http_url( $opts['return_policy_url'] );
 		$image_state  = $stats && empty( $stats['error'] ) ? 0 === (int) ( $stats['excluded_no_image'] ?? 0 ) : null;
 		$schema_state = $stats && empty( $stats['error'] ) ? 0 === (int) ( $stats['excluded_invalid'] ?? 0 ) : null;
 		$brand_status = self::readiness_label( null );
 		$brand_detail = __( 'Run feed generation to check declared brands.', 'kalicart-bridge' );
-		if ( $stats && empty( $stats['error'] ) && array_key_exists( 'fallback_brand_rows', $stats ) ) {
-			$brand_missing  = (int) ( $stats['rows_missing_brand'] ?? 0 );
-			$brand_fallback = (int) $stats['fallback_brand_rows'];
-			if ( $brand_fallback > 0 ) {
+		// 1.0.138: stats written by 1.0.137 carry no 'excluded_no_brand': shown as not checked until the next run.
+		if ( $stats && empty( $stats['error'] ) && array_key_exists( 'excluded_no_brand', $stats ) ) {
+			$brand_missing  = (int) $stats['excluded_no_brand'];
+			$brand_fallback = (int) ( $stats['fallback_brand_rows'] ?? 0 );
+			if ( $brand_missing > 0 ) {
+				$brand_status = '<span class="kali-pill kali-pill--warn">' . esc_html__( 'Excluded: brand missing', 'kalicart-bridge' ) . '</span>';
+				/* translators: %d: feed rows excluded because the brand is missing */
+				$brand_detail = sprintf( __( '%d feed rows excluded in the last run: brand is required by the OpenAI specification. Assign a brand to include them.', 'kalicart-bridge' ), $brand_missing );
+			} elseif ( $brand_fallback > 0 ) {
 				$brand_status = '<span class="kali-pill kali-pill--fallback">' . esc_html__( 'Fallback applied', 'kalicart-bridge' ) . '</span>';
-				/* translators: 1: rows filled by fallback, 2: rows submitted without brand */
-				$brand_detail = sprintf( __( '%1$d rows filled by the merchant fallback; %2$d rows submitted without brand.', 'kalicart-bridge' ), $brand_fallback, $brand_missing );
-			} elseif ( $brand_missing > 0 ) {
-				$brand_status = '<span class="kali-pill kali-pill--warn">' . esc_html__( 'Submitted without brand', 'kalicart-bridge' ) . '</span>';
-				/* translators: %d: rows submitted without brand */
-				$brand_detail = sprintf( __( '%d rows are in the feed without the brand field. Brand is required by the OpenAI specification: OpenAI may reject those rows. You submit them under your own responsibility.', 'kalicart-bridge' ), $brand_missing );
+				/* translators: %d: rows filled by the merchant brand fallback */
+				$brand_detail = sprintf( __( '%d rows filled by the merchant-declared brand fallback.', 'kalicart-bridge' ), $brand_fallback );
 			} else {
 				$brand_status = self::readiness_label( true, __( 'Complete', 'kalicart-bridge' ) );
 				$brand_detail = __( 'Every feed row carries a merchant-declared brand.', 'kalicart-bridge' );
@@ -703,8 +787,8 @@ class KaliCart_Bridge_ACP_Feed {
 		if ( null === $stats ) {
 			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Feed readiness has not been checked with the current settings. Save and generate a snapshot to run the validator.', 'kalicart-bridge' ) . '</p></div>';
 		}
-		if ( $stats && empty( $stats['error'] ) && (int) ( $stats['rows_missing_brand'] ?? 0 ) > 0 ) {
-			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Rows submitted without brand.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Brand is required by OpenAI’s direct product feed specification. These rows are included in the file without the brand field: OpenAI may accept or reject them - by submitting the feed you knowingly assume that responsibility. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API and MCP surfaces.', 'kalicart-bridge' ) . '</p></div>';
+		if ( $stats && empty( $stats['error'] ) && (int) ( $stats['excluded_no_brand'] ?? 0 ) > 0 ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Products without brand excluded.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Brand is required by OpenAI’s direct product feed specification, so these rows are not in the file. Assign a brand (WooCommerce Brands taxonomy or a brand attribute) to include them. The products remain fully available through KaliCart’s agent-readable catalog, search, REST API and MCP surfaces.', 'kalicart-bridge' ) . '</p></div>';
 		}
 		if ( $stats && empty( $stats['error'] ) && (int) ( $stats['fallback_brand_rows'] ?? 0 ) > 0 ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Merchant brand fallback applied.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'These rows do not contain a product-level brand in WooCommerce. The merchant is responsible for declaring that the fallback is accurate for every affected product.', 'kalicart-bridge' ) . '</p></div>';
@@ -717,8 +801,8 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 
 		echo '<div class="kali-acp-list">';
-		self::readiness_row( __( 'Return policy', 'kalicart-bridge' ), self::readiness_label( $return_ready ), $return_ready ? __( 'Configured in the Settings tab: ', 'kalicart-bridge' ) . (string) $opts['return_policy_url'] : __( 'Configure it once in the Settings tab; feed generation is blocked when missing.', 'kalicart-bridge' ) );
-		self::readiness_row( __( 'Target countries', 'kalicart-bridge' ), self::readiness_label( $countries_ready ), $countries_ready ? implode( ', ', $countries ) : __( 'Use ISO 3166-1 alpha-2 country codes.', 'kalicart-bridge' ) );
+		self::readiness_row( __( 'Return policy', 'kalicart-bridge' ), null === $return_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $return_ready ), $return_ready ? __( 'Configured in the Settings tab: ', 'kalicart-bridge' ) . (string) $opts['return_policy_url'] : ( null === $return_ready ? __( 'Optional in the OpenAI specification. Configure it in the Settings tab to include it in every row.', 'kalicart-bridge' ) : __( 'The configured URL is not an absolute http(s) URL; feed generation is blocked until it is fixed.', 'kalicart-bridge' ) ) );
+		self::readiness_row( __( 'Target countries', 'kalicart-bridge' ), null === $countries_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $countries_ready ), $countries ? implode( ', ', $countries ) : __( 'Optional in the OpenAI specification (depends on market setup). Use ISO 3166-1 alpha-2 country codes.', 'kalicart-bridge' ) );
 		self::readiness_row( __( 'Product brand', 'kalicart-bridge' ), $brand_status, $brand_detail );
 		self::readiness_row( __( 'Product description', 'kalicart-bridge' ), $desc_status, $desc_detail );
 		self::readiness_row( __( 'Primary image', 'kalicart-bridge' ), self::readiness_label( $image_state, __( 'Complete', 'kalicart-bridge' ), __( 'Missing rows', 'kalicart-bridge' ) ), null === $image_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: rows excluded for missing image */ __( '%d feed rows excluded in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_no_image'] ?? 0 ) ) );
@@ -753,10 +837,10 @@ class KaliCart_Bridge_ACP_Feed {
 		}
 		if ( $live_counts['brand'] || $live_counts['image'] ) {
 			echo '<div class="kali-acp-card"><h2>' . esc_html__( 'ChatGPT feed data gaps', 'kalicart-bridge' ) . '</h2>';
-			echo '<p>' . esc_html__( 'Live counts on your current catalog. Products without a primary image are excluded from the ChatGPT feed; products without a brand are submitted without that field, at your responsibility. None of this affects the agent-readable catalog, search, REST API or MCP surfaces.', 'kalicart-bridge' ) . '</p>';
+			echo '<p>' . esc_html__( 'Live counts on your current catalog. Products without a primary image are excluded from the ChatGPT feed; products without a brand are excluded too, because brand is required. None of this affects the agent-readable catalog, search, REST API or MCP surfaces.', 'kalicart-bridge' ) . '</p>';
 			echo '<div class="kali-acp-list">';
 			$kb_rows = [
-				'brand' => [ __( 'Missing brand (submitted without it)', 'kalicart-bridge' ), __( 'These rows enter the feed without the brand field; OpenAI may reject them. Assign a brand (WooCommerce Brands taxonomy or a brand attribute) to make them fully conformant.', 'kalicart-bridge' ) ],
+				'brand' => [ __( 'Missing brand (excluded)', 'kalicart-bridge' ), __( 'Brand is required by the OpenAI specification: these products are excluded from the ChatGPT feed. Assign a brand (WooCommerce Brands taxonomy or a brand attribute) to include them.', 'kalicart-bridge' ) ],
 				'image' => [ __( 'Missing primary image', 'kalicart-bridge' ), __( 'Set a featured image in the product editor.', 'kalicart-bridge' ) ],
 			];
 			foreach ( $kb_rows as $kb_gap => $kb_row ) {

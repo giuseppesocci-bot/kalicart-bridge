@@ -787,10 +787,37 @@
           }
           const when = d.last_probed_at ? new Date( d.last_probed_at ).toLocaleString() + ' (' + ago + ')' : '—';
 
+          // 1.0.138: store identity as KaliCart Global sees it. "Verified" is not
+          // "served": without a received catalog the panel says so.
+          let identityHtml = '';
+          const idn = d.identity;
+          if ( idn && idn.mode && idn.mode !== 'off' && idn.domain_verification ) {
+            const v = idn.domain_verification;
+            const idColor = v === 'verified' ? '#1a7f37' : ( v === 'failed' ? '#b32d2e' : '#b26b00' );
+            const idText = v === 'verified' ? ( T.identity_verified || 'Verified' )
+              : v === 'failed' ? ( T.identity_failed || 'Verification failed' )
+              : ( T.identity_pending || 'Verification pending' );
+            let idNote = '';
+            if ( v === 'verified' && idn.catalog_sync === 'not_accepted' ) {
+              idNote = T.identity_not_received || 'Identity verified, but the catalog cannot be received yet: KaliCart Global cannot read it from outside.';
+            } else if ( v === 'pending' ) {
+              idNote = T.identity_pending_note || 'KaliCart Global could not read this site to verify it. It retries automatically.';
+            } else if ( v === 'failed' ) {
+              idNote = T.identity_failed_note || 'KaliCart Global read this site but did not find this installation’s key. It retries automatically.';
+            }
+            if ( v === 'verified' && idn.heartbeat_fresh === false ) {
+              idNote = ( idNote ? idNote + ' ' : '' ) + ( T.identity_stale || 'KaliCart Global has not received a signal from this store in the last 7 days.' );
+            }
+            identityHtml = '<div><span style="color:' + idColor + '">&#9679;</span> ' + ( T.identity_label || 'Store identity:' )
+              + ' <strong style="color:' + idColor + '">' + esc( idText ) + '</strong></div>'
+              + ( idNote ? '<div style="margin:2px 0 4px;color:var(--kb-muted,#646970)">' + esc( idNote ) + '</div>' : '' );
+          }
+
           out.innerHTML = ''
             + '<div><span style="color:' + dotColor + '">&#9679;</span> ' + ( KaliBridge.i18n?.external_check_label_access || 'Access from outside:' ) + ' ' + reachable + '</div>'
             + ( limitDetail ? '<div style="margin:2px 0 4px;color:var(--kb-muted,#646970)">' + esc( limitDetail ) + '</div>' : '' )
             + '<div>' + ( KaliBridge.i18n?.external_check_label_detected  || 'Bridge detected:' )                  + ' <strong>' + detected  + '</strong></div>'
+            + identityHtml
             + '<div>' + ( KaliBridge.i18n?.external_check_label_checked   || 'Last checked:' )                     + ' ' + when + '</div>'
             + staleWarning;
         } )

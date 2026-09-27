@@ -172,6 +172,14 @@ class KaliCart_Bridge_Admin {
             /* translators: %d: number of hours since the last external observation */
             'external_check_ago_hours'     => __( '%d hours ago', 'kalicart-bridge' ),
             'external_check_ago_now'       => __( 'just now', 'kalicart-bridge' ),
+            'identity_label'               => __( 'Store identity:', 'kalicart-bridge' ),
+            'identity_verified'            => __( 'Verified', 'kalicart-bridge' ),
+            'identity_pending'             => __( 'Verification pending', 'kalicart-bridge' ),
+            'identity_failed'              => __( 'Verification failed', 'kalicart-bridge' ),
+            'identity_not_received'        => __( 'Identity verified, but the catalog cannot be received yet: KaliCart Global cannot read it from outside.', 'kalicart-bridge' ),
+            'identity_pending_note'        => __( 'KaliCart Global could not read this site to verify it. It retries automatically.', 'kalicart-bridge' ),
+            'identity_failed_note'         => __( 'KaliCart Global read this site but did not find this installation’s key. It retries automatically.', 'kalicart-bridge' ),
+            'identity_stale'               => __( 'KaliCart Global has not received a signal from this store in the last 7 days.', 'kalicart-bridge' ),
             'yes'                           => __( 'Yes', 'kalicart-bridge' ),
             'no'                            => __( 'No', 'kalicart-bridge' ),
             'error'          => __( 'Error:', 'kalicart-bridge' ),
@@ -348,6 +356,10 @@ class KaliCart_Bridge_Admin {
             wp_send_json_error( [ 'reason' => 'announce_http_' . $code ], 502 );
         }
         update_option( 'kalicart_bridge_federation_registered_at', gmdate( 'c' ) );
+        // 1.0.138: prove the installation identity shortly after, off this request.
+        if ( class_exists( 'KaliCart_Bridge_Identity' ) ) {
+            wp_schedule_single_event( time() + 15, KaliCart_Bridge_Identity::CRON_HOOK );
+        }
         wp_send_json_success( [ 'registered_at' => get_option( 'kalicart_bridge_federation_registered_at' ), 'consent' => true ] );
     }
 
@@ -400,6 +412,10 @@ class KaliCart_Bridge_Admin {
 
         // (1) spegni il consenso PRIMA: il discovery JSON pubblica OFF da subito.
         update_option( 'kalicart_bridge_global_consent', false );
+        // 1.0.138: signed consent=false heartbeat, best effort (never blocks the revoke).
+        if ( class_exists( 'KaliCart_Bridge_Identity' ) ) {
+            KaliCart_Bridge_Identity::consent_revoked();
+        }
 
         // (2) push di deregister per il parcheggio immediato (best-effort).
         $site_url = trailingslashit( get_site_url() );

@@ -286,6 +286,9 @@ class KaliCart_Bridge_API {
 
             'commerce_distribution' => KaliCart_Bridge_Commerce_Consent::discovery_state(),
 
+            // 1.0.138: installation identity proof (nonce + key fingerprint), read by KaliCart Global.
+            'kalicart_identity' => class_exists( 'KaliCart_Bridge_Identity' ) ? KaliCart_Bridge_Identity::discovery_block() : null,
+
             'crawler_policy' => [
                 'allow_llm_training'   => false,
                 'allow_live_agent_reads' => true,
