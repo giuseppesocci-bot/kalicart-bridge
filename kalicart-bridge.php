@@ -3,7 +3,7 @@
  * Plugin Name:       KaliCart Bridge – Agentic Commerce Catalog, ChatGPT Product Feed & MCP
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog agent-readable: product feed checked against the OpenAI spec, catalog REST API and MCP server, with the optional KaliCart Global connection. No LLM inside the plugin.
- * Version:           1.0.138
+ * Version:           1.0.139
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -14,13 +14,13 @@
  * Requires PHP:      8.0
  * Tested up to:      7.1
  * WC requires at least: 7.0
- * WC tested up to:      10.8
+ * WC tested up to:      11.1
  * Requires Plugins:    woocommerce
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.138' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.139' );
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );
@@ -62,7 +62,12 @@ require_once KALICART_BRIDGE_DIR . 'includes/class-mcp.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-signals.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-acp-feed.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-commerce-consent.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-federation-consent.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-site-health.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-push-notice.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-identity.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-snapshot-profile.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-snapshot.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-admin.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-checkout.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-shortcodes.php';
@@ -87,6 +92,10 @@ add_action( 'plugins_loaded', function () {
     KaliCart_Bridge_ACP_Feed::init();
     KaliCart_Bridge_Commerce_Consent::init();
     KaliCart_Bridge_Identity::init();
+    KaliCart_Bridge_Snapshot::init();
+    KaliCart_Bridge_Federation_Consent::init(); // privacy policy guide text
+    KaliCart_Bridge_Site_Health::init();
+    KaliCart_Bridge_Push_Notice::init(); // 1.0.139: off (PUSH_AVAILABLE=false), hooks nothing
     // Version-gated migration — runs once per plugin version, on init (needs $wp_rewrite).
     // Removes legacy extension-less static files (served as text/plain by the webserver)
     // and flushes rewrite rules so serve_well_known() answers on every install.
@@ -201,6 +210,8 @@ register_deactivation_hook( __FILE__, function () {
 	wp_clear_scheduled_hook( KaliCart_Bridge_Identity::CRON_HOOK );
 	// 1.0.138: signed "leaving" BEFORE the well-known files disappear (best effort, 5 s).
 	KaliCart_Bridge_Identity::leaving( 'deactivated' );
+	// 1.0.139: snapshot files go with the plugin (manifest first).
+	KaliCart_Bridge_Snapshot::delete_all();
     KaliCart_Bridge_Signals::remove_well_known_files();
     flush_rewrite_rules();
 } );

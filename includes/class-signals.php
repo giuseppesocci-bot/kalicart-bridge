@@ -1110,6 +1110,8 @@ class KaliCart_Bridge_Signals {
             'documentation' => 'https://bridge.kalicart.com/docs/',
         ] + ( class_exists( 'KaliCart_Bridge_Identity' ) && KaliCart_Bridge_Identity::discovery_block()
             ? [ 'kalicart_identity' => KaliCart_Bridge_Identity::discovery_block() ] // 1.0.138: domain proof, read by KaliCart Global
+            : [] ) + ( class_exists( 'KaliCart_Bridge_Snapshot' ) && KaliCart_Bridge_Snapshot::pointer()
+            ? [ 'catalog_snapshot' => KaliCart_Bridge_Snapshot::pointer() ] // 1.0.139: static signed catalog, read by KaliCart Global
             : [] ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
     }
 
@@ -1283,7 +1285,11 @@ class KaliCart_Bridge_Signals {
             // Only (over)write files that are ours or absent — never clobber a
             // file the host/merchant placed there (ACME, autoconfig, etc.).
             if ( $existing === '' || strpos( $existing, 'kalicart' ) !== false ) {
-                @file_put_contents( $path, $body ); // phpcs:ignore PluginCheck.CodeAnalysis.WriteFile.ABSPATHDetected -- /.well-known/ files must reside in web root, not uploads/
+                // 1.0.139: atomic (temp file + rename): a concurrent reader never sees a truncated JSON.
+                $tmp = $path . '.tmp-' . wp_generate_password( 8, false );
+                if ( false !== @file_put_contents( $tmp, $body ) && ! @rename( $tmp, $path ) ) { // phpcs:ignore PluginCheck.CodeAnalysis.WriteFile.ABSPATHDetected, WordPress.WP.AlternativeFunctions.rename_rename, WordPress.PHP.NoSilencedErrors.Discouraged -- /.well-known/ files must reside in web root; atomic replace (WP_Filesystem::move() is not atomic on non-direct transports).
+                    wp_delete_file( $tmp );
+                }
             }
         }
     }

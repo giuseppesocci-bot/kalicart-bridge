@@ -1,5 +1,15 @@
 *** KaliCart Bridge Changelog ***
 
+2026-09-28 - version 1.0.139
+
+* New: public catalog files. While the Federated Catalog is active, the plugin writes the public catalog as static files in `/.well-known/kalicart/` (or in `wp-content/uploads/kalicart/` when that folder cannot be written), updated when products are edited and once a day. They contain the same public data as the catalog API, without exact stock quantities, and are deleted when the Federated Catalog is revoked or the plugin is deactivated or deleted. Nothing is written without the Federated Catalog.
+* Change: the Federated Catalog consent text (version 1.1) says that KaliCart Global also reads these public files and lists exactly what the daily status signal contains. Same data, same recipient: stores that already joined keep their consent. New activations record a local receipt (text version, time, user, text hashes) in a tamper-evident chain; the receipt stays on the site.
+* New: the ChatGPT distribution channel can be chosen in the same screen as the Federated Catalog, with an unchecked box. It is still a separate authorization with its own receipt, and its text is unchanged.
+* New: Site Health reports, as "recommended" at most, when the status signal has not been delivered for more than 3 days, when the catalog files cannot be written, are incomplete or are old, and when KaliCart Global reports that it cannot read the catalog. Each result says what was measured and what happens by itself.
+* The report from KaliCart Global is data: only known fields are kept and it never triggers an action on the site.
+* Deleting the plugin also deletes the local consent receipts.
+* Translated in Italian, German, Spanish and French.
+
 2026-09-27 - version 1.0.138
 
 * Change: products without a brand are no longer written to the ChatGPT feed. Brand is required by the OpenAI specification; affected products are excluded, counted and listed in the panel. A merchant-declared brand fallback for own-label stores still applies. The catalog, search, REST API and MCP are unaffected.

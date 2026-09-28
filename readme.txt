@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.138
+Stable tag: 1.0.139
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -117,9 +117,9 @@ No. This plugin is fully standalone and free.
 
 The Federated Catalog is an optional discovery network operated by KaliCart Global. The Bridge makes your catalog readable by agents that already reach your domain; the Federated Catalog makes it discoverable by agents that do not know your store yet. It is opt-in, separate from the local Bridge endpoints, and revocable at any time.
 
-There are two discovery paths. Local signals — `.well-known` files, robots.txt entries, the `rel="kalicart-agent"` head link and the badge — help an agent that lands on your own domain find the Bridge. They do not feed the federated index by themselves. The federated index is a separate cross-merchant index: after you activate it, KaliCart Global reads your already-public `/discovery` and `/catalog/*` endpoints and lets agents search across participating stores.
+There are two discovery paths. Local signals — `.well-known` files, robots.txt entries, the `rel="kalicart-agent"` head link and the badge — help an agent that lands on your own domain find the Bridge. They do not feed the federated index by themselves. The federated index is a separate cross-merchant index: after you activate it, KaliCart Global reads your already-public `/discovery` and `/catalog/*` endpoints, and the public catalog files this plugin writes on your site, and lets agents search across participating stores.
 
-End to end: from WP Admin → KaliCart Bridge you activate the Federated Catalog; the plugin sends only your public site URL; KaliCart Global pulls the public catalog read-only; matching results route agents back to your store. Authoritative price, availability and checkout stay on your WooCommerce site, served live by your Bridge. If you revoke consent, your catalog leaves federated results while direct agent access to your store remains active.
+End to end: from WP Admin → KaliCart Bridge you activate the Federated Catalog; the plugin sends only your public site URL; KaliCart Global reads the public catalog (from the catalog API or from the public catalog files); matching results route agents back to your store. Authoritative price, availability and checkout stay on your WooCommerce site, served live by your Bridge. If you revoke consent, your catalog leaves federated results while direct agent access to your store remains active.
 
 = Is this UCP or ACP compatible? =
 
@@ -159,14 +159,27 @@ This plugin works fully standalone. It connects to one external service **only a
 
 **When data is sent:** When an administrator activates or revokes the Federated Catalog, requests its external-visibility status, or explicitly grants or revokes a named federated distribution channel. After a provider receipt exists, opening the plugin page requests its processing status using the public site URL and consent ID. A failed provider-receipt delivery may be retried twice, after approximately one minute and five minutes. While the Federated Catalog is active, the plugin also proves this installation's identity once and then sends a signed status signal about once a day; it sends a signed leaving signal when the plugin is deactivated or deleted, and a signed consent-off signal when federation is revoked. Nothing is sent merely because the plugin is installed or activated.
 
-**What is sent:** Federated Catalog activation, revocation and visibility checks send the site's public URL (e.g. https://yourstore.com). A provider authorization receipt additionally sends its consent ID, provider, purpose, action, UTC timestamp, plugin and terms versions, consent locale, and SHA-256 evidence-chain hashes. The administrator's WordPress user ID and localized consent text remain only in the store's local evidence log. The identity signals send the site's host, a random installation ID, this installation's public key, a one-time verification code, the consent state and the plugin, WordPress and PHP versions; when the plugin itself hit a fatal error, a normalized error code, the time and a short non-reversible hash - never the error message, file paths or stack traces. The private key never leaves the site. No customer, order, payment, credential or API-key data is transmitted.
+**What is sent:** Federated Catalog activation, revocation and visibility checks send the site's public URL (e.g. https://yourstore.com). A provider authorization receipt additionally sends its consent ID, provider, purpose, action, UTC timestamp, plugin and terms versions, consent locale, and SHA-256 evidence-chain hashes. The administrator's WordPress user ID and localized consent text remain only in the store's local evidence log. The identity signals send the site's host, a random installation ID, this installation's public key, a one-time verification code, the consent state and the consent text version, the plugin, WordPress and PHP versions, the status of the public catalog files (sequence number, file address and hashes, product count, whether complete, generation time) and whether the store is in WooCommerce "coming soon" or WordPress maintenance mode; when the plugin itself hit a fatal error, a normalized error code, the time and a short non-reversible hash - never the error message, file paths or stack traces. The private key never leaves the site. No customer, order, payment, credential or API-key data is transmitted.
 
-**What the service does:** The URL tells KaliCart Global your store wishes to be discovered. KaliCart Global periodically reads your already-public catalog and includes it in federated agent search. For a separately authorized provider channel, KaliCart Global stores the minimal receipt and verifies the matching authorization against the store's public discovery document before the channel can become eligible. It only reads public catalog data; it never writes to your store. For identity, KaliCart Global reads the verification code this plugin publishes in its own discovery and `/.well-known/kalicart-bridge.json`, and keeps the verification state and the latest status signal; the status signal details are deleted when the plugin sends its leaving signal. Revoking the provider channel does not revoke Federated Catalog participation, and revoking federation suspends distribution without rewriting the authorization history.
+**What the service does:** The URL tells KaliCart Global your store wishes to be discovered. KaliCart Global periodically reads your already-public catalog and includes it in federated agent search. For a separately authorized provider channel, KaliCart Global stores the minimal receipt and verifies the matching authorization against the store's public discovery document before the channel can become eligible. It only reads public catalog data; it never writes to your store. Since 1.0.139 it can also read the catalog from public files this plugin writes on your site, in `/.well-known/kalicart/` (or in `wp-content/uploads/kalicart/` when that folder cannot be written): the same public catalog data as the catalog API, without exact stock quantities. The files are updated when products are edited and deleted when the Federated Catalog is revoked or the plugin is deactivated or deleted. In its answer to the status signal, KaliCart Global reports how it reads the catalog; the plugin stores that report locally and shows it only in the plugin page and in Site Health. If the plugin folder is removed outside WordPress, the catalog files remain on the site, and KaliCart Global does not use them without a current signed status.
+
+**Retention:** KaliCart Global keeps the current state while the store takes part; events and reading reports for 90 days, then only anonymous daily totals without site address, URL or IP address; server logs containing IP addresses for 30 days. 30 days after revocation or removal, the catalog, its copies, the events and the current identity state are deleted. Only a minimal revocation record (site address and revocation date, so that the store is not listed again by mistake) and the history of the installation's signing keys (public keys and verification dates, kept as a security record) remain. The Federated Catalog consent receipt stays in the store's WordPress database until the plugin is deleted and is not sent to KaliCart Global.
 
 **Privacy notice:** https://bridge.kalicart.com/privacy/
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.139 =
+**KaliCart Global can read the catalog even when the catalog API is not reachable from outside.**
+
+* New: public catalog files. While the Federated Catalog is active, the plugin writes the public catalog as static files in `/.well-known/kalicart/` (or in `wp-content/uploads/kalicart/` when that folder cannot be written), updated when products are edited and once a day. They contain the same public data as the catalog API, without exact stock quantities, and are deleted when the Federated Catalog is revoked or the plugin is deactivated or deleted. Nothing is written without the Federated Catalog.
+* Change: the Federated Catalog consent text (version 1.1) says that KaliCart Global also reads these public files and lists exactly what the daily status signal contains. Same data, same recipient: stores that already joined keep their consent. New activations record a local receipt (text version, time, user, text hashes) in a tamper-evident chain; the receipt stays on the site.
+* New: the ChatGPT distribution channel can be chosen in the same screen as the Federated Catalog, with an unchecked box. It is still a separate authorization with its own receipt, and its text is unchanged.
+* New: Site Health reports, as "recommended" at most, when the status signal has not been delivered for more than 3 days, when the catalog files cannot be written, are incomplete or are old, and when KaliCart Global reports that it cannot read the catalog. Each result says what was measured and what happens by itself.
+* The report from KaliCart Global is data: only known fields are kept and it never triggers an action on the site.
+* Deleting the plugin also deletes the local consent receipts.
+* Translated in Italian, German, Spanish and French.
 
 = 1.0.138 =
 **The ChatGPT product feed follows the current OpenAI specification: neither looser nor stricter.**
@@ -184,209 +197,5 @@ This plugin works fully standalone. It connects to one external service **only a
 * Fix: the plugin description on the Plugins screen no longer says "no external service". The optional KaliCart Global connection is an external service and is described under "External services".
 * Translated in Italian, German, Spanish and French.
 
-= 1.0.137 =
-**The plugin declares only what it implements, and the panel tells a blocked check apart from a missing Bridge.**
-
-* Change: the plugin no longer publishes a UCP profile (/.well-known/ucp, /.well-known/ucp.json and the /ucp REST route). It declared a UCP REST service that the plugin does not implement, so a UCP client following it failed. UCP Catalog is served by KaliCart Global for stores that join the Federated Catalog. The old ucp.json file written by earlier versions is removed on update; a file placed there by someone else is never touched.
-* Fix: the external visibility check no longer reports "Not reachable" and "Bridge detected: No" when KaliCart Global's check receives an anti-bot challenge from your site or is disallowed by your robots.txt. It now shows "Limited external access" in orange with its cause (for example "anti-bot challenge from Cloudflare", as detected by KaliCart Global) and what it means for your store: whether it stays in the Federated Catalog with the last catalog read, or is not in it. Translated in Italian, German, Spanish and French.
-* Docs: new FAQ on UCP and ACP compatibility.
-
-= 1.0.136 =
-**How a product is obtained is reported as the merchant configured it, and a game key is no longer described as a box to collect in store.** A virtual product that is not downloadable was reported as a physical item collected from the merchant; the catalog now says it is virtual, and carries the merchant's own WooCommerce flags next to it.
-
-* Fix: a virtual product that is not downloadable — a game key, a course, a consultation, an access — is now reported as fulfilment "virtual" instead of "pickup_only". It used to be described as a physical item to collect in store. "pickup_only" remains only for a product that is neither virtual nor downloadable and that WooCommerce does not ship.
-* New: every catalog record carries the merchant's own WooCommerce "virtual" and "downloadable" flags, as set, next to fulfilment. A product that is downloadable but not virtual is shipped by WooCommerce; the flags let a reader see that it also carries a download.
-* Fix: whether a product can be added to the cart in one step is now read from WooCommerce itself rather than inferred from the product type. A bundle that its own plugin does not allow to be added by URL was reported as a one-click purchase, and the checkout link silently did nothing. The catalog now reports what the store would actually do, including whatever the merchant's bundle plugin allows on that specific site.
-* Fix: the catalog health panel no longer reports a free product as a defect. A product priced at zero is a gift and is purchasable; a product with no price at all cannot be bought. The two were scored identically, and a product that cannot be sold was weighted below a short title. The panel now matches the catalog payload product by product.
-* New: after a federated distribution channel is authorized, the panel states that inclusion in the index built for OpenAI is not automatic, and that products or categories OpenAI's commerce policies do not allow may keep the store out of it. Participation in the Federated Catalog is unaffected. Translated in Italian, German, Spanish and French.
-
-= 1.0.135 =
-**Products sold together are described as such, and no price is quoted that the buyer cannot pay.** Groups and bundles were served in the shape of a single ordinary product: no contents, one price where there was a range, and a purchase instruction that was wrong in both directions. Sale prices outside their active window were published as if they were the price being charged.
-
-* New: every record carries `group`, non-null only for products sold together — WooCommerce grouped products and supported bundle plugins. It lists the components with their quantities and which of them are optional, the total the same items cost bought separately today, and the discount the group itself applies. `sold_as` leads: `one_item` means the whole group is bought in one go at `price.current`; `individual_components` means it is a display of products each bought on its own. A bundle stored by a plugin whose format the Bridge cannot read is still declared a group, with `resolved: false`, rather than being guessed at.
-* Fix: a grouped product no longer reports the price of its cheapest component as its price. It now carries a price range, like a variable product, and `price.range_over` says which of the two kinds of range it is — `variants`, where the buyer picks one, or `group_components`, where each is bought separately. `fields=summary` carries it too, so triage is not misled before the product is ever opened.
-* Fix: `purchase_readiness` tells the truth about groups. It previously declared every group unbuyable, with a reason naming three things that were not the case; a fixed-price bundle can in fact be added to the cart directly, and now says so. A group whose components are sold one by one, a group with optional components still to be chosen, and a group whose contents cannot be read each get their own state and their own reason.
-* Fix: a sale price that is not the price being charged is no longer published as one. A sale whose window has not opened, or has already closed, left `sale` populated while `current` stayed at the regular price. The promotion is not hidden: it moves to `scheduled_promotion`, with its state and its dates, and `sale`, `on_sale` and `discount_pct` describe only what the buyer can actually pay today.
-* Fix: a product with no price set is reported as unsellable rather than as badly written. It was scored like a short title, fifteen points, while a product that cannot be bought at all now blocks. A free product priced at zero is not the same thing and is no longer confused with it: it is purchasable and is served normally.
-* Fix: free shipping is reported with the condition the merchant actually set. The method's `requires` setting was never read, so a free shipping offer available only with a coupon was announced as if the cart total alone were enough. Records now distinguish unconditional free shipping, a real order threshold, and free shipping that needs a coupon.
-* Fix: `get_product` returns a product over MCP. It answered with an "unknown query parameters" error instead of the product, on every request, making the verification step of the MCP surface unusable.
-* Fix: out of stock is said plainly whatever the product type. A simple product that had sold out was reported as requiring the product page, with a reason describing an external product, while a variable product in the same state was correctly reported as out of stock.
-* Fix: `variants` no longer carries a synthetic entry for products that do not have a single price to pay. That entry repeated the product as if it were one buyable line, which on a grouped product meant quoting the cheapest component as the price of an item that is not sold. The group's contents are in `group.components`.
-* New: `after_id` on `/catalog/products`, with `orderby=id`, walks a catalog without losing or repeating products when the shop changes mid-walk. Date ordering shifts under the reader as products are published or edited; an id cursor does not.
-
-= 1.0.134 =
-**The catalog is a mirror of the shop.** It shows everything the merchant sells and says how each product is obtained; it hides what the merchant has hidden; and it no longer states shipping conditions for products that are not shipped.
-
-* New: every record carries `fulfilment` — `shipped`, `downloadable` or `pickup_only`. An agent can now tell what arrives at an address, what is downloaded and what is a physical item collected from the merchant, while ranking candidates and without opening each one. Decided from the product, not from the store's shipping methods.
-* Fix: a product that requires no shipping no longer carries the store's shipping conditions. It previously reported `shipping_required: false` and, in the same object, free-shipping availability, thresholds and how much was missing to reach one — facts that contradicted each other, where an agent reading the second concluded the opposite of the first. Those fields are now omitted and replaced by how the product is actually obtained, including the merchant's local pickup methods when configured.
-* Fix: `fulfilment` is correct for variable products. `WC_Product_Variable::get_downloadable()` returns false unconditionally, exactly like `get_virtual()`, so a variable product made entirely of downloadable variations was not recognised as a download. The variations now decide.
-* Fix: the catalog now respects WooCommerce catalog visibility. A product set to "Hidden" was still served, including by direct ID lookup — an explicit merchant decision silently ignored. "Hidden" is now excluded everywhere. "Shop only" and "Search results only" are honoured exactly as WooCommerce honours them, each limiting where the product is found rather than whether it exists: if the shop still sells it, the Bridge still shows it, in the same place the shop would. Every record now also reports `catalog_visibility`, so the federated index can see the merchant's choice instead of inferring it.
-* Fix: `shipping_required` and `physical_only` are documented for what they do. They described themselves as excluding "virtual, downloadable and pickup-only" products, and two of those three were wrong: a downloadable product that still ships requires shipping, and collection in store is a shipping method rather than a product property. Read `fulfilment` to tell the three cases apart.
-
-= 1.0.133 =
-**Physical or digital, disclosed and filterable.** Agent surfaces could not tell a shippable product from a digital one without opening every candidate, and WooCommerce's own parent-level flag answers this wrongly for variable products.
-
-* New: `fields=summary` includes `shipping_required` on every record. It answers one question — would WooCommerce ask for a shipping address — so an agent can tell a physical product from a virtual, downloadable or pickup-only one while ranking, instead of fetching product detail one candidate at a time. The shipping quote, zones and free-shipping thresholds stay in `/catalog/product/{id}`.
-* Fix: `shipping_required` is now correct for variable products. `WC_Product_Variable::get_virtual()` returns false unconditionally, so WooCommerce reports every variable product as needing shipping even when all of its variations are virtual or downloadable. The value is now decided by the variations: false only when none of them needs shipping. This corrects both the catalog response and the federated sync payload.
-* New: optional `physical_only=true` filter on `/catalog/search` and `/catalog/products`, and on the `search_products` and `list_products` MCP tools. It returns only products that need shipping. It is opt-in and has no default: omitted, the catalog is served exactly as the merchant published it. A caller bound to physical goods declares that constraint itself rather than the Bridge deciding it for every store.
-* Unknown stays physical: a product whose shipping requirement cannot be determined is reported and treated as needing shipping, so nothing is hidden by a lookup failure.
-* The new filter is announced in `/discovery`, `/catalog/meta` and the OpenAPI document, and `ProductSummary` declares the new field.
-
-= 1.0.132 =
-* New: provider-specific federated distribution authorizations are displayed directly below the Federated Catalog panel, separate from both federation participation and the direct merchant feed. The first registered channel is OpenAI / ChatGPT product discovery and starts off on every upgrade.
-* Consent proof is append-only and tamper-evident: every grant and revocation records the administrator, native-English terms version, localized text, locale, timestamp and a chained SHA-256 record hash in a dedicated local table. Administrators can export the full proof as JSON or CSV.
-* Privacy boundary: KaliCart Global receives only the public site URL plus the minimal receipt metadata and hashes. It never receives the WordPress user ID or localized consent text. Failed delivery receives two bounded retries; the UI distinguishes receipt delivery from Global verification.
-* Safety: a provider grant is refused unless the Federated Catalog is locally active and registered. Revoking a provider leaves federation active; revoking federation suspends provider delivery without deleting or rewriting its authorization history.
-* Integration: `/discovery` accepts the single `kalicart_consent_probe` cache-busting parameter used by KaliCart Global to verify that a submitted receipt matches the authorization currently published by the merchant. Other unknown discovery parameters remain rejected.
-* Internationalization: all new consent, state and evidence-export strings originate in English and are translated and compiled for Italian, German, French and Spanish, with no fuzzy or missing entries.
-
-= 1.0.131 =
-**Contract hardening.** Compact catalog responses now carry enough evidence for an agent to distinguish a real match, a soft-filter no-op, a valid but unobserved value and a silently wrong request.
-
-* New: `fields=summary` always includes `gender`, explicitly `null` when it cannot be inferred. A gender-filtered scan reuses the evidence it already computed instead of inferring it twice.
-* New: `filter_effect.gender` reports the complete baseline evaluated after all strict filters, with matched, unknown-retained and excluded counts plus `changed_result_set`. A proven no-op emits `GENDER_FILTER_NO_EFFECT`.
-* New: zero-result guidance can identify `VALID_FILTER_VALUE_NOT_OBSERVED`, `VALID_CATEGORY_NO_RESULTS` and `FILTER_COMBINATION_ELIMINATED_RESULTS`, but only from the current query or at most two drop-one probes. More complex or incomplete evidence keeps the generic recovery guidance.
-* Fix: all result guidance uses the `code` field. The legacy one-off `guidance_code` spelling is removed, and a specific evidentiary finding takes precedence over generic triage.
-* Fix: catalog REST endpoints reject unknown query parameters with HTTP 400 and `search_executed:false`. In particular, `search` on `/catalog/products` now points to `/catalog/search?q=...` with invalid parameters, corrections, the correct endpoint and a copyable suggested URL.
-* New: summary prices include `currency` and `encoding: decimal_major_units`. Price-filtered responses echo `query_interpretation`, including the requested range and the interval-overlap matching rule.
-* Fix: compact product verification exposes top-level WooCommerce `attributes`; `variants[].attributes` remains the separate variation-level evidence. REST, OpenAPI and MCP describe the same projection.
-* Fix: category scope is explicit. `get_meta.categories` is a flat list of populated categories; `list_categories` is the complete hierarchical taxonomy, including empty and Uncategorized nodes.
-* Fix: a facet snapshot without a timestamp now reports `computed_at:null` and `freshness_status:unknown`, then queues an asynchronous rebuild. Stale snapshots are also queued for refresh; public metadata requests never perform the full-catalog scan inline.
-
-= 1.0.130 =
-**Contract change.** Filter values that were previously tolerated are now rejected. `gender=uomo` used to return results on the REST surface; it no longer does. If you call the Bridge directly, send canonical values.
-
-* Fix: an unrecognised `gender` value used to return results. Because most products have no detectable gender, `gender=kids` and `gender=inventato` both returned the same set — a plausible answer to a filter that had filtered nothing, and no way for an agent to tell. Unknown values are now rejected before any search runs.
-* Fix: REST and MCP applied opposite rules to the same input. MCP rejected `uomo` with an enum error, REST accepted it and returned a subset. Both now share one vocabulary and one normaliser.
-* Change: no more aliases. The MCP schema promised `uomo` and `rosso` while the runtime rejected them. Facet values are canonical only; `q` remains natural language. Input is trimmed and lowercased — `MALE ` and `male` are the same value written differently, `uomo` and `male` are two different words, and translating the second pair is the agent's job, not the catalog's.
-* Change: the MCP schema declares `string` rather than `enum`, so a conforming client no longer blocks a merely mis-cased value before the request reaches the Bridge, and the structured error reaches the agent with `received`, `normalized`, `accepted_values` and `search_executed: false`.
-* New: `gender` is the only soft filter, and now says so. A product whose gender cannot be determined is retained as a candidate, not silently mixed in: every result carries `filter_evidence.gender`, and the response carries `gender_summary` with counts over the whole result set. When nothing is confirmed, `NO_CONFIRMED_GENDER_MATCHES` says it. `color`, stock, sale and price stay strict — the asymmetry is deliberate and now documented.
-* New: `get_meta` separates `accepted_values`, the contract, from `available_values`, what this catalog currently holds, with the age of that snapshot. An accepted value that is absent returns zero results, never an error.
-* Change: removed "always current" and "not available". A response is read from WooCommerce at request time; that is the perimeter, not a promise it matches the storefront. Zero results proves something about the query, not about the catalog.
-* Fix: admin styling — nothing below 13px, and the tab bar stacks on narrow screens.
-
-= 1.0.129 =
-* Change: the assistants section is now two independent blocks instead of one table. Three columns side by side read as a sequence — crawler, then visit, then order — while the numbers come from systems that share no identifier. Each block now states its own source: what KaliCart recorded, and what WooCommerce attributed.
-* New: a block that says plainly what the plugin cannot tell you. "KaliCart's impact on sales: not estimable with the available data." It is always visible, and it is the boundary within which every other number keeps its credibility.
-* New: catalog requests are split between automated reads by AI providers and lookups made while a person was using an assistant. Grouping them made the panel claim "ChatGPT asked for your catalog" when ChatGPT's user-facing agent had never touched it — true to the letter, false in substance.
-* Change: the catalog figure comes first and store pages follow as context. Pages stay visible — hiding them would be the same selectivity we avoid elsewhere — but they are not what the plugin makes possible.
-* Change: colours removed from this section. They were carrying a claim about how proven each number was; with the blocks separated, any colour would rebuild the very link the structure is there to deny.
-* Change: the section is marked Beta. It is new and will change; the counts are real requests, what is still uncertain is how much they weigh on orders.
-* Fix: the admin tabs now stack on narrow screens instead of overflowing horizontally.
-
-= 1.0.128 =
-* Fix: orders and revenue are now counted separately. An order with a recorded source is not income until it has a payment date: bank transfer and cash-on-delivery orders reach a paying status with no payment recorded, so they were inflating the figure. The panel now shows orders, orders with payment recorded, and value net of refunds as three distinct numbers.
-* Fix: the assistant totals were capped at 500 orders without saying so, which silently understated the count on busier stores. The report now pages through the whole window.
-* Fix: order sources are matched on a normalised host instead of a substring, so a referrer such as `chatgpt.com.evil.example` no longer counts as ChatGPT.
-* The payment criterion is now the same one the agent checkout funnel already used, so the two sections of the panel cannot disagree.
-
-= 1.0.127 =
-* Change: colours in the assistants table now state a level of proof, not an intensity. Green is used only where something is demonstrated — requests that reached routes which do not exist without the Bridge. Orders from an assistant that also queried your catalog are amber: same period, no proven link. Everything else is grey.
-* Removed: the "Confirmed" banner. Both halves of it were true, the link between them was not: the bot queries from the provider's servers, the customer buys from their own browser, and no identifier is shared between the two. A sentence a merchant repeats to others needs a trace, not a coincidence. It will return when an order can carry the catalog's own signature.
-* New: a legend spelling out what each colour claims, including that amber proves nothing.
-* Fix: the agent checkout funnel now appears only when net paid value is above zero. Counting sessions let it through on a real store showing 1 session and three zeros — exactly what hiding it was meant to prevent.
-* Fix: catalog requests count only agent-like clients. Browser traffic on those routes is the shop owner or a testing tool, and was being presented as anonymous agents.
-* Code: admin page variables carry the full plugin prefix again, clearing 14 Plugin Check warnings introduced in 1.0.126.
-* i18n: new strings translated to Italian, German, Spanish and French.
-
-= 1.0.126 =
-* New: "AI assistants and your store" in the Stats tab. One row per assistant, three columns: pages read, KaliCart catalog requests, and orders converted. The first column is what any site gets; the second exists only where the Bridge is installed. Reads the 31 days already recorded, so it is populated the moment you update — no migration.
-* New: order attribution from AI assistants, sourced from WooCommerce's own order attribution. A "Confirmed" line appears only when the same assistant both queried your catalog and brought customers who bought in the same window; it never shows on an empty cross-check.
-* New: Applebot is now recognised, so Siri and Spotlight visits are counted. Evaluated after Applebot-Extended, which stays distinct: indexing and model training are not the same thing.
-* Change: the agent checkout funnel is hidden while empty. Four zeros read as a broken plugin; a line now explains what will appear there when an assistant completes an order on its own.
-* i18n: all new strings translated to Italian, German, Spanish and French.
-
-= 1.0.125 =
-* Fix: the min_price filter discarded variable products that had purchasable variants inside the requested range. The post-filter compared only the lowest active price, cancelling the range-overlap semantics already declared by the SQL pre-filter. It now compares the whole interval.
-* New: price.max_current and price.max_regular are returned on price.type=range, in both the summary listing and the product detail. price.current is the lowest active price across variants; without these fields the interval was readable only inside the formatted price.display string.
-* Agent instructions and the CatalogPrice schema document the interval semantics.
-
-= 1.0.124 =
-* Compatibility: tested up to WordPress 7.1.
-
-= 1.0.123 =
-* Distribution: returns KaliCart Bridge to WordPress.org from the approved 1.0.120 baseline. Versions 1.0.121 and 1.0.122 were distributed externally and are superseded by this release.
-* Updates: removes the custom Update URI, standalone updater and external plugin-details override. Future updates are provided by WordPress.org.
-* Privacy and federation: restores the explicit opt-in and revocation flow approved in 1.0.120. The upgrade removes only the automatic 1.0.122 lifecycle job and its technical retry state; merchant settings are preserved.
-* Compatibility: installs running 1.0.120, 1.0.121 or 1.0.122 converge on the same WordPress.org-compatible package without changes to catalog, feed, MCP or checkout behavior.
-* Housekeeping: shortens the directory changelog so WordPress.org can display it without truncation.
-
-= 1.0.122 =
-* External-only release: briefly introduced an automatic federation lifecycle and Bridge-hosted plugin-details metadata. It was never published on WordPress.org and is superseded by 1.0.123, which restores explicit merchant consent and the native WordPress.org update flow.
-
-= 1.0.121 =
-* External-only release: introduced a standalone HTTPS updater for installations outside WordPress.org. It was never published on WordPress.org and is superseded by 1.0.123; the standalone updater is removed after convergence.
-
-= 1.0.120 =
-* Discovery controls: the three storefront-link toggles are independent, accurately described and remain off by default on new installations.
-* Catalog accuracy: size is explicitly detail-only and unsupported as a parent-product search filter; agents must verify purchasable product variations.
-* Price metadata: catalog ranges use WooCommerce's public product lookup and lowest-sale statistics include only currently active, public sale entities.
-* Lifecycle: reactivation preserves merchant settings; disabling or deactivating discovery removes only Bridge-owned .well-known files and disabled routes return 404.
-* OpenAPI: price sale scope, variant discount counts and catalog deal statistics are now explicitly typed.
-
-= 1.0.119 =
-* Checkout privacy: all checkout-session REST responses now send private no-store headers, preventing reverse proxies from serving stale bearer-session data after cancellation or expiry. Discovery now documents the real pending and cart_loaded states.
-* Variable sales: product summaries distinguish some_variants from all_variants, report discounted and priced variation counts, and require selected-variation verification when only particular sizes or colors are discounted. The calculation reuses WooCommerce's existing variation price matrix and adds no per-variation queries.
-* Sale statistics: catalog metadata now separates product cards on sale from individually discounted variations while retaining on_sale_total as the product-level compatibility field.
-* Catalog accuracy: products without a usable price remain discoverable but sort after priced products, so ascending price pages no longer fill with zero-price placeholders.
-* Performance: a missing facet snapshot queues a background rebuild instead of scanning the full catalog during a public request. Saving unrelated settings no longer flushes rewrite rules.
-* Lifecycle hardening: deactivation clears recurring jobs; uninstall removes all Bridge options, dynamic facets, scheduled feed work, generated catalog feeds and plugin-owned public discovery mirrors.
-
-= 1.0.118 =
-* New: checkout attribution. Orders created from a Bridge checkout session — through either classic checkout or Checkout Block — are linked back to that session. A local 30-day funnel (sessions created, carts loaded, orders linked and net paid value) is shown in the Stats tab of the Bridge dashboard. No data is sent to the cloud.
-* Accuracy: net paid value includes only linked orders for which WooCommerce has recorded a payment date, net of refunds. Cash on delivery, bank transfer and cheque orders are excluded unless WooCommerce records an actual payment confirmation.
-* Checkout integrity: attribution is written only when the live order still matches the exact product, variation and quantity fingerprint loaded by the Bridge. Cart mutations and partial/failed loads clear attribution; direct variation IDs are normalized correctly; each session can claim at most one order atomically. Reused links return a generic HTTP 410 without exposing the original order.
-* Checkout hardening: the opt-in session endpoint now enforces a pre-parser JSON body limit, strict integer inputs, 20-line and aggregate-quantity ceilings, WooCommerce purchase limits, short weighted request limits and a longer storage budget. GET, DELETE and checkout links are also bounded. Proxy forwarding is trusted only from a configurable allowlist and parsed fail-closed.
-* Idempotency: concurrent requests with the same Idempotency-Key are serialized through fixed, bounded database buckets. The original public 201 response is replayed without internal attribution fields; conflicting payloads and unavailable originals cannot create a duplicate session.
-* MCP hardening: the server now declares only MCP 2025-06-18, rejects JSON-RPC batches and invalid object shapes/types, validates tool schemas without coercion, enforces JSON Content-Type, Origin, protocol header and body bounds before parsing, and weights catalog work in its abuse budget.
-* Catalog security and performance: public discovery/catalog work uses proxy-safe weighted limits; expensive derived filters run in bounded batches with an explicit candidate ceiling; variable-product price filters are verified against price.current after a WooCommerce lookup-table prefilter; repeated compact derived queries use one size-bounded short cache.
-* Telemetry and maintenance: concurrent local counters no longer lose increments; rejected requests, MCP metadata and checkout paths do not amplify telemetry writes; storefront HTML telemetry is branded-agent-only and bounded by default. Fixed and dynamic security state, claims, legacy sessions and caches are cleaned on expiry/uninstall.
-
-= 1.0.117 =
-* New: "Check external visibility" in the Federated Catalog panel. Shows what KaliCart Global observed from outside the last time it probed your /discovery endpoint — the same reachability an external agent depends on. Clearly labeled as a snapshot (not a live scan), scoped to discovery reachability only, with a staleness warning past 7 days. Read-only: does not trigger a new probe or change federation consent.
-
-= 1.0.116 =
-* New: POST /checkout/session honors an optional Idempotency-Key header. Retrying with the same key and payload returns the original session instead of creating a duplicate; reusing a key with a different payload returns 409. Hardens agent retries and double-submits on an existing endpoint.
-
-= 1.0.115 =
-* Fix: products whose description is empty markup (empty paragraph, `&nbsp;`, non-breaking space) are no longer dropped from the ChatGPT feed. The product name is used as a fallback, and entity-only descriptions no longer leak into the feed. Plain-text extraction now decodes HTML entities.
-* Change: the AI catalog badge is now off by default on new installs. Existing installs and merchant choices are preserved across updates.
-* New: ChatGPT feed readiness reports how many rows were sent with the product name in place of a real description.
-* The validator's excluded-row count is now always shown in the feed snapshot summary.
-* Readme: Description rewritten to lead with the catalog-readiness report; technical details grouped under "For developers and AI integrations".
-
-= 1.0.114 =
-* Quality Signals: the Quarantine tab renamed and rebuilt for large catalogs - honest sample (the most recent 100, with full counts and a visible note), plus per-problem filter buttons that open the native Products list pre-filtered (bulk and quick edit for free)
-* New Products-list filters: short titles, no description, no category, no price, no SKU - served from the cached health report, so button counts and list contents always match
-* Clarified in the UI: nothing in Quality Signals is blocked or hidden - products stay fully served to agents with their issues declared as quality flags and score, which agents can weigh
-* Overview: new suggestion for products without a brand - not required by the agent-readable catalog, search or MCP, but required by the ChatGPT product feed specification
-* Signals cleanup: removed the api-catalog head link and its robots.txt entry (the extensionless /.well-known path returns 404 on most hosting setups); the discovery and OpenAPI links remain, and the physical api-catalog.json file stays served for clients that probe it
-
-= 1.0.113 =
-* Performance - ChatGPT feed generation is dramatically faster on large catalogs: product data is now batch-primed (posts, meta and terms per page, variations included), collapsing thousands of per-product queries; catalogs that previously took ~20 seconds generate in a fraction of that, and very large catalogs no longer risk PHP execution-time limits
-* ChatGPT Feed - the tab is now named for what it is; single "Save and generate/validate now" action (the separate save-only button always left an unverified state), with a progress spinner while the snapshot is generated
-* Fix - saving settings now reliably regenerates the feed: generation no longer depends on the submit button's own value, which browsers omit when submitting with the Enter key
-* Fallback brand - the "Fallback applied" readiness state is now a soft amber notice instead of red: with the merchant's explicit declaration it is a legitimate configuration for own-label stores, not an error
-* Translations - fixed five interface strings per language that silently rendered in English at runtime (Italian, French, German, Spanish are now fully translated end to end)
-* Housekeeping - the optional "Agent entry-point page" shortcode section has been retired from Settings and from the discovery document: real-world telemetry showed agents use the structured discovery signals, not HTML directory pages. Existing pages using the shortcode keep rendering unchanged
-
-= 1.0.112 =
-* Agent Commerce - the ChatGPT feed now lives in a dedicated Agent Commerce tab inside the plugin dashboard, with a readiness checklist (return policy, countries, brand, images, schema validation, daily refresh, delivery status), live data-gap counts with one-click access to the pre-filtered Products list and a full CSV export, and a step-by-step guide to OpenAI's application and delivery workflow
-* ChatGPT feed - missing brand is no longer blocking: rows enter the file without the brand field (never an empty or fabricated value) and are counted and flagged, with an explicit notice that OpenAI may reject them and that the merchant submits them under their own responsibility; products without a primary image remain excluded as the specification requires
-* Catalog - the merchant-declared brand (WooCommerce Brands taxonomy, Perfect Brands or brand attributes) is now exposed across every surface: product detail, search summaries, full records, OpenAPI schemas and the ChatGPT feed, from a single resolver; HTML entities in brand names are decoded everywhere
-* Interface - the new tab fully adopts the plugin design system (cards, buttons, toggle, status pills, flex-row lists instead of tables)
-* Translations - the entire Agent Commerce experience is fully translated in all shipped locales: Italian, French, German and Spanish
-
-= 1.0.111 =
-* ChatGPT product discovery - new OpenAI-compatible product feed generator (ACP file-upload specification): per-row schema validator as a hard gate (every emitted row is conformant), atomic snapshot swap that preserves the last valid feed on any failure, global configuration gate (return policy, countries), honest exclusion counts for products missing image or brand, stable filename ready for the delivery channel OpenAI assigns after merchant approval
-* Feed admin - new ChatGPT Shopping page with readiness statistics, exclusion counts, feed downloads and settings: opt-in brand fallback for own-label stores, return policy URL (defaults to your Refund and Returns page), target countries derived from WooCommerce selling locations
-
-= 1.0.110 =
-* Scraper-facing discovery - an HTML comment at the top of every page and an HTTP Link header (rel="kalicart-agent") now point AI agents to the structured catalog in the very surfaces they scrape; validated in blind agent tests (3/3 autonomous discovery vs 0/1 without these signals)
-* MCP handshake - /mcp/.well-known/oauth-protected-resource now answers with RFC 9728 Protected Resource Metadata carrying an empty authorization_servers list, telling MCP clients explicitly that this keyless server requires no OAuth instead of a 404 they must interpret
-* Agent traffic insight - new opt-out telemetry counts daily agent traffic per surface (storefront HTML, catalog REST, MCP) with client classification (branded agents, anonymous programmatic, generic clients, browsers), API route and status breakdown, and MCP client identity, method, tool and outcome from the protocol handshake; server-internal and health-check traffic is excluded; data stays local in a single option, 31-day retention
-* OpenAPI accuracy - the fields parameter is now documented per endpoint (search defaults to summary; products defaults to full and switches to summary when filters are present) and a ProductSummary schema describes the slim projection, so OpenAPI-driven clients no longer read summary responses as missing fields
-* Agent instructions - step 5 now names /catalog/search and /catalog/products explicitly for summary-based triage
-
 = Earlier releases =
-* Release notes older than 1.0.110 are omitted from the WordPress.org directory changelog.
+* The complete release history is in changelog.txt, included with the plugin.

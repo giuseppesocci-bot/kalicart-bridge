@@ -539,6 +539,20 @@
     if ( ! actBtn ) return;
     const confirmBox = $( 'federationRevokeConfirm' );
     if ( confirmBox ) confirmBox.style.display = 'none'; // ogni render parte pulito
+    const consentPanel = $( 'federationConsentPanel' );
+    const versionEl    = $( 'federationConsentVersion' );
+    if ( consentPanel ) consentPanel.style.display = regAt ? 'none' : '';
+    if ( versionEl ) {
+      const fc = KaliBridge.federation_consent || {};
+      if ( regAt && fc.version ) {
+        versionEl.style.display = '';
+        versionEl.textContent = fc.legacy
+          ? ( KaliBridge.i18n?.federation_consent_legacy || 'Consent given before version 1.0.139 (text v1)' )
+          : ( KaliBridge.i18n?.federation_consent_version || 'Consent text: %s' ).replace( '%s', fc.version );
+      } else {
+        versionEl.style.display = 'none';
+      }
+    }
 
     if ( regAt ) {
       // gia registrato: mostra stato + revoca, nascondi attiva
@@ -575,6 +589,9 @@
     const state        = KaliBridge.provider_consent || {};
     const globalActive = Boolean( KaliBridge.provider_global_active );
     const authorized   = state.authorized === true;
+    // 1.0.139: prima dell'attivazione il canale si autorizza nella casella del flusso di
+    // attivazione (sopra); qui la sezione serve a chi e' gia' attivo o ha uno storico.
+    block.style.display = ( ! globalActive && ! state.consent_id ) ? 'none' : '';
     if ( required ) required.style.display = globalActive ? 'none' : '';
     if ( grantPanel ) grantPanel.style.display = authorized ? 'none' : '';
     if ( checkbox ) checkbox.disabled = ! globalActive;
@@ -847,8 +864,30 @@
             KaliBridge.federation_registered_at = res.data.registered_at;
             KaliBridge.global_consent = true;
             KaliBridge.provider_global_active = true;
+            if ( res.data.consent ) KaliBridge.federation_consent = res.data.consent;
             renderFederation();
             renderProviderConsent();
+            // Canale OpenAI: SOLO se la casella separata e' spuntata, come atto distinto
+            // con la sua ricevuta commerce-consent-1.0 (stesso endpoint del pannello sotto).
+            const channelBox = $( 'federationChannelCheckbox' );
+            const resultBox  = $( 'federationChannelResult' );
+            if ( channelBox && channelBox.checked ) {
+              providerConsentRequest( 'kalicart_provider_consent_grant', { accepted: '1' } )
+                .then( r2 => {
+                  const ok = r2 && r2.success;
+                  if ( ok ) { KaliBridge.provider_consent = r2.data.state; KaliBridge.provider_global_active = r2.data.global_active; }
+                  if ( resultBox ) {
+                    resultBox.style.display = '';
+                    resultBox.textContent = ok
+                      ? ( KaliBridge.i18n?.federation_channel_granted || 'The channel authorization has been recorded.' )
+                      : ( KaliBridge.i18n?.federation_channel_failed || 'The channel authorization could not be recorded.' );
+                  }
+                } )
+                .catch( () => {
+                  if ( resultBox ) { resultBox.style.display = ''; resultBox.textContent = KaliBridge.i18n?.federation_channel_failed || 'The channel authorization could not be recorded.'; }
+                } )
+                .finally( () => { channelBox.checked = false; renderProviderConsent(); } );
+            }
           } else {
             actBtn.disabled = false;
             alert( KaliBridge.i18n?.federation_activate_failed || 'Activation failed. Please try again.' );

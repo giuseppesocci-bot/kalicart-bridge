@@ -1,0 +1,24 @@
+{
+    "lines": {
+        "3": "{\"flag\":true,\"id\":3,\"int\":42,\"name\":\"Ctrl\\u0001\\u001f\",\"none\":null,\"small\":1.5e-7}",
+        "7": "{\"attributes\":{},\"id\":7,\"name\":\"Caffè \\\"Moka\\\" / 250g\",\"price\":{\"currency\":\"EUR\",\"current\":12.5,\"regular\":100},\"stock\":{\"availability_status\":\"in_stock\",\"status\":\"instock\"},\"tags\":[]}",
+        "12": "{\"big\":1e+21,\"id\":12,\"k\":{\"B\":4,\"a\":3,\"😀\":2,\"\":1},\"mid\":123456789012345680000,\"name\":\"Tab\\tand\\nnewline 😀\",\"neg\":-0.5,\"weight\":0.00001}",
+        "20": "{\"a\":3,\"id\":20,\"k\u2028\":1,\"n\":[333333333.3333333,1e+30,1e-27,5e-324,0,0.000001,1e-7],\"name\":\"line\u2028sep\u2029par\",\"é\":2,\"𐐷\":4,\"￿\":5}",
+        "1030": "{\"id\":1030,\"name\":\"second bucket\",\"price\":{\"current\":1.1}}",
+        "5000": "{\"id\":5000,\"name\":\"fifth bucket\",\"tags\":[\"a\",\"b\"]}"
+    },
+    "content_hashes": {
+        "3": "93b70d1edcbffc0e4530526c7242962afb3b542e1f808218adbd087b1d2871e6",
+        "7": "f3d5b888022e657cb620c45f352421ce6aec061b1a33a94a4d2a711ea89f9d9b",
+        "12": "90e8f6e8dbe3edaff34f02f0aae56ffc89ed7623d4d26c26477e055d24c28a04",
+        "20": "62d78ddc9d75cd7c57e189622737488e0c081a371ad39f6fcc897048bbe674d9",
+        "1030": "dbfa7158a444c15c8ff1b6d397039ee18e3b260aed57be2738f5d41812f920fb",
+        "5000": "aea16756929af525310902ba6e8902c588b42473dd35ebc59e802b36fab6348e"
+    },
+    "catalog_hash": "3e3ce235d3b1963503245acb94cbd27669fce076970f562404525e97abc1814a",
+    "bucket_hashes": {
+        "0": "f066afd63e5ae2fa436cc3ba207891078f430ca826f9541e4de5e62a08972136",
+        "1": "e5ec7d6e069b678f7dd0bf9f84fb75d048a032125e52e0c62341333bd6d2b542",
+        "4": "f81ff1ddd3209a4d6a05316cc6e1c0ab1cdd578ea78370429279785124b3c2f4"
+    }
+}

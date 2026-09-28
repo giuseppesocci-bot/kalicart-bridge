@@ -69,6 +69,7 @@ class KaliCart_Bridge_Admin {
             'robots_enabled' => (bool) get_option( 'kalicart_bridge_robots_enabled', true ),
             'global_consent' => (bool) get_option( 'kalicart_bridge_global_consent', false ),
             'federation_registered_at' => get_option( 'kalicart_bridge_federation_registered_at', '' ),
+            'federation_consent'       => KaliCart_Bridge_Federation_Consent::summary(),
             'provider_global_active'   => KaliCart_Bridge_Commerce_Consent::is_global_active(),
             'provider_consent'         => KaliCart_Bridge_Commerce_Consent::current(),
             'sitemap_enabled' => (bool) get_option( 'kalicart_bridge_sitemap_enabled', true ),
@@ -128,6 +129,11 @@ class KaliCart_Bridge_Admin {
         return [
             'unknown_error'  => __( 'Unknown error', 'kalicart-bridge' ),
             'federation_registered'        => __( 'Registered on', 'kalicart-bridge' ),
+            /* translators: %s: consent text identifier, e.g. federated-catalog-1.1 */
+            'federation_consent_version'   => __( 'Consent text: %s', 'kalicart-bridge' ),
+            'federation_consent_legacy'    => __( 'Consent given before version 1.0.139 (text v1)', 'kalicart-bridge' ),
+            'federation_channel_granted'   => __( 'The OpenAI / ChatGPT channel authorization has been recorded as a separate act, with its own receipt.', 'kalicart-bridge' ),
+            'federation_channel_failed'    => __( 'The Federated Catalog is active, but the channel authorization could not be recorded. You can authorize the channel in the section below.', 'kalicart-bridge' ),
             'federation_consent_required'  => __( 'Tick the consent box above first.', 'kalicart-bridge' ),
             'federation_activate_failed'   => __( 'Activation failed. Please try again.', 'kalicart-bridge' ),
             'provider_global_required'     => __( 'Activate the Federated Catalog before authorizing a distribution channel.', 'kalicart-bridge' ),
@@ -336,9 +342,15 @@ class KaliCart_Bridge_Admin {
         check_ajax_referer( 'kalicart_bridge', 'nonce' );
         if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'Forbidden', 403 );
 
-        // Il click su Attiva E' l'atto di consenso esplicito e informato (disclosure + privacy
-        // link sono nel blocco sopra il bottone). Accende il consenso PRIMA dell'announce, cosi'
-        // il discovery JSON pubblica ON quando il probe arriva a leggerlo.
+        // Il click su Attiva E' l'atto di consenso esplicito e informato: il testo
+        // federated-catalog-1.1 e' mostrato per intero sopra il bottone. 1.0.139: l'atto si
+        // registra (ricevuta locale append-only) PRIMA di accendere il consenso, che a sua
+        // volta precede l'announce, cosi' il discovery JSON pubblica ON quando il probe arriva.
+        try {
+            KaliCart_Bridge_Federation_Consent::record( 'granted', get_current_user_id() );
+        } catch ( \Throwable $e ) {
+            wp_send_json_error( [ 'reason' => 'consent_log_write_failed' ], 500 );
+        }
         update_option( 'kalicart_bridge_global_consent', true );
 
         $site_url = trailingslashit( get_site_url() );
@@ -360,7 +372,11 @@ class KaliCart_Bridge_Admin {
         if ( class_exists( 'KaliCart_Bridge_Identity' ) ) {
             wp_schedule_single_event( time() + 15, KaliCart_Bridge_Identity::CRON_HOOK );
         }
-        wp_send_json_success( [ 'registered_at' => get_option( 'kalicart_bridge_federation_registered_at' ), 'consent' => true ] );
+        // 1.0.139: first catalog snapshot, in the background.
+        if ( class_exists( 'KaliCart_Bridge_Snapshot' ) ) {
+            KaliCart_Bridge_Snapshot::schedule_build( 30 );
+        }
+        wp_send_json_success( [ 'registered_at' => get_option( 'kalicart_bridge_federation_registered_at' ), 'consent' => KaliCart_Bridge_Federation_Consent::summary() ] );
     }
 
     /**
@@ -412,9 +428,19 @@ class KaliCart_Bridge_Admin {
 
         // (1) spegni il consenso PRIMA: il discovery JSON pubblica OFF da subito.
         update_option( 'kalicart_bridge_global_consent', false );
+        // 1.0.139: la revoca e' un atto registrato come l'attivazione (mai bloccante).
+        try {
+            KaliCart_Bridge_Federation_Consent::record( 'revoked', get_current_user_id() );
+        } catch ( \Throwable $e ) {
+            // la revoca vale comunque: il consenso e' gia' spento
+        }
         // 1.0.138: signed consent=false heartbeat, best effort (never blocks the revoke).
         if ( class_exists( 'KaliCart_Bridge_Identity' ) ) {
             KaliCart_Bridge_Identity::consent_revoked();
+        }
+        // 1.0.139: no consent, no snapshot files (manifest first).
+        if ( class_exists( 'KaliCart_Bridge_Snapshot' ) ) {
+            KaliCart_Bridge_Snapshot::delete_all();
         }
 
         // (2) push di deregister per il parcheggio immediato (best-effort).

@@ -1,0 +1,85 @@
+{
+    "format_version": 1,
+    "min_reader_version": 1,
+    "critical": [
+        "partition",
+        "buckets",
+        "complete",
+        "seq",
+        "expires_at"
+    ],
+    "schema": "kalicart-snapshot/1",
+    "projection": "federated-1",
+    "host": "fixture.example",
+    "installation_id": "00000000-0000-4000-8000-000000000139",
+    "key_fingerprint": "--6IM5l0OosLj9yWskISYhUA3n_3CURQkmrYMSha_ck",
+    "seq": 1,
+    "generated_at": 1790553600,
+    "expires_at": 1791158400,
+    "time_source": "global",
+    "complete": true,
+    "count": 6,
+    "catalog_hash": "3e3ce235d3b1963503245acb94cbd27669fce076970f562404525e97abc1814a",
+    "variants_covered": {
+        "language": "it_IT",
+        "currency": "EUR"
+    },
+    "partition": {
+        "scheme": "id-range-v1",
+        "width": 1024
+    },
+    "buckets": [
+        {
+            "id": 0,
+            "first_id": 0,
+            "last_id": 1023,
+            "count": 4,
+            "bucket_hash": "f066afd63e5ae2fa436cc3ba207891078f430ca826f9541e4de5e62a08972136",
+            "shards": [
+                {
+                    "path": "c-5f46da39a0bcdb735df911f72667afb3.jsonl.gz",
+                    "sha256": "5f46da39a0bcdb735df911f72667afb326e1457bd1823c08acaf635e973a2ba0",
+                    "bytes": 216,
+                    "count": 2
+                },
+                {
+                    "path": "c-e0c83d7698396109e5d8bb2a4e2de8ea.jsonl.gz",
+                    "sha256": "e0c83d7698396109e5d8bb2a4e2de8ea1f10bdcf9f70eba8fa3acce9e1cf0cbc",
+                    "bytes": 232,
+                    "count": 2
+                }
+            ]
+        },
+        {
+            "id": 1,
+            "first_id": 1024,
+            "last_id": 2047,
+            "count": 1,
+            "bucket_hash": "e5ec7d6e069b678f7dd0bf9f84fb75d048a032125e52e0c62341333bd6d2b542",
+            "shards": [
+                {
+                    "path": "c-2fb1d3fbd51ad5ee7c3a130058de5ff3.jsonl.gz",
+                    "sha256": "2fb1d3fbd51ad5ee7c3a130058de5ff3285510a0d72c67cb5feec9a889c2ebd5",
+                    "bytes": 77,
+                    "count": 1
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "first_id": 4096,
+            "last_id": 5119,
+            "count": 1,
+            "bucket_hash": "f81ff1ddd3209a4d6a05316cc6e1c0ab1cdd578ea78370429279785124b3c2f4",
+            "shards": [
+                {
+                    "path": "c-c630ee97be8bc96f72ddaa794ee60731.jsonl.gz",
+                    "sha256": "c630ee97be8bc96f72ddaa794ee607310cb02c85614352f2b437d922c0472503",
+                    "bytes": 69,
+                    "count": 1
+                }
+            ]
+        }
+    ],
+    "sig": "PHb1g95WUJnjOewl_sLayNnHgohLurhyWG-1osxuCdRVHbMKyQwDFacci8RVBQdt15S0ArpJaB7saLFy1cSACw"
+}

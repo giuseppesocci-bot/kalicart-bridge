@@ -50,9 +50,38 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
         ) ); ?>
       <?php endif; ?>
     </p>
+    <?php
+    // 1.0.139 (contratto §9, §14.6; debito voce 8): il testo federated-catalog-1.1 e'
+    // mostrato PER INTERO prima del clic (la ricevuta ne registra l'hash). Sotto, il canale
+    // OpenAI come casella NON spuntata con il suo testo commerce-consent-1.0 invariato:
+    // un solo flusso, due atti e due ricevute separate; nessun canale senza la casella.
+    ?>
+    <div id="federationConsentPanel" style="display:none">
+      <p id="federationConsentText" style="margin:0 0 10px;font-size:12px;line-height:1.5;color:var(--kb-muted,#555)"><?php echo esc_html( KaliCart_Bridge_Federation_Consent::localized_text() ); ?></p>
+      <div id="federationChannelOpt" style="margin:0 0 12px;padding:10px 12px;border:1px dashed var(--kb-border,#d0d4d9);border-radius:8px">
+        <label for="federationChannelCheckbox" style="display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5">
+          <input type="checkbox" id="federationChannelCheckbox" value="1" style="margin-top:2px">
+          <span><strong><?php
+            /* translators: %s: name of the external distribution channel, e.g. "OpenAI / ChatGPT product discovery" */
+            echo esc_html( sprintf( __( 'Optional — also authorize the channel: %s', 'kalicart-bridge' ), KaliCart_Bridge_Commerce_Consent::provider_registry()[ KaliCart_Bridge_Commerce_Consent::PROVIDER_OPENAI ]['label'] ) );
+          ?></strong><br><?php echo esc_html( KaliCart_Bridge_Commerce_Consent::localized_consent_text() ); ?></span>
+        </label>
+        <p style="margin:6px 0 0 24px;font-size:11px;color:var(--kb-muted,#777)"><?php
+          echo wp_kses_post( sprintf(
+            /* translators: 1: consent terms version, 2: opening Privacy Notice link, 3: closing link, 4: opening Global Terms link, 5: closing link */
+            __( 'Channel terms: %1$s · %2$sPrivacy Notice%3$s · %4$sKaliCart Global Terms%5$s. Leave unticked to join the Federated Catalog only; you can authorize the channel later below.', 'kalicart-bridge' ),
+            '<code>' . esc_html( KaliCart_Bridge_Commerce_Consent::TERMS_VERSION ) . '</code>',
+            '<a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">', '</a>',
+            '<a href="https://global.kalicart.com/terms/" target="_blank" rel="noopener">', '</a>'
+          ) );
+        ?></p>
+      </div>
+    </div>
     <button type="button" class="kali-btn kali-btn--primary" id="federationActivateBtn"><?php esc_html_e( 'Activate Federated Catalog', 'kalicart-bridge' ); ?></button>
     <button type="button" class="kali-btn kali-btn--secondary" id="federationRevokeBtn" style="display:none"><?php esc_html_e( 'Revoke consent', 'kalicart-bridge' ); ?></button>
     <span id="federationStatus" style="display:none;margin-left:10px;font-size:13px;color:var(--kb-ok,#00a32a)"></span>
+    <span id="federationConsentVersion" style="display:none;margin-left:10px;font-size:12px;color:var(--kb-muted,#888)"></span>
+    <div id="federationChannelResult" class="kali-provider-consent__notice" style="display:none;margin-top:10px"></div>
     <span id="federationHint" style="display:none;margin-left:10px;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Use the Federated Catalog banner above to manage consent.', 'kalicart-bridge' ); ?></span>
 
     <!-- External Agent Visibility Check: read-only, shows what KaliCart Global observed

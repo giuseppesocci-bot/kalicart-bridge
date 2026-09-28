@@ -20,6 +20,9 @@ if ( ! defined( 'KALICART_BRIDGE_VERSION' ) ) {
 }
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-identity.php';
 KaliCart_Bridge_Identity::leaving( 'uninstalled' );
+// 1.0.139: every catalog snapshot file goes (manifest first).
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-snapshot.php';
+KaliCart_Bridge_Snapshot::delete_all();
 
 // Capture the token before deleting its option so the generated public feed can
 // be removed without scanning or recursively deleting anything in uploads.
@@ -58,7 +61,9 @@ $kalicart_bridge_options = [
 	'kalicart_bridge_commerce_consents',
 	'kalicart_bridge_commerce_schema_version',
 	'kalicart_bridge_identity',
+	'kalicart_bridge_snapshot',
 	'kalicart_bridge_identity_fatal',
+	'kalicart_bridge_federation_consent_log', // 1.0.139 consent receipts: kept on deactivation, removed on delete like the commerce ledger
     'kalicart_rate_guard_checkout',
 	'kalicart_rate_guard_checkout_long',
 	'kalicart_rate_guard_checkout_access',

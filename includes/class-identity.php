@@ -134,6 +134,36 @@ class KaliCart_Bridge_Identity {
 		return [ $s, $sk ];
 	}
 
+	/**
+	 * 1.0.139: KaliCart Global's clock as learned from its signed responses
+	 * (server_time). Returns [unix time, known]. When the offset was never learned
+	 * the local clock is returned with known=false (collaudo ChatGPT 06:35).
+	 */
+	public static function server_now(): array {
+		$s = self::state();
+		$known = array_key_exists( 'clock_offset', $s );
+		return [ time() + (int) ( $s['clock_offset'] ?? 0 ), $known ];
+	}
+
+	/**
+	 * 1.0.139: detached Ed25519 signature with the EXISTING installation key
+	 * (never creates one). Used for the catalog snapshot manifest. Null when
+	 * there is no usable key yet.
+	 */
+	public static function sign_detached( string $message ): ?array {
+		$s  = self::state();
+		$sk = self::secret_key( $s );
+		if ( ! $sk || empty( $s['fingerprint'] ) || empty( $s['installation_id'] ) || ( $s['home_url'] ?? '' ) !== home_url( '/' ) ) {
+			return null;
+		}
+		return [
+			'sig'             => self::b64url( sodium_crypto_sign_detached( $message, $sk ) ),
+			'key_fingerprint' => (string) $s['fingerprint'],
+			'installation_id' => (string) $s['installation_id'],
+			'host'            => self::host(),
+		];
+	}
+
 	// ── signed requests ────────────────────────────────────────────────────
 
 	private static function now( array $s ): int {
@@ -262,10 +292,18 @@ class KaliCart_Bridge_Identity {
 			'wp_version'      => get_bloginfo( 'version' ),
 			'php_version'     => PHP_VERSION,
 			'fatal'           => is_array( $fatal ) ? $fatal : null,
-		], $s, $sk, 10 );
+			// 1.0.139: which consent text is in force (federated-catalog-1.1 or
+			// federated-catalog-1-legacy). A label only: the receipt stays on the site.
+			'consent_version' => class_exists( 'KaliCart_Bridge_Federation_Consent' ) ? KaliCart_Bridge_Federation_Consent::version() : '',
+		] + ( class_exists( 'KaliCart_Bridge_Snapshot' ) ? KaliCart_Bridge_Snapshot::heartbeat_fields() : [] ), $s, $sk, 10 );
 		if ( ! $err ) {
 			delete_option( self::FATAL_OPT );
-			self::record( [ 'last_heartbeat_at' => time(), 'last_error' => '' ] );
+			// 1.0.139: KaliCart Global's decision (decision_v1). Stored as data only:
+			// shown in Site Health and the panel, never turned into a request here.
+			$decision = ( is_array( $data ) && isset( $data['decision'] ) && class_exists( 'KaliCart_Bridge_Site_Health' ) )
+				? KaliCart_Bridge_Site_Health::validate_decision( $data['decision'] ) // known fields only, action always null
+				: null;
+			self::record( [ 'last_heartbeat_at' => time(), 'last_error' => '', 'decision' => $decision ] );
 		} elseif ( 'not_verified' === $err || 'keyid_mismatch' === $err ) {
 			// Global no longer recognises this key for the domain: prove again.
 			self::record( [ 'status' => 'new', 'last_error' => (string) $err ] );
@@ -331,6 +369,7 @@ class KaliCart_Bridge_Identity {
 			'verified_at'  => (int) ( $s['verified_at'] ?? 0 ),
 			'heartbeat_at' => (int) ( $s['last_heartbeat_at'] ?? 0 ),
 			'fingerprint'  => (string) ( $s['fingerprint'] ?? '' ),
+			'decision'     => is_array( $s['decision'] ?? null ) ? $s['decision'] : null,
 		];
 	}
 
