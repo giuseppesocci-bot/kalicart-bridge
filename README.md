@@ -37,7 +37,7 @@ KaliCart Bridge installs on any WooCommerce store and exposes five things:
 
 4. **UCP through KaliCart Global** — since 1.0.137 the plugin publishes no UCP profile of its own (earlier versions declared a UCP REST service the plugin does not implement). Stores that join the Federated Catalog are served to UCP shopping agents by KaliCart Global (`https://global.kalicart.com/.well-known/ucp`, UCP Catalog 2026-08-25), with price and availability read live from the Bridge.
 
-5. **Optional federated discovery** — after explicit merchant consent, the plugin announces the public store URL to [KaliCart Global](https://global.kalicart.com), a read-only multi-merchant index that AI agents can query without knowing an individual merchant in advance. Consent can be revoked from the plugin settings.
+5. **Optional Federated Catalog** — only after explicit merchant consent (consent text 1.1, with a tamper-evident receipt kept on the site), [KaliCart Global](https://global.kalicart.com) reads the store's public catalog and lets AI agents find it without knowing the merchant in advance. It reads the public catalog API and, since 1.0.139, static catalog files the plugin writes in `/.well-known/kalicart/` (same public data, never exact stock quantities; deleted on revocation, deactivation or uninstall), so the catalog stays readable when an anti-bot service blocks dynamic pages. Since 1.0.138 the installation proves its domain with its own signing key and sends a signed status about once a day; Site Health reports what KaliCart Global measured, without ever asking for configuration changes. Consent can be revoked from the plugin settings at any time. What is sent and how long it is kept: `readme.txt` → External services.
 
 ---
 
