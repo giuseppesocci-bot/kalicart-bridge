@@ -26,7 +26,10 @@ class KaliCart_Bridge_Commerce_Consent {
 	public static function init(): void {
 		self::ensure_schema();
 		add_action( self::RETRY_HOOK, [ __CLASS__, 'retry_receipt' ], 10, 2 );
-		add_action( 'init', [ __CLASS__, 'recover_pending_receipts' ], 20 );
+		// Not on 'init': that runs on every front-end request, and with a pending
+		// receipt the recovery writes to the ledger. Admin screens (the update is
+		// done there) and the daily heartbeat are enough.
+		add_action( 'admin_init', [ __CLASS__, 'recover_pending_receipts_in_admin' ], 20 );
 		add_action( KaliCart_Bridge_Identity::CRON_HOOK, [ __CLASS__, 'recover_pending_receipts' ], 20 );
 		add_action( 'admin_post_kalicart_provider_consent_export', [ __CLASS__, 'export_evidence' ] );
 	}
@@ -317,6 +320,13 @@ class KaliCart_Bridge_Commerce_Consent {
 	 * Pending records are inspected in ledger order and newly rebuilt events are
 	 * staggered. The routine is idempotent and safe on every boot.
 	 */
+	public static function recover_pending_receipts_in_admin(): void {
+		if ( wp_doing_ajax() ) {
+			return;
+		}
+		self::recover_pending_receipts();
+	}
+
 	public static function recover_pending_receipts(): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- the append-only delivery ledger is the authoritative queue; stale cached rows would lose receipts.
@@ -561,6 +571,10 @@ class KaliCart_Bridge_Commerce_Consent {
 	private static function update_retry_metadata( string $consent_id, int $attempt, int $timestamp ): void {
 		global $wpdb;
 		$next = gmdate( 'Y-m-d\TH:i:s\Z', $timestamp );
+		$have = self::receipt_row( $consent_id );
+		if ( $have && (int) ( $have['retry_attempt'] ?? 0 ) === $attempt && (string) ( $have['next_retry_at_utc'] ?? '' ) === $next ) {
+			return; // already recorded: no write.
+		}
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- mutable scheduling metadata belongs to the authoritative ledger row.
 		$wpdb->update(
 			self::table_name(),

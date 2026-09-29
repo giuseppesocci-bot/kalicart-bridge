@@ -166,7 +166,8 @@ try {
 	$check( 'pending' === $granted['receipt_status'], 'Transport failure did not leave a retryable pending receipt.' );
 	$check( in_array( [ $granted['consent_id'], 1 ], $scheduled_retries, true ), 'The 60-second receipt retry was not requested.' );
 	$check( ! in_array( [ $granted['consent_id'], 2 ], $scheduled_retries, true ), 'A later retry was scheduled before the preceding attempt ran.' );
-	$check( false !== has_action( 'init', [ 'KaliCart_Bridge_Commerce_Consent', 'recover_pending_receipts' ] ), 'Pending receipt recovery is not attached to plugin boot.' );
+	$check( false !== has_action( 'admin_init', [ 'KaliCart_Bridge_Commerce_Consent', 'recover_pending_receipts_in_admin' ] ), 'Pending receipt recovery is not attached to admin screens.' );
+	$check( false === has_action( 'init', [ 'KaliCart_Bridge_Commerce_Consent', 'recover_pending_receipts' ] ), 'Pending receipt recovery still runs on every front-end request.' );
 	$check( false !== has_action( KaliCart_Bridge_Identity::CRON_HOOK, [ 'KaliCart_Bridge_Commerce_Consent', 'recover_pending_receipts' ] ), 'Pending receipt recovery is not attached to the daily heartbeat.' );
 
 	// A boot/heartbeat with a pending row must recreate its missing event. Then

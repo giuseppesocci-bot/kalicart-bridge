@@ -157,7 +157,7 @@ This plugin works fully standalone. It connects to one external service **only a
 
 **Service:** KaliCart Global (https://dashboard.kalicart.com)
 
-**When data is sent:** When an administrator activates or revokes the Federated Catalog, requests its external-visibility status, or explicitly grants or revokes a named federated distribution channel. After a provider receipt exists, opening the plugin page requests its processing status using the public site URL and consent ID. A failed provider-receipt delivery may be retried twice, after approximately one minute and five minutes. While the Federated Catalog is active, the plugin also proves this installation's identity once and then sends a signed status signal about once a day; it sends a signed leaving signal when the plugin is deactivated or deleted, and a signed consent-off signal when federation is revoked. Nothing is sent merely because the plugin is installed or activated.
+**When data is sent:** When an administrator activates or revokes the Federated Catalog, requests its external-visibility status, or explicitly grants or revokes a named federated distribution channel. After a provider receipt exists, opening the plugin page requests its processing status using the public site URL and consent ID. A provider receipt that could not be delivered is sent again after about 1 minute, 5 minutes, 30 minutes, 2 hours and 12 hours, then once a day until KaliCart Global has received it. While the Federated Catalog is active, the plugin also proves this installation's identity once and then sends a signed status signal about once a day; it sends a signed leaving signal when the plugin is deactivated or deleted, and a signed consent-off signal when federation is revoked. Nothing is sent merely because the plugin is installed or activated.
 
 **What is sent:** Federated Catalog activation, revocation and visibility checks send the site's public URL (e.g. https://yourstore.com). A provider authorization receipt additionally sends its consent ID, provider, purpose, action, UTC timestamp, plugin and terms versions, consent locale, and SHA-256 evidence-chain hashes. The administrator's WordPress user ID and localized consent text remain only in the store's local evidence log. The identity signals send the site's host, a random installation ID, this installation's public key, a one-time verification code, the consent state and the consent text version, the plugin, WordPress and PHP versions, the status of the public catalog files (sequence number, file address and hashes, product count, whether complete, generation time) and whether the store is in WooCommerce "coming soon" or WordPress maintenance mode; when the plugin itself hit a fatal error, a normalized error code, the time and a short non-reversible hash - never the error message, file paths or stack traces. The private key never leaves the site. No customer, order, payment, credential or API-key data is transmitted.
 
@@ -170,6 +170,17 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.140 =
+**A channel authorization reaches KaliCart Global even when the first delivery fails, and the dashboard is shorter and easier to read.**
+
+* Fix: the receipt of a distribution channel authorization was retried only twice, after one and five minutes, and then stayed "awaiting delivery" for good. It is now sent again after about 30 minutes, 2 hours and 12 hours, then once a day until KaliCart Global has received it. Receipts left waiting by earlier versions start again by themselves after the update, without a new click.
+* Change: once active, the Federated Catalog and the distribution channel each take one compact row: status, text version, date and the revoke button. Proof and export are under "Authorization details and proof".
+* Change: the external visibility check runs when you click it. It shows four results (access from outside, Bridge detected, store identity, last check), each colored by its outcome, and when access is limited it names the cause.
+* Fix: after an update the dashboard could show new markup with old styles, because the styles were cached by plugin version. Admin styles and scripts now change address when their file changes.
+* Fix: an empty "Consent ID" row no longer appears; texts on the Federated Catalog banner have more contrast.
+* No consent text changes: existing authorizations and their receipts stay valid.
+* Translated in Italian, German, Spanish and French.
+
 = 1.0.139 =
 **KaliCart Global can read the catalog even when the catalog API is not reachable from outside.**
 
@@ -179,22 +190,6 @@ This plugin works fully standalone. It connects to one external service **only a
 * New: Site Health reports, as "recommended" at most, when the status signal has not been delivered for more than 3 days, when the catalog files cannot be written, are incomplete or are old, and when KaliCart Global reports that it cannot read the catalog. Each result says what was measured and what happens by itself.
 * The report from KaliCart Global is data: only known fields are kept and it never triggers an action on the site.
 * Deleting the plugin also deletes the local consent receipts.
-* Translated in Italian, German, Spanish and French.
-
-= 1.0.138 =
-**The ChatGPT product feed follows the current OpenAI specification: neither looser nor stricter.**
-
-* Change: products without a brand are no longer written to the ChatGPT feed. Brand is required by the OpenAI specification; affected products are excluded, counted and listed in the panel. A merchant-declared brand fallback for own-label stores still applies. The catalog, search, REST API and MCP are unaffected.
-* Fix: additional product images are written as a list, as the specification requires in JSONL. They were written as one comma-separated text.
-* Fix: return policy, store country and target countries are optional in the specification and no longer block feed generation when missing. When set, they are included and validated.
-* Fix: a GTIN is included only with an accepted length (8, 12, 13 or 14 digits) and a valid check digit; otherwise the field is left out and the product stays in the feed.
-* Fix: a sale price must be lower than the regular price, prices must be positive, star ratings use two decimals, and variant rows must carry their variant options - as the specification requires.
-* Change: absolute http and https URLs are accepted (https preferred), and no length limit the specification does not state is applied to brand or seller name.
-* New: installation identity. While the Federated Catalog is active, the plugin creates one signing key for this installation (the private key stays on the site, encrypted) and proves to KaliCart Global that it runs on this domain: KaliCart Global reads a one-time code the plugin publishes in its own discovery and in `/.well-known/kalicart-bridge.json`. This also works when an anti-bot service blocks dynamic pages but serves static files. Verified is not the same as listed: if KaliCart Global still cannot read the catalog from outside, the panel says so.
-* New: a signed status signal about once a day and a signed leaving signal on deactivation or deletion, so KaliCart Global can tell a store that left from a store that is broken. No error messages or paths are sent: at most a normalized error code of this plugin. See "External services".
-* New: the external visibility check shows the store identity (verified, pending or failed) and whether the catalog can be received.
-* Nothing in the identity can block the plugin, the catalog or the feed; failures are retried automatically. It runs only on production sites installed at the domain root.
-* Fix: the plugin description on the Plugins screen no longer says "no external service". The optional KaliCart Global connection is an external service and is described under "External services".
 * Translated in Italian, German, Spanish and French.
 
 = Earlier releases =
