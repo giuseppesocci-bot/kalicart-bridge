@@ -859,6 +859,7 @@
           if ( limitDetail ) details.push( limitDetail );
           if ( identityNote ) details.push( identityNote );
           if ( isStale ) details.push( T.external_check_stale || 'This observation is more than 7 days old.' );
+          if ( T.external_check_help ) details.push( T.external_check_help );
           out.innerHTML = '<div class="kali-visibility-facts">'
             + fact( 'visibility', T.external_check_label_access || 'Access from outside:', valueText, isReachable ? 'ok' : ( isLimited ? 'warn' : 'error' ) )
             + fact( 'admin-plugins', T.external_check_label_detected || 'Bridge detected:', detected, d.bridge_detected ? 'ok' : ( isLimited ? 'warn' : 'error' ) )
@@ -872,8 +873,8 @@
         } );
     };
 
+    // The check runs on request: at rest the panel shows only the button.
     btn.addEventListener( 'click', loadExternalVisibility );
-    loadExternalVisibility();
   }
 
   function initFederation() {

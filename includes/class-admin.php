@@ -177,6 +177,7 @@ class KaliCart_Bridge_Admin {
             'external_check_never'         => __( 'Never checked', 'kalicart-bridge' ),
             'external_check_stale'         => __( 'This observation is more than 7 days old.', 'kalicart-bridge' ),
             'external_check_details'       => __( 'Details and diagnosis', 'kalicart-bridge' ),
+            'external_check_help'          => __( 'Shows KaliCart Global’s latest periodic observation of your discovery endpoint — not a live scan. It checks discovery reachability only, not MCP, the ChatGPT feed, or checkout.', 'kalicart-bridge' ),
             /* translators: %d: number of days since the last external observation */
             'external_check_ago_day'       => __( '%d day ago', 'kalicart-bridge' ),
             /* translators: %d: number of days since the last external observation */

@@ -38,7 +38,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
         <?php echo wp_kses_post( sprintf(
           /* translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag */
           __( 'AI assistants can now find your products across the KaliCart global network. Only public catalog data is shared, and you can deactivate it anytime. %1$sSee what is shared%2$s.', 'kalicart-bridge' ),
-          '<a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">',
+          '<br><a href="https://bridge.kalicart.com/privacy/" target="_blank" rel="noopener">',
           '</a>'
         ) ); ?>
       <?php else : ?>
@@ -89,23 +89,13 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     <!-- External Agent Visibility Check: read-only, shows what KaliCart Global observed
          from OUTSIDE this site the last time it probed (hosting/cache/CDN/robots can make
          a correctly-configured Bridge invisible to real agents; this surfaces that gap). -->
-    <section class="kali-external-visibility" aria-labelledby="externalVisibilityTitle">
-      <div class="kali-external-visibility__header">
-        <div class="kali-external-visibility__heading">
-          <span class="dashicons dashicons-visibility" aria-hidden="true"></span>
-          <strong id="externalVisibilityTitle"><?php esc_html_e( 'External visibility', 'kalicart-bridge' ); ?></strong>
-        </div>
-        <button type="button" class="kali-btn kali-btn--secondary" id="externalVisibilityBtn">
-          <span class="dashicons dashicons-update" aria-hidden="true"></span>
-          <span><?php esc_html_e( 'Check external visibility', 'kalicart-bridge' ); ?></span>
-        </button>
-      </div>
+    <div class="kali-external-visibility">
+      <button type="button" class="kali-btn kali-btn--secondary" id="externalVisibilityBtn">
+        <span class="dashicons dashicons-update" aria-hidden="true"></span>
+        <span><?php esc_html_e( 'Check external visibility', 'kalicart-bridge' ); ?></span>
+      </button>
       <div id="externalVisibilityResult" class="kali-external-visibility__result" aria-live="polite"></div>
-      <details class="kali-external-visibility__help">
-        <summary><?php esc_html_e( 'What this check covers', 'kalicart-bridge' ); ?></summary>
-        <p><?php esc_html_e( 'Shows KaliCart Global’s latest periodic observation of your discovery endpoint — not a live scan. It checks discovery reachability only, not MCP, the ChatGPT feed, or checkout.', 'kalicart-bridge' ); ?></p>
-      </details>
-    </section>
+    </div>
 
     <!-- Filtro revoca a due step (stile plugin: kali-warn-alert). Nascosto finche' non si clicca Revoke. -->
     <div id="federationRevokeConfirm" class="kali-warn-alert" style="display:none;margin-top:12px">
@@ -162,7 +152,9 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     <div id="providerConsentCurrent" class="kali-provider-consent__current" style="display:none">
       <div class="kali-consent-summary">
         <div id="providerConsentStatus" class="kali-consent-summary__state"></div>
-        <button type="button" class="kali-btn kali-btn--secondary kali-consent-summary__action" id="providerConsentRevokeBtn"><?php esc_html_e( 'Revoke channel authorization', 'kalicart-bridge' ); ?></button>
+      </div>
+      <div class="kali-provider-consent__revoke">
+        <button type="button" class="kali-btn kali-btn--secondary" id="providerConsentRevokeBtn"><?php esc_html_e( 'Revoke channel authorization', 'kalicart-bridge' ); ?></button>
       </div>
       <?php
       // AVVISO-DOPO-LA-RICHIESTA-v1 (1.0.136): il consenso non basta a entrare
@@ -175,7 +167,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       // canale e' autorizzato adesso.
       ?>
       <details class="kali-consent-details">
-        <summary><?php esc_html_e( 'Authorization details and proof', 'kalicart-bridge' ); ?></summary>
+        <summary><span class="dashicons dashicons-editor-alignleft" aria-hidden="true"></span><?php esc_html_e( 'Authorization details and proof', 'kalicart-bridge' ); ?></summary>
         <p id="providerConsentPilotNotice" class="kali-provider-consent__notice"><?php esc_html_e( 'Your request has been recorded. Inclusion in the index built for OpenAI is not automatic: products or categories that OpenAI\'s commerce policies do not allow may keep your store out of that index. Your participation in the Federated Catalog does not change.', 'kalicart-bridge' ); ?></p>
         <div class="kali-provider-consent__actions">
           <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'json' ) ); ?>"><?php esc_html_e( 'Export proof (JSON)', 'kalicart-bridge' ); ?></a>

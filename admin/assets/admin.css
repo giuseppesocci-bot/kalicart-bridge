@@ -1019,13 +1019,10 @@
 .kali-consent-summary__status { color: var(--kb-ok, #00a32a); white-space: nowrap; }
 .kali-consent-summary__meta { color: var(--kb-muted, #666); font-size: 12px; white-space: nowrap; }
 .kali-consent-summary__action { flex: 0 0 auto; margin-left: auto; }
-.kali-external-visibility {
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px solid var(--kb-border, #dcdcde);
-  border-radius: 8px;
-  background: var(--kb-surface, #fff);
-}
+.kali-external-visibility { margin-top: 16px; }
+.kali-external-visibility .kali-btn { gap: 6px; }
+.kali-external-visibility .kali-btn .dashicons { width: 16px; height: 16px; font-size: 16px; }
+.kali-external-visibility__result:empty { display: none; }
 .kali-external-visibility__header {
   display: flex;
   align-items: center;
@@ -1174,7 +1171,18 @@
 .kali-provider-consent__actions .kali-btn { text-decoration: none; }
 .kali-provider-consent .kali-warn-alert { margin-top: 12px; }
 .kali-consent-details { margin-top: 8px; color: var(--kb-muted, #666); font-size: 12px; }
-.kali-consent-details summary { cursor: pointer; font-weight: 600; }
+.kali-consent-details summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+.kali-consent-details summary::-webkit-details-marker { display: none; }
+.kali-consent-details summary .dashicons { color: var(--kb-text, #111116); font-size: 18px; width: 18px; height: 18px; }
+.kali-provider-consent__current .kali-consent-summary { margin-top: 10px; }
+.kali-provider-consent__revoke { margin: 14px 0 4px; }
 
 /* Le tab restavano in orizzontale e sforavano su schermi stretti: .kali-tabs
    era flex con width:fit-content e nessuna media query in tutto il file. */
@@ -1186,8 +1194,6 @@
   .kali-consent-summary__action { margin-left: 0; }
   .kali-consent-summary__status,
   .kali-consent-summary__meta { white-space: normal; }
-  .kali-provider-consent__current > .kali-consent-summary { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .kali-provider-consent__current .kali-consent-summary__action { justify-self: end; margin-left: 0; }
   .kali-visibility-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kali-tabs { flex-direction: column; width: 100%; }
   .kali-tabs .kali-tab { width: 100%; text-align: left; }

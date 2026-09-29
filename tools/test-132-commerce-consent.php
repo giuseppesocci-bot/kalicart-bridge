@@ -108,8 +108,10 @@ try {
 	$check( false !== $provider_position && false !== $tabs_position && $provider_position < $tabs_position, 'Provider authorization is not always visible above the tabbed merchant-feed UI.' );
 	$check( false !== strpos( $admin_page, 'id="providerConsentCheckbox" value="1">' ), 'Provider authorization checkbox is missing or preselected.' );
 	$check( false === strpos( $admin_page, 'providerConsentEvidenceId' ), 'The dashboard still renders an empty consent ID field.' );
-	$check( false !== strpos( $admin_page, 'class="kali-external-visibility__header"' ), 'External visibility is still rendered as an undifferentiated horizontal strip.' );
-	$check( false !== strpos( $admin_page, '<details class="kali-external-visibility__help">' ), 'External visibility explanation is not available on demand.' );
+	// Layout approved by Giuseppe 2026-09-29: at rest only the check button, the result appears below it after the click.
+	$check( false !== strpos( $admin_page, 'id="externalVisibilityBtn"' ) && false !== strpos( $admin_page, 'id="externalVisibilityResult"' ), 'External visibility button or result area is missing.' );
+	$check( false === strpos( $admin_page, 'kali-external-visibility__header' ), 'External visibility still renders a heading card at rest.' );
+	$check( false !== strpos( $admin_page, '<div class="kali-provider-consent__revoke">' ), 'Channel revocation is not on its own row under the status.' );
 	KaliCart_Bridge_Admin::enqueue_assets( 'toplevel_page_kalicart-bridge' );
 	$style_version  = (string) ( wp_styles()->registered['kalicart-bridge-admin']->ver ?? '' );
 	$script_version = (string) ( wp_scripts()->registered['kalicart-bridge-admin']->ver ?? '' );
@@ -204,7 +206,8 @@ try {
 	$check( false !== strpos( $admin_js, 'awaiting delivery to KaliCart Global' ), 'Provider UI lacks the truthful pending-delivery fallback.' );
 	$check( false === strpos( $admin_js, 'providerConsentEvidenceId' ), 'Admin JavaScript still targets the removed consent ID field.' );
 	$check( false !== strpos( $admin_js, 'class="kali-visibility-facts"' ), 'External visibility results are not rendered as responsive status facts.' );
-	$check( false !== strpos( $admin_js, 'loadExternalVisibility();' ), 'External visibility does not load its latest observation automatically.' );
+	$check( false === strpos( $admin_js, 'loadExternalVisibility();' ), 'External visibility loads automatically instead of on request.' );
+	$check( false !== strpos( $admin_js, 'T.external_check_help' ), 'External visibility explanation is not available with the result.' );
 	$admin_css = (string) file_get_contents( trailingslashit( $test_root ) . 'admin/assets/admin.css' );
 	$check( false !== strpos( $admin_css, '.kali-visibility-facts' ) && false !== strpos( $admin_css, 'grid-template-columns: repeat(2, minmax(0, 1fr))' ), 'External visibility lacks its responsive status grid.' );
 
