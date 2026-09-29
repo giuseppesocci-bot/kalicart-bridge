@@ -1,5 +1,16 @@
 *** KaliCart Bridge Changelog ***
 
+2026-09-29 - version 1.0.140
+
+* Fix: the receipt of a distribution channel authorization was retried only twice, after one and five minutes, and then stayed "awaiting delivery" for good. It is now sent again after about 30 minutes, 2 hours and 12 hours, then once a day until KaliCart Global has received or rejected it (retries use WP-Cron). Receipts left waiting by earlier versions are sent again without a new click: at the next visit to an admin screen or at the daily status signal, whichever comes first.
+* Change: once active, the Federated Catalog and the distribution channel each take one compact row: status, text version, date and the revoke button. Proof and export are under "Authorization details and proof".
+* Change: the external visibility check runs when you click it. It shows four results (access from outside, Bridge detected, store identity, last check), each colored by its outcome, and when access is limited it names the cause.
+* Fix: after an update the dashboard could show new markup with old styles, because the styles were cached by plugin version. Admin styles and scripts now change address when their file changes.
+* Fix: an empty "Consent ID" row no longer appears; texts on the Federated Catalog banner have more contrast.
+* No consent text changes: existing authorizations and their receipts stay valid.
+* Translated in Italian, German, Spanish and French.
+
+
 2026-09-28 - version 1.0.139
 
 * New: public catalog files. While the Federated Catalog is active, the plugin writes the public catalog as static files in `/.well-known/kalicart/` (or in `wp-content/uploads/kalicart/` when that folder cannot be written), updated when products are edited and once a day. They contain the same public data as the catalog API, without exact stock quantities, and are deleted when the Federated Catalog is revoked or the plugin is deactivated or deleted. Nothing is written without the Federated Catalog.
