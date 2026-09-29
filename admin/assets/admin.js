@@ -737,12 +737,10 @@
       + '</div>';
     const detailPanel = parts => {
       if ( ! parts.length ) return '';
-      return '<details class="kali-visibility-detail">'
-        + '<summary><span class="dashicons dashicons-info-outline" aria-hidden="true"></span> '
-        + esc( T.external_check_details || 'Details and diagnosis' ) + '</summary>'
-        + '<div class="kali-visibility-detail__body">'
+      // Plain description under the facts: no title, not collapsible.
+      return '<div class="kali-visibility-detail">'
         + parts.map( part => '<p>' + esc( part ) + '</p>' ).join( '' )
-        + '</div></details>';
+        + '</div>';
     };
 
     const loadExternalVisibility = () => {

@@ -1072,8 +1072,8 @@
   height: 30px;
   place-items: center;
   border-radius: 50%;
-  background: #e9ecef;
-  color: #50575e;
+  background: #0070f3;
+  color: #fff;
   font-size: 17px;
 }
 .kali-visibility-fact__text { min-width: 0; }
@@ -1094,20 +1094,16 @@
   font-size: 13px;
   line-height: 1.3;
 }
-.kali-visibility-fact--ok > .dashicons { background: #edfaef; color: #16833b; }
-.kali-visibility-fact--warn > .dashicons { background: #fff5d7; color: #996800; }
-.kali-visibility-fact--error > .dashicons { background: #fce8e8; color: #b32d2e; }
-.kali-visibility-detail {
-  margin-top: 9px;
-  padding: 8px 10px;
-  border: 1px solid var(--kb-border, #dcdcde);
-  border-radius: 7px;
-  color: var(--kb-muted, #50575e);
-}
-.kali-visibility-detail summary,
-.kali-external-visibility__help summary { cursor: pointer; color: #2271b1; font-weight: 600; }
-.kali-visibility-detail__body { padding: 4px 0 0 22px; line-height: 1.45; }
-.kali-visibility-detail__body p { margin: 6px 0 0; }
+/* Icons keep one color; the value carries the outcome. */
+.kali-visibility-fact--ok > .dashicons,
+.kali-visibility-fact--warn > .dashicons,
+.kali-visibility-fact--error > .dashicons { background: #0070f3; color: #fff; }
+.kali-visibility-fact--ok .kali-visibility-fact__value { color: #00a32a; }
+.kali-visibility-fact--warn .kali-visibility-fact__value { color: #996800; }
+.kali-visibility-fact--error .kali-visibility-fact__value { color: #b32d2e; }
+.kali-visibility-detail { margin-top: 10px; color: #111116; font-size: 13px; line-height: 1.5; }
+.kali-visibility-detail p { margin: 0 0 6px; }
+.kali-visibility-detail p:last-child { margin-bottom: 0; }
 .kali-external-visibility__help { margin-top: 10px; color: var(--kb-muted, #646970); font-size: 12px; }
 .kali-external-visibility__help p { margin: 6px 0 0 16px; max-width: 860px; line-height: 1.45; }
 .kali-visibility-empty {
