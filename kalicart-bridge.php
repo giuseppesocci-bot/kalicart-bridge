@@ -206,7 +206,7 @@ register_deactivation_hook( __FILE__, function () {
 	wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
 	wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
 	wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
-	wp_clear_scheduled_hook( KaliCart_Bridge_Commerce_Consent::RETRY_HOOK );
+	wp_unschedule_hook( KaliCart_Bridge_Commerce_Consent::RETRY_HOOK );
 	wp_clear_scheduled_hook( KaliCart_Bridge_Identity::CRON_HOOK );
 	// 1.0.138: signed "leaving" BEFORE the well-known files disappear (best effort, 5 s).
 	KaliCart_Bridge_Identity::leaving( 'deactivated' );

@@ -86,7 +86,7 @@ wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
 wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
 wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
 wp_clear_scheduled_hook( 'kalicart_bridge_federation_announce' );
-wp_clear_scheduled_hook( 'kalicart_bridge_provider_consent_retry' );
+wp_unschedule_hook( 'kalicart_bridge_provider_consent_retry' );
 wp_clear_scheduled_hook( 'kalicart_bridge_identity_tick' );
 
 // Checkout session claim rows (kalicart_session_claimed_{id}): dynamically keyed, one per

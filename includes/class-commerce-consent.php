@@ -383,7 +383,9 @@ class KaliCart_Bridge_Commerce_Consent {
 		if ( $row ) {
 			// A successful status lookup proves that Global received this receipt,
 			// even when the original POST response was lost locally.
-			self::update_receipt_state( $row, 'accepted', $body, null );
+			// A rejection stays a failed delivery in the ledger, as in 1.0.139.
+			$status = 'rejected' === sanitize_key( $body['receipt_status'] ?? '' ) ? 'failed' : 'accepted';
+			self::update_receipt_state( $row, $status, $body, null );
 		}
 		return self::current( $provider );
 	}
