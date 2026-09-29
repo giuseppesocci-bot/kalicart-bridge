@@ -169,6 +169,8 @@ class KaliCart_Bridge_Admin {
             'external_check_cause_named'   => __( 'anti-bot challenge from %s', 'kalicart-bridge' ),
             'external_check_cause_generic' => __( 'anti-bot challenge from the service that protects the site', 'kalicart-bridge' ),
             'external_check_cause_robots'  => __( 'disallowed by your robots.txt', 'kalicart-bridge' ),
+            /* translators: %s: cause of the limited external access, e.g. "anti-bot challenge from Cloudflare" */
+            'external_check_cause_line'    => __( 'Cause of the limited access: %s', 'kalicart-bridge' ),
             'external_check_in_catalog'    => __( 'Your store stays in the KaliCart Federated Catalog with the last catalog read; price and availability cannot be verified live.', 'kalicart-bridge' ),
             'external_check_not_in_catalog' => __( 'Your catalog is not in the KaliCart Federated Catalog, because KaliCart Global cannot read it.', 'kalicart-bridge' ),
             'external_check_others_too'    => __( 'Other automated clients, including AI agents, may receive the same challenge.', 'kalicart-bridge' ),

@@ -1855,3 +1855,9 @@ msgstr ""
 #: kalicart-bridge.php:190
 msgid "WooCommerce required"
 msgstr ""
+
+#. translators: %s: cause of the limited external access, e.g. "anti-bot challenge from Cloudflare"
+#: includes/class-admin.php:173
+#, php-format
+msgid "Cause of the limited access: %s"
+msgstr ""

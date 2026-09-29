@@ -739,7 +739,7 @@
       if ( ! parts.length ) return '';
       // Plain description under the facts: no title, not collapsible.
       return '<div class="kali-visibility-detail">'
-        + parts.map( part => '<p>' + esc( part ) + '</p>' ).join( '' )
+        + parts.map( part => '<p>' + ( typeof part === 'string' ? esc( part ) : part.html ) + '</p>' ).join( '' )
         + '</div>';
     };
 
@@ -853,7 +853,15 @@
           }
 
           const details = [];
-          if ( cause ) details.push( cause );
+          if ( cause ) {
+            // "Title: explanation", the title in bold. Split on %s so each
+            // language keeps its own punctuation (French: "Cause ... : %s").
+            const tpl = T.external_check_cause_line || 'Cause of the limited access: %s';
+            const at  = tpl.indexOf( '%s' );
+            details.push( at < 0
+              ? esc( tpl ) + ' ' + esc( cause )
+              : { html: '<strong>' + esc( tpl.slice( 0, at ).trimEnd() ) + '</strong> ' + esc( cause ) + esc( tpl.slice( at + 2 ) ) } );
+          }
           if ( limitDetail ) details.push( limitDetail );
           if ( identityNote ) details.push( identityNote );
           if ( isStale ) details.push( T.external_check_stale || 'This observation is more than 7 days old.' );
