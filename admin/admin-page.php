@@ -26,14 +26,14 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
   </div>
 
   <!-- FEDERATION (sempre visibile, sotto l'header): announce + revoca consensuale -->
-  <div class="kali-federation-block" style="margin:0 0 4px;padding:14px 16px;border:1px solid var(--kb-border,#e2e4e7);border-radius:10px;background:var(--kb-acc-bg,#f6f9ff)">
+  <div class="kali-federation-block">
     <?php $kalicart_bridge_is_federated = (bool) get_option( 'kalicart_bridge_federation_registered_at', '' ); ?>
-    <strong style="display:block;margin-bottom:6px"><?php
+    <strong class="kali-federation-block__title"><?php
       echo esc_html( $kalicart_bridge_is_federated
         ? __( 'Great choice! Your catalog is going global.', 'kalicart-bridge' )
         : __( 'Increase your catalog\'s visibility', 'kalicart-bridge' )
       ); ?></strong>
-    <p style="margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--kb-muted,#555)">
+    <p class="kali-federation-block__intro">
       <?php if ( $kalicart_bridge_is_federated ) : ?>
         <?php echo wp_kses_post( sprintf(
           /* translators: %1$s: opening link tag to privacy notice, %2$s: closing link tag */
@@ -57,7 +57,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     // un solo flusso, due atti e due ricevute separate; nessun canale senza la casella.
     ?>
     <div id="federationConsentPanel" style="display:none">
-      <p id="federationConsentText" style="margin:0 0 10px;font-size:12px;line-height:1.5;color:var(--kb-muted,#555)"><?php echo esc_html( KaliCart_Bridge_Federation_Consent::localized_text() ); ?></p>
+      <p id="federationConsentText" class="kali-federation-consent-text"><?php echo esc_html( KaliCart_Bridge_Federation_Consent::localized_text() ); ?></p>
       <div id="federationChannelOpt" style="margin:0 0 12px;padding:10px 12px;border:1px dashed var(--kb-border,#d0d4d9);border-radius:8px">
         <label for="federationChannelCheckbox" style="display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5">
           <input type="checkbox" id="federationChannelCheckbox" value="1" style="margin-top:2px">
@@ -77,20 +77,22 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
         ?></p>
       </div>
     </div>
-    <button type="button" class="kali-btn kali-btn--primary" id="federationActivateBtn"><?php esc_html_e( 'Activate Federated Catalog', 'kalicart-bridge' ); ?></button>
-    <button type="button" class="kali-btn kali-btn--secondary" id="federationRevokeBtn" style="display:none"><?php esc_html_e( 'Revoke consent', 'kalicart-bridge' ); ?></button>
-    <span id="federationStatus" style="display:none;margin-left:10px;font-size:13px;color:var(--kb-ok,#00a32a)"></span>
-    <span id="federationConsentVersion" style="display:none;margin-left:10px;font-size:12px;color:var(--kb-muted,#888)"></span>
+    <div class="kali-consent-summary">
+      <span id="federationStatus" class="kali-consent-summary__status" style="display:none"></span>
+      <span id="federationConsentVersion" class="kali-consent-summary__meta" style="display:none"></span>
+      <button type="button" class="kali-btn kali-btn--primary" id="federationActivateBtn"><?php esc_html_e( 'Activate Federated Catalog', 'kalicart-bridge' ); ?></button>
+      <button type="button" class="kali-btn kali-btn--secondary kali-consent-summary__action" id="federationRevokeBtn" style="display:none"><?php esc_html_e( 'Revoke consent', 'kalicart-bridge' ); ?></button>
+      <span id="federationHint" class="kali-consent-summary__meta" style="display:none"><?php esc_html_e( 'Use the Federated Catalog banner above to manage consent.', 'kalicart-bridge' ); ?></span>
+    </div>
     <div id="federationChannelResult" class="kali-provider-consent__notice" style="display:none;margin-top:10px"></div>
-    <span id="federationHint" style="display:none;margin-left:10px;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Use the Federated Catalog banner above to manage consent.', 'kalicart-bridge' ); ?></span>
 
     <!-- External Agent Visibility Check: read-only, shows what KaliCart Global observed
          from OUTSIDE this site the last time it probed (hosting/cache/CDN/robots can make
          a correctly-configured Bridge invisible to real agents; this surfaces that gap). -->
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--kb-border,#e2e2e2)">
+    <div class="kali-external-visibility">
       <button type="button" class="kali-btn kali-btn--secondary" id="externalVisibilityBtn"><?php esc_html_e( 'Check external visibility', 'kalicart-bridge' ); ?></button>
-      <p style="margin:6px 0 0;font-size:12px;color:var(--kb-muted,#888)"><?php esc_html_e( 'Shows KaliCart Global’s latest periodic observation of your discovery endpoint — not a live scan. It checks discovery reachability only, not MCP, the ChatGPT feed, or checkout.', 'kalicart-bridge' ); ?></p>
-      <div id="externalVisibilityResult" style="margin-top:8px;font-size:13px"></div>
+      <p><?php esc_html_e( 'Shows KaliCart Global’s latest periodic observation of your discovery endpoint — not a live scan. It checks discovery reachability only, not MCP, the ChatGPT feed, or checkout.', 'kalicart-bridge' ); ?></p>
+      <div id="externalVisibilityResult"></div>
     </div>
 
     <!-- Filtro revoca a due step (stile plugin: kali-warn-alert). Nascosto finche' non si clicca Revoke. -->
@@ -113,7 +115,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     <div class="kali-provider-consent__head">
       <div>
         <strong id="providerConsentTitle"><?php esc_html_e( 'Federated distribution channels', 'kalicart-bridge' ); ?></strong>
-        <p><?php esc_html_e( 'These optional authorizations allow KaliCart Global to distribute your public product catalog through a named external system. They are separate from joining the Federated Catalog and from the direct merchant feed configured in the ChatGPT Feed tab.', 'kalicart-bridge' ); ?></p>
+        <p class="kali-provider-consent__description"><?php esc_html_e( 'These optional authorizations allow KaliCart Global to distribute your public product catalog through a named external system. They are separate from joining the Federated Catalog and from the direct merchant feed configured in the ChatGPT Feed tab.', 'kalicart-bridge' ); ?></p>
       </div>
       <span class="kali-provider-consent__provider"><?php echo esc_html( $kalicart_bridge_openai_provider['label'] ); ?></span>
     </div>
@@ -146,7 +148,10 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     </div>
 
     <div id="providerConsentCurrent" class="kali-provider-consent__current" style="display:none">
-      <div id="providerConsentStatus"></div>
+      <div class="kali-consent-summary">
+        <div id="providerConsentStatus" class="kali-consent-summary__state"></div>
+        <button type="button" class="kali-btn kali-btn--secondary kali-consent-summary__action" id="providerConsentRevokeBtn"><?php esc_html_e( 'Revoke channel authorization', 'kalicart-bridge' ); ?></button>
+      </div>
       <?php
       // AVVISO-DOPO-LA-RICHIESTA-v1 (1.0.136): il consenso non basta a entrare
       // nell'indice per OpenAI, e il Global non ha un canale per dirlo al
@@ -157,12 +162,15 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       // il ..."): li' la nota sarebbe falsa, quindi admin.js la mostra solo se il
       // canale e' autorizzato adesso.
       ?>
-      <p id="providerConsentPilotNotice" class="kali-provider-consent__notice"><?php esc_html_e( 'Your request has been recorded. Inclusion in the index built for OpenAI is not automatic: products or categories that OpenAI\'s commerce policies do not allow may keep your store out of that index. Your participation in the Federated Catalog does not change.', 'kalicart-bridge' ); ?></p>
-      <div class="kali-provider-consent__actions">
-        <button type="button" class="kali-btn kali-btn--secondary" id="providerConsentRevokeBtn"><?php esc_html_e( 'Revoke channel authorization', 'kalicart-bridge' ); ?></button>
-        <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'json' ) ); ?>"><?php esc_html_e( 'Export proof (JSON)', 'kalicart-bridge' ); ?></a>
-        <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'csv' ) ); ?>"><?php esc_html_e( 'Export proof (CSV)', 'kalicart-bridge' ); ?></a>
-      </div>
+      <details class="kali-consent-details">
+        <summary><?php esc_html_e( 'Authorization details and proof', 'kalicart-bridge' ); ?></summary>
+        <p id="providerConsentPilotNotice" class="kali-provider-consent__notice"><?php esc_html_e( 'Your request has been recorded. Inclusion in the index built for OpenAI is not automatic: products or categories that OpenAI\'s commerce policies do not allow may keep your store out of that index. Your participation in the Federated Catalog does not change.', 'kalicart-bridge' ); ?></p>
+        <p class="kali-provider-consent__evidence-id"><strong><?php esc_html_e( 'Consent ID', 'kalicart-bridge' ); ?>:</strong> <code id="providerConsentEvidenceId"></code></p>
+        <div class="kali-provider-consent__actions">
+          <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'json' ) ); ?>"><?php esc_html_e( 'Export proof (JSON)', 'kalicart-bridge' ); ?></a>
+          <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'csv' ) ); ?>"><?php esc_html_e( 'Export proof (CSV)', 'kalicart-bridge' ); ?></a>
+        </div>
+      </details>
     </div>
 
     <div id="providerConsentRevokeConfirm" class="kali-warn-alert" style="display:none">

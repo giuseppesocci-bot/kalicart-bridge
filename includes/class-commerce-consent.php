@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 class KaliCart_Bridge_Commerce_Consent {
 	const OPTION         = 'kalicart_bridge_commerce_consents';
 	const SCHEMA_OPTION  = 'kalicart_bridge_commerce_schema_version';
-	const SCHEMA_VERSION = '1';
+	const SCHEMA_VERSION = '2';
 	const PROTOCOL       = 'kalicart-commerce-consent/1';
 	const RETRY_HOOK     = 'kalicart_bridge_provider_consent_retry';
 
@@ -26,6 +26,8 @@ class KaliCart_Bridge_Commerce_Consent {
 	public static function init(): void {
 		self::ensure_schema();
 		add_action( self::RETRY_HOOK, [ __CLASS__, 'retry_receipt' ], 10, 2 );
+		add_action( 'init', [ __CLASS__, 'recover_pending_receipts' ], 20 );
+		add_action( KaliCart_Bridge_Identity::CRON_HOOK, [ __CLASS__, 'recover_pending_receipts' ], 20 );
 		add_action( 'admin_post_kalicart_provider_consent_export', [ __CLASS__, 'export_evidence' ] );
 	}
 
@@ -70,6 +72,8 @@ class KaliCart_Bridge_Commerce_Consent {
 			record_hash char(64) NOT NULL,
 			receipt_status varchar(16) NOT NULL DEFAULT 'pending',
 			receipt_updated_at_utc varchar(32) NOT NULL,
+			retry_attempt int(10) unsigned NOT NULL DEFAULT 0,
+			next_retry_at_utc varchar(32) NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY consent_id (consent_id),
 			KEY provider_occurred (provider,occurred_at_utc)
@@ -107,6 +111,8 @@ class KaliCart_Bridge_Commerce_Consent {
 			'record_hash'             => null,
 			'receipt_status'          => null,
 			'receipt_updated_at_utc'  => null,
+			'retry_attempt'           => 0,
+			'next_retry_at_utc'       => null,
 			'global_receipt_status'   => null,
 			'global_authorization_state' => null,
 			'delivery_state'          => 'not_configured',
@@ -166,7 +172,7 @@ class KaliCart_Bridge_Commerce_Consent {
 				if ( ! empty( $current['consent_id'] ) && in_array( $current['receipt_status'], [ 'pending', 'failed' ], true ) ) {
 					$result = self::send_receipt( (string) $current['consent_id'] );
 					if ( ! $result['ok'] && $result['retryable'] ) {
-						self::schedule_retries( (string) $current['consent_id'] );
+						self::schedule_retry( (string) $current['consent_id'], 1 );
 					}
 					$current = self::current( $provider );
 				}
@@ -230,6 +236,8 @@ class KaliCart_Bridge_Commerce_Consent {
 				'record_hash'             => $record_hash,
 				'receipt_status'          => 'pending',
 				'receipt_updated_at_utc'  => $occurred_at,
+				'retry_attempt'           => 0,
+				'next_retry_at_utc'       => null,
 				'global_receipt_status'   => 'pending',
 				'global_authorization_state' => 'not_active',
 				'delivery_state'          => 'revoked' === $action ? 'suspended_pending_verification' : 'not_configured',
@@ -239,7 +247,7 @@ class KaliCart_Bridge_Commerce_Consent {
 
 			$result = self::send_receipt( $consent_id );
 			if ( ! $result['ok'] && $result['retryable'] ) {
-				self::schedule_retries( $consent_id );
+				self::schedule_retry( $consent_id, 1 );
 			}
 			return self::current( $provider );
 		} );
@@ -291,10 +299,51 @@ class KaliCart_Bridge_Commerce_Consent {
 
 	public static function retry_receipt( string $consent_id, int $attempt = 1 ): void {
 		$row = self::receipt_row( sanitize_text_field( $consent_id ) );
-		if ( ! $row || 'accepted' === $row['receipt_status'] ) {
+		if ( ! $row || 'pending' !== $row['receipt_status'] ) {
 			return;
 		}
-		self::send_receipt( $row['consent_id'] );
+		$stored_attempt = (int) ( $row['retry_attempt'] ?? 0 );
+		if ( $stored_attempt > 0 && $attempt !== $stored_attempt ) {
+			return;
+		}
+		$result = self::send_receipt( $row['consent_id'] );
+		if ( ! $result['ok'] && $result['retryable'] ) {
+			self::schedule_retry( $row['consent_id'], max( 1, $attempt + 1 ) );
+		}
+	}
+
+	/**
+	 * Rebuild missing retry events after an update, cron loss or a long outage.
+	 * Pending records are inspected in ledger order and newly rebuilt events are
+	 * staggered. The routine is idempotent and safe on every boot.
+	 */
+	public static function recover_pending_receipts(): void {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- the append-only delivery ledger is the authoritative queue; stale cached rows would lose receipts.
+		$rows = $wpdb->get_results(
+			'SELECT consent_id,retry_attempt,next_retry_at_utc FROM ' . self::table_name() . " WHERE receipt_status='pending' ORDER BY id ASC LIMIT 100", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table name and predicate are plugin-owned constants.
+			ARRAY_A
+		);
+		$offset = 0;
+		foreach ( $rows ?: [] as $row ) {
+			$consent_id = (string) $row['consent_id'];
+			$attempt    = max( 1, (int) ( $row['retry_attempt'] ?? 0 ) );
+			$scheduled  = wp_next_scheduled( self::RETRY_HOOK, [ $consent_id, $attempt ] );
+			if ( false !== $scheduled ) {
+				self::update_retry_metadata( $consent_id, $attempt, (int) $scheduled );
+				continue;
+			}
+
+			$stored_at = strtotime( (string) ( $row['next_retry_at_utc'] ?? '' ) );
+			if ( (int) ( $row['retry_attempt'] ?? 0 ) > 0 && false !== $stored_at && $stored_at <= time() ) {
+				$attempt++;
+			}
+			$when = false !== $stored_at && $stored_at > time()
+				? $stored_at
+				: time() + self::retry_delay( $attempt ) + $offset;
+			self::schedule_retry( $consent_id, $attempt, $when );
+			$offset += 5;
+		}
 	}
 
 	/** @return array<string,mixed> */
@@ -320,16 +369,13 @@ class KaliCart_Bridge_Commerce_Consent {
 		if ( 200 !== $code || ! is_array( $body ) || empty( $body['ok'] ) ) {
 			return $current;
 		}
-		$current['global_receipt_status']      = sanitize_key( $body['receipt_status'] ?? '' );
-		$current['global_authorization_state'] = sanitize_key( $body['authorization_state'] ?? '' );
-		$current['delivery_state']             = sanitize_key( $body['delivery_state'] ?? 'not_configured' );
-		$current['receipt_updated_at_utc']     = gmdate( 'Y-m-d\TH:i:s\Z' );
-		$current['last_error']                 = null;
-		if ( 'rejected' === $current['global_receipt_status'] ) {
-			$current['receipt_status'] = 'failed';
+		$row = self::receipt_row( (string) $current['consent_id'] );
+		if ( $row ) {
+			// A successful status lookup proves that Global received this receipt,
+			// even when the original POST response was lost locally.
+			self::update_receipt_state( $row, 'accepted', $body, null );
 		}
-		self::set_current( $provider, $current );
-		return $current;
+		return self::current( $provider );
 	}
 
 	public static function export_url( string $format ): string {
@@ -371,7 +417,7 @@ class KaliCart_Bridge_Commerce_Consent {
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="kalicart-provider-consent-evidence-' . $stamp . '.csv"' );
 		$out = fopen( 'php://output', 'w' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- streamed download; no filesystem path is opened.
-		$columns = [ 'id','protocol','consent_id','provider','purpose','action','occurred_at_utc','wp_user_id','plugin_version','terms_version','consent_locale','canonical_text_hash','consent_text','consent_text_hash','previous_record_hash','record_hash','record_hash_valid','receipt_status','receipt_updated_at_utc' ];
+		$columns = [ 'id','protocol','consent_id','provider','purpose','action','occurred_at_utc','wp_user_id','plugin_version','terms_version','consent_locale','canonical_text_hash','consent_text','consent_text_hash','previous_record_hash','record_hash','record_hash_valid','receipt_status','receipt_updated_at_utc','retry_attempt','next_retry_at_utc' ];
 		fputcsv( $out, $columns );
 		foreach ( $rows as $row ) {
 			fputcsv( $out, array_map( static function( $column ) use ( $row ) {
@@ -460,6 +506,14 @@ class KaliCart_Bridge_Commerce_Consent {
 			[ '%s', '%s' ],
 			[ '%s' ]
 		);
+		if ( 'pending' !== $status ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- delivery metadata must be cleared atomically in its authoritative ledger row.
+			$wpdb->query( $wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- the table name is plugin-owned; the consent ID uses a placeholder.
+				'UPDATE ' . self::table_name() . ' SET retry_attempt=0,next_retry_at_utc=NULL WHERE consent_id=%s',
+				$row['consent_id']
+			) );
+		}
 		$current = self::current( $row['provider'] );
 		if ( $current['consent_id'] !== $row['consent_id'] ) {
 			return;
@@ -467,6 +521,10 @@ class KaliCart_Bridge_Commerce_Consent {
 		$current['receipt_status']         = $status;
 		$current['receipt_updated_at_utc'] = $now;
 		$current['last_error']             = $error;
+		if ( 'pending' !== $status ) {
+			$current['retry_attempt']     = 0;
+			$current['next_retry_at_utc'] = null;
+		}
 		if ( is_array( $remote ) ) {
 			$current['global_receipt_status']      = sanitize_key( $remote['receipt_status'] ?? $current['global_receipt_status'] );
 			$current['global_authorization_state'] = sanitize_key( $remote['authorization_state'] ?? $current['global_authorization_state'] );
@@ -475,13 +533,53 @@ class KaliCart_Bridge_Commerce_Consent {
 		self::set_current( $row['provider'], $current );
 	}
 
-	private static function schedule_retries( string $consent_id ): void {
-		foreach ( [ [ 60, 1 ], [ 5 * MINUTE_IN_SECONDS, 2 ] ] as $retry ) {
-			$args = [ $consent_id, $retry[1] ];
-			if ( ! wp_next_scheduled( self::RETRY_HOOK, $args ) ) {
-				wp_schedule_single_event( time() + $retry[0], self::RETRY_HOOK, $args );
+	private static function retry_delay( int $attempt ): int {
+		$delays = [
+			1 => MINUTE_IN_SECONDS,
+			2 => 5 * MINUTE_IN_SECONDS,
+			3 => 30 * MINUTE_IN_SECONDS,
+			4 => 2 * HOUR_IN_SECONDS,
+			5 => 12 * HOUR_IN_SECONDS,
+		];
+		return $delays[ $attempt ] ?? DAY_IN_SECONDS;
+	}
+
+	private static function schedule_retry( string $consent_id, int $attempt, ?int $timestamp = null ): void {
+		$attempt   = max( 1, $attempt );
+		$args      = [ $consent_id, $attempt ];
+		$scheduled = wp_next_scheduled( self::RETRY_HOOK, $args );
+		if ( false === $scheduled ) {
+			$scheduled = $timestamp ?: time() + self::retry_delay( $attempt );
+			$result    = wp_schedule_single_event( $scheduled, self::RETRY_HOOK, $args );
+			if ( false === $result || is_wp_error( $result ) ) {
+				return;
 			}
 		}
+		self::update_retry_metadata( $consent_id, $attempt, (int) $scheduled );
+	}
+
+	private static function update_retry_metadata( string $consent_id, int $attempt, int $timestamp ): void {
+		global $wpdb;
+		$next = gmdate( 'Y-m-d\TH:i:s\Z', $timestamp );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- mutable scheduling metadata belongs to the authoritative ledger row.
+		$wpdb->update(
+			self::table_name(),
+			[ 'retry_attempt' => $attempt, 'next_retry_at_utc' => $next ],
+			[ 'consent_id' => $consent_id ],
+			[ '%d', '%s' ],
+			[ '%s' ]
+		);
+		$row = self::receipt_row( $consent_id );
+		if ( ! $row ) {
+			return;
+		}
+		$current = self::current( (string) $row['provider'] );
+		if ( $current['consent_id'] !== $consent_id ) {
+			return;
+		}
+		$current['retry_attempt']     = $attempt;
+		$current['next_retry_at_utc'] = $next;
+		self::set_current( (string) $row['provider'], $current );
 	}
 
 	private static function normalize_receipt_locale( string $locale ): string {

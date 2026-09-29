@@ -976,6 +976,60 @@
   font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
   background: orange; color: #fff; border: 0 !important; border-radius: 4px; vertical-align: middle; }
 
+/* Consent summaries stay compact after activation; full legal text remains
+   visible before the act and evidence remains available on demand. */
+.kali-federation-block {
+  margin: 0 0 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--kb-border, #e2e4e7);
+  border-radius: 10px;
+  background: var(--kb-acc-bg, #f6f9ff);
+}
+.kali-federation-block__title { display: block; margin-bottom: 6px; }
+.kali-federation-block__intro {
+  margin: 0 0 10px;
+  color: #111116;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.kali-federation-consent-text {
+  margin: 0 0 10px;
+  padding: 20px;
+  border-radius: 6px;
+  background: #fff;
+  color: #111116 !important;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.kali-consent-summary {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.kali-consent-summary__state {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.kali-consent-summary__status { color: var(--kb-ok, #00a32a); white-space: nowrap; }
+.kali-consent-summary__meta { color: var(--kb-muted, #666); font-size: 12px; white-space: nowrap; }
+.kali-consent-summary__action { flex: 0 0 auto; margin-left: auto; }
+.kali-external-visibility {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--kb-border, #e2e2e2);
+}
+.kali-external-visibility p { flex: 1 1 auto; margin: 0; color: var(--kb-muted, #666); font-size: 12px; }
+#externalVisibilityResult { flex: 0 1 auto; font-size: 13px; }
+
 /* Provider-specific consent is intentionally outside the merchant feed tab. */
 .kali-provider-consent {
   margin: 10px 0 18px;
@@ -992,6 +1046,7 @@
 }
 .kali-provider-consent__head strong { display: block; margin-bottom: 4px; }
 .kali-provider-consent__head p { margin: 0 0 12px; max-width: 850px; color: var(--kb-muted, #555); font-size: 13px; line-height: 1.5; }
+.kali-provider-consent--active .kali-provider-consent__description { display: none; }
 .kali-provider-consent__provider {
   flex: 0 0 auto;
   padding: 4px 9px;
@@ -1010,7 +1065,8 @@
   border-radius: 6px;
 }
 #providerConsentStatus {
-  line-height: 24px;
+  min-width: 0;
+  line-height: 1.4;
 }
 .kali-provider-consent__check { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.55; }
 .kali-provider-consent__check input { flex: 0 0 auto; margin-top: 3px; }
@@ -1019,12 +1075,24 @@
 .kali-provider-consent__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .kali-provider-consent__actions .kali-btn { text-decoration: none; }
 .kali-provider-consent .kali-warn-alert { margin-top: 12px; }
+.kali-consent-details { margin-top: 8px; color: var(--kb-muted, #666); font-size: 12px; }
+.kali-consent-details summary { cursor: pointer; font-weight: 600; }
+.kali-provider-consent__evidence-id { margin: 10px 0 0; overflow-wrap: anywhere; }
 
 /* Le tab restavano in orizzontale e sforavano su schermi stretti: .kali-tabs
    era flex con width:fit-content e nessuna media query in tutto il file. */
 @media (max-width: 782px) {
   .kali-blocks { grid-template-columns: 1fr; }
   .kali-provider-consent__head { flex-direction: column; gap: 4px; }
+  .kali-consent-summary,
+  .kali-consent-summary__state,
+  .kali-external-visibility { flex-wrap: wrap; }
+  .kali-consent-summary__action { margin-left: 0; }
+  .kali-consent-summary__status,
+  .kali-consent-summary__meta { white-space: normal; }
+  .kali-provider-consent__current > .kali-consent-summary { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .kali-provider-consent__current .kali-consent-summary__action { justify-self: end; margin-left: 0; }
+  .kali-external-visibility p { flex-basis: 100%; }
   .kali-tabs { flex-direction: column; width: 100%; }
   .kali-tabs .kali-tab { width: 100%; text-align: left; }
 }

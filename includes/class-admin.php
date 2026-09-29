@@ -143,7 +143,7 @@ class KaliCart_Bridge_Admin {
             'provider_authorized_on'       => __( 'Authorized on', 'kalicart-bridge' ),
             'provider_revoked_on'          => __( 'Revoked on', 'kalicart-bridge' ),
             'provider_receipt'             => __( 'Receipt', 'kalicart-bridge' ),
-            'provider_receipt_pending'     => __( 'pending delivery', 'kalicart-bridge' ),
+            'provider_receipt_pending'     => __( 'awaiting delivery to KaliCart Global', 'kalicart-bridge' ),
             'provider_receipt_accepted'    => __( 'accepted by KaliCart Global', 'kalicart-bridge' ),
             'provider_receipt_failed'      => __( 'delivery failed', 'kalicart-bridge' ),
             'provider_receipt_received'    => __( 'received by KaliCart Global; verification pending', 'kalicart-bridge' ),

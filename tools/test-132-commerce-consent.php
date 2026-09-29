@@ -46,6 +46,7 @@ foreach ( $option_names as $option_name ) {
 $delivery_mode = 'network_error';
 $payloads      = [];
 $scheduled_retries = [];
+$scheduled_at      = [];
 $intercept = static function( $preempt, array $args, string $url ) use ( &$delivery_mode, &$payloads ) {
 	if ( false === strpos( $url, '/v1/bridge/provider-consent' ) ) {
 		return $preempt;
@@ -82,9 +83,11 @@ $intercept = static function( $preempt, array $args, string $url ) use ( &$deliv
 	];
 };
 add_filter( 'pre_http_request', $intercept, 10, 3 );
-$intercept_schedule = static function( $preempt, $event ) use ( &$scheduled_retries ) {
+$intercept_schedule = static function( $preempt, $event ) use ( &$scheduled_retries, &$scheduled_at ) {
 	if ( is_object( $event ) && KaliCart_Bridge_Commerce_Consent::RETRY_HOOK === ( $event->hook ?? '' ) ) {
 		$scheduled_retries[] = $event->args;
+		$attempt = (int) ( $event->args[1] ?? 0 );
+		$scheduled_at[ $attempt ][] = (int) ( $event->timestamp ?? 0 );
 		return true;
 	}
 	return $preempt;
@@ -105,16 +108,17 @@ try {
 	$check( false !== $provider_position && false !== $tabs_position && $provider_position < $tabs_position, 'Provider authorization is not always visible above the tabbed merchant-feed UI.' );
 	$check( false !== strpos( $admin_page, 'id="providerConsentCheckbox" value="1">' ), 'Provider authorization checkbox is missing or preselected.' );
 	$mo_expectations = [
-		'it_IT' => 'Canali di distribuzione federata',
-		'de_DE' => 'Föderierte Vertriebskanäle',
-		'fr_FR' => 'Canaux de distribution fédérée',
-		'es_ES' => 'Canales de distribución federada',
+		'it_IT' => [ 'provider' => 'Canali di distribuzione federata', 'pending' => 'in attesa di consegna a KaliCart Global' ],
+		'de_DE' => [ 'provider' => 'Föderierte Vertriebskanäle', 'pending' => 'Übermittlung an KaliCart Global ausstehend' ],
+		'fr_FR' => [ 'provider' => 'Canaux de distribution fédérée', 'pending' => 'en attente de transmission à KaliCart Global' ],
+		'es_ES' => [ 'provider' => 'Canales de distribución federada', 'pending' => 'en espera de entrega a KaliCart Global' ],
 	];
-	foreach ( $mo_expectations as $locale => $expected_translation ) {
+	foreach ( $mo_expectations as $locale => $expected_translations ) {
 		$mo = new MO();
 		$loaded = $mo->import_from_file( trailingslashit( $test_root ) . 'languages/kalicart-bridge-' . $locale . '.mo' );
 		$check( $loaded, $locale . ' MO file could not be loaded.' );
-		$check( $expected_translation === $mo->translate( 'Federated distribution channels' ), $locale . ' MO did not contain the new provider-consent translation.' );
+		$check( $expected_translations['provider'] === $mo->translate( 'Federated distribution channels' ), $locale . ' MO did not contain the provider-consent translation.' );
+		$check( $expected_translations['pending'] === $mo->translate( 'awaiting delivery to KaliCart Global' ), $locale . ' MO did not contain the pending-delivery translation.' );
 	}
 	$probe_request = new WP_REST_Request( 'GET', '/kalicart/v1/discovery' );
 	$probe_request->set_query_params( [ 'kalicart_consent_probe' => (string) round( microtime( true ) * 1000 ) ] );
@@ -125,6 +129,9 @@ try {
 	$check( 400 === KaliCart_Bridge_API::discovery( $invalid_probe )->get_status(), 'Discovery stopped rejecting unknown non-protocol query parameters.' );
 
 	KaliCart_Bridge_Commerce_Consent::ensure_schema();
+	$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- exact plugin-owned table.
+	$check( in_array( 'retry_attempt', $columns, true ), 'The retry attempt migration column is missing.' );
+	$check( in_array( 'next_retry_at_utc', $columns, true ), 'The next retry timestamp migration column is missing.' );
 	delete_option( KaliCart_Bridge_Commerce_Consent::OPTION );
 	update_option( 'kalicart_bridge_global_consent', false, false );
 	delete_option( 'kalicart_bridge_federation_registered_at' );
@@ -148,13 +155,45 @@ try {
 	$check( true === $granted['authorized'], 'Explicit grant did not set the provider authorization locally.' );
 	$check( 'pending' === $granted['receipt_status'], 'Transport failure did not leave a retryable pending receipt.' );
 	$check( in_array( [ $granted['consent_id'], 1 ], $scheduled_retries, true ), 'The 60-second receipt retry was not requested.' );
-	$check( in_array( [ $granted['consent_id'], 2 ], $scheduled_retries, true ), 'The five-minute receipt retry was not requested.' );
+	$check( ! in_array( [ $granted['consent_id'], 2 ], $scheduled_retries, true ), 'A later retry was scheduled before the preceding attempt ran.' );
+	$check( false !== has_action( 'init', [ 'KaliCart_Bridge_Commerce_Consent', 'recover_pending_receipts' ] ), 'Pending receipt recovery is not attached to plugin boot.' );
+	$check( false !== has_action( KaliCart_Bridge_Identity::CRON_HOOK, [ 'KaliCart_Bridge_Commerce_Consent', 'recover_pending_receipts' ] ), 'Pending receipt recovery is not attached to the daily heartbeat.' );
+
+	// A boot/heartbeat with a pending row must recreate its missing event. Then
+	// every retry chains exactly one later event, continuing into following days.
+	$recovery_before = count( array_filter( $scheduled_retries, static function( array $args ) use ( $granted ): bool {
+		return [ $granted['consent_id'], 1 ] === $args;
+	} ) );
+	KaliCart_Bridge_Commerce_Consent::recover_pending_receipts();
+	$recovery_after = count( array_filter( $scheduled_retries, static function( array $args ) use ( $granted ): bool {
+		return [ $granted['consent_id'], 1 ] === $args;
+	} ) );
+	$check( $recovery_before + 1 === $recovery_after, 'Boot/heartbeat recovery did not recreate the missing first retry event.' );
+	for ( $attempt = 1; $attempt <= 5; $attempt++ ) {
+		KaliCart_Bridge_Commerce_Consent::retry_receipt( $granted['consent_id'], $attempt );
+		$check( in_array( [ $granted['consent_id'], $attempt + 1 ], $scheduled_retries, true ), 'Retry attempt ' . $attempt . ' did not chain attempt ' . ( $attempt + 1 ) . '.' );
+	}
+	$expected_delays = [ 1 => 60, 2 => 300, 3 => 1800, 4 => 7200, 5 => 43200, 6 => 86400 ];
+	foreach ( $expected_delays as $attempt => $expected_delay ) {
+		$events = $scheduled_at[ $attempt ] ?? [];
+		$check( ! empty( $events ), 'No schedule timestamp was captured for retry attempt ' . $attempt . '.' );
+		if ( ! empty( $events ) ) {
+			$observed = end( $events ) - time();
+			$check( abs( $observed - $expected_delay ) <= 5, 'Retry attempt ' . $attempt . ' used an unexpected backoff.' );
+		}
+	}
 
 	$delivery_mode = 'accepted';
+	KaliCart_Bridge_Commerce_Consent::retry_receipt( $granted['consent_id'], 6 );
 	$again = KaliCart_Bridge_Commerce_Consent::record_action( KaliCart_Bridge_Commerce_Consent::PROVIDER_OPENAI, 'granted', get_current_user_id() );
 	$check( $granted['consent_id'] === $again['consent_id'], 'Retrying the same grant created a second consent ID.' );
 	$check( true === ( $again['idempotent'] ?? false ), 'The repeated grant was not reported as idempotent.' );
 	$check( 'accepted' === $again['receipt_status'], 'The idempotent grant did not redeliver its pending receipt.' );
+	$check( 0 === (int) $again['retry_attempt'] && empty( $again['next_retry_at_utc'] ), 'Accepted delivery did not clear retry metadata.' );
+
+	$admin_js = (string) file_get_contents( trailingslashit( $test_root ) . 'admin/assets/admin.js' );
+	$check( false !== strpos( $admin_js, "state.receipt_status === 'accepted' && state.global_receipt_status" ), 'Provider UI can still display a Global status before local delivery is acknowledged.' );
+	$check( false !== strpos( $admin_js, 'awaiting delivery to KaliCart Global' ), 'Provider UI lacks the truthful pending-delivery fallback.' );
 
 	$grant_row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE consent_id=%s", $granted['consent_id'] ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- exact plugin-owned table.
 	$immutable = [
@@ -206,7 +245,7 @@ try {
 	remove_filter( 'pre_http_request', $intercept, 10 );
 	remove_filter( 'pre_schedule_event', $intercept_schedule, 10 );
 	foreach ( array_filter( $created_ids ) as $consent_id ) {
-		foreach ( [ 1, 2 ] as $attempt ) {
+		foreach ( range( 1, 8 ) as $attempt ) {
 			$timestamp = wp_next_scheduled( KaliCart_Bridge_Commerce_Consent::RETRY_HOOK, [ $consent_id, $attempt ] );
 			if ( $timestamp ) {
 				wp_unschedule_event( $timestamp, KaliCart_Bridge_Commerce_Consent::RETRY_HOOK, [ $consent_id, $attempt ] );

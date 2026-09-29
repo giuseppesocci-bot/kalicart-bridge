@@ -589,6 +589,7 @@
     const state        = KaliBridge.provider_consent || {};
     const globalActive = Boolean( KaliBridge.provider_global_active );
     const authorized   = state.authorized === true;
+    block.classList.toggle( 'kali-provider-consent--active', authorized );
     // 1.0.139: prima dell'attivazione il canale si autorizza nella casella del flusso di
     // attivazione (sopra); qui la sezione serve a chi e' gia' attivo o ha uno storico.
     block.style.display = ( ! globalActive && ! state.consent_id ) ? 'none' : '';
@@ -604,6 +605,8 @@
 
     if ( ! state.consent_id ) {
       if ( currentBox ) currentBox.style.display = 'none';
+      const evidenceId = $( 'providerConsentEvidenceId' );
+      if ( evidenceId ) evidenceId.textContent = '';
       return;
     }
 
@@ -615,20 +618,26 @@
       ? ( KaliBridge.i18n?.provider_authorized_on || 'Authorized on' )
       : ( KaliBridge.i18n?.provider_revoked_on || 'Revoked on' );
     const receiptLabels = {
-      pending:  KaliBridge.i18n?.provider_receipt_pending || 'pending delivery',
+      pending:  KaliBridge.i18n?.provider_receipt_pending || 'awaiting delivery to KaliCart Global',
       accepted: KaliBridge.i18n?.provider_receipt_accepted || 'accepted by KaliCart Global',
       failed:   KaliBridge.i18n?.provider_receipt_failed || 'delivery failed',
       global_pending:  KaliBridge.i18n?.provider_receipt_received || 'received by KaliCart Global; verification pending',
       global_verified: KaliBridge.i18n?.provider_receipt_verified || 'verified by KaliCart Global',
       global_rejected: KaliBridge.i18n?.provider_receipt_rejected || 'rejected by KaliCart Global'
     };
-    const globalReceiptKey = state.global_receipt_status ? 'global_' + state.global_receipt_status : '';
+    // A Global status is meaningful only after the local POST was acknowledged.
+    // A locally pending 409 must remain "awaiting delivery", not "received".
+    const globalReceiptKey = state.receipt_status === 'accepted' && state.global_receipt_status
+      ? 'global_' + state.global_receipt_status
+      : '';
     const receipt = receiptLabels[ globalReceiptKey ] || receiptLabels[ state.receipt_status ] || state.receipt_status || '—';
     if ( status ) {
-      status.innerHTML = '<strong>' + esc( actionLabel ) + ' ' + esc( when ) + '</strong>'
-        + '<div>' + esc( KaliBridge.i18n?.provider_receipt || 'Receipt' ) + ': ' + esc( receipt ) + '</div>'
-        + '<div><code>' + esc( state.terms_version || '' ) + '</code> &middot; <code>' + esc( state.consent_id ) + '</code></div>';
+      status.innerHTML = '<span class="kali-consent-summary__status"><strong>' + esc( actionLabel ) + ' ' + esc( when ) + '</strong></span>'
+        + '<span class="kali-consent-summary__meta"><code>' + esc( state.terms_version || '' ) + '</code></span>'
+        + '<span class="kali-consent-summary__meta">' + esc( KaliBridge.i18n?.provider_receipt || 'Receipt' ) + ': ' + esc( receipt ) + '</span>';
     }
+    const evidenceId = $( 'providerConsentEvidenceId' );
+    if ( evidenceId ) evidenceId.textContent = state.consent_id || '';
   }
 
   function providerConsentRequest( action, extra ) {
