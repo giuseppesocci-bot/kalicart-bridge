@@ -107,6 +107,14 @@ try {
 	$tabs_position     = strpos( $admin_page, '<!-- TABS -->' );
 	$check( false !== $provider_position && false !== $tabs_position && $provider_position < $tabs_position, 'Provider authorization is not always visible above the tabbed merchant-feed UI.' );
 	$check( false !== strpos( $admin_page, 'id="providerConsentCheckbox" value="1">' ), 'Provider authorization checkbox is missing or preselected.' );
+	$check( false === strpos( $admin_page, 'providerConsentEvidenceId' ), 'The dashboard still renders an empty consent ID field.' );
+	$check( false !== strpos( $admin_page, 'class="kali-external-visibility__header"' ), 'External visibility is still rendered as an undifferentiated horizontal strip.' );
+	$check( false !== strpos( $admin_page, '<details class="kali-external-visibility__help">' ), 'External visibility explanation is not available on demand.' );
+	KaliCart_Bridge_Admin::enqueue_assets( 'toplevel_page_kalicart-bridge' );
+	$style_version  = (string) ( wp_styles()->registered['kalicart-bridge-admin']->ver ?? '' );
+	$script_version = (string) ( wp_scripts()->registered['kalicart-bridge-admin']->ver ?? '' );
+	$check( 0 === strpos( $style_version, KALICART_BRIDGE_VERSION . '.' ) && KALICART_BRIDGE_VERSION !== $style_version, 'Admin CSS is still keyed only by the plugin version and can remain stale during a release candidate.' );
+	$check( 0 === strpos( $script_version, KALICART_BRIDGE_VERSION . '.' ) && KALICART_BRIDGE_VERSION !== $script_version, 'Admin JavaScript is still keyed only by the plugin version and can remain stale during a release candidate.' );
 	$mo_expectations = [
 		'it_IT' => [ 'provider' => 'Canali di distribuzione federata', 'pending' => 'in attesa di consegna a KaliCart Global' ],
 		'de_DE' => [ 'provider' => 'Föderierte Vertriebskanäle', 'pending' => 'Übermittlung an KaliCart Global ausstehend' ],
@@ -194,6 +202,11 @@ try {
 	$admin_js = (string) file_get_contents( trailingslashit( $test_root ) . 'admin/assets/admin.js' );
 	$check( false !== strpos( $admin_js, "state.receipt_status === 'accepted' && state.global_receipt_status" ), 'Provider UI can still display a Global status before local delivery is acknowledged.' );
 	$check( false !== strpos( $admin_js, 'awaiting delivery to KaliCart Global' ), 'Provider UI lacks the truthful pending-delivery fallback.' );
+	$check( false === strpos( $admin_js, 'providerConsentEvidenceId' ), 'Admin JavaScript still targets the removed consent ID field.' );
+	$check( false !== strpos( $admin_js, 'class="kali-visibility-facts"' ), 'External visibility results are not rendered as responsive status facts.' );
+	$check( false !== strpos( $admin_js, 'loadExternalVisibility();' ), 'External visibility does not load its latest observation automatically.' );
+	$admin_css = (string) file_get_contents( trailingslashit( $test_root ) . 'admin/assets/admin.css' );
+	$check( false !== strpos( $admin_css, '.kali-visibility-facts' ) && false !== strpos( $admin_css, 'grid-template-columns: repeat(2, minmax(0, 1fr))' ), 'External visibility lacks its responsive status grid.' );
 
 	$grant_row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE consent_id=%s", $granted['consent_id'] ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- exact plugin-owned table.
 	$immutable = [
@@ -238,6 +251,8 @@ try {
 	$report = [
 		'grant_receipt'       => $again['receipt_status'],
 		'revoke_receipt'      => $revoked['receipt_status'],
+		'admin_css_version'    => $style_version,
+		'admin_js_version'     => $script_version,
 		'payload_count'       => count( $payloads ),
 		'hash_chain_verified' => empty( $failures ),
 	];

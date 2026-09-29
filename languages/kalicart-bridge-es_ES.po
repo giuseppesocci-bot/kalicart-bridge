@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KaliCart Bridge 1.0.132\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kalicart-bridge\n"
-"POT-Creation-Date: 2026-09-29T10:52:06+02:00\n"
+"POT-Creation-Date: 2026-09-29T12:37:43+02:00\n"
 "PO-Revision-Date: 2026-09-14 09:00+0200\n"
 "Last-Translator: KaliCart <giuso@kalicart.com>\n"
 "Language-Team: Spanish\n"
@@ -116,11 +116,19 @@ msgstr ""
 "Usa el banner del Catálogo Federado de arriba para gestionar el "
 "consentimiento."
 
-#: admin/admin-page.php:93
+#: admin/admin-page.php:96
+msgid "External visibility"
+msgstr "Visibilidad externa"
+
+#: admin/admin-page.php:100
 msgid "Check external visibility"
 msgstr "Comprobar la visibilidad externa"
 
-#: admin/admin-page.php:94
+#: admin/admin-page.php:105
+msgid "What this check covers"
+msgstr "Qué comprueba esta verificación"
+
+#: admin/admin-page.php:106
 msgid ""
 "Shows KaliCart Global’s latest periodic observation of your discovery "
 "endpoint — not a live scan. It checks discovery reachability only, not MCP, "
@@ -131,11 +139,11 @@ msgstr ""
 "comprueba la accesibilidad de discovery, no MCP, el feed de ChatGPT ni el "
 "checkout."
 
-#: admin/admin-page.php:100 includes/class-admin.php:215
+#: admin/admin-page.php:112 includes/class-admin.php:223
 msgid "Heads up"
 msgstr "Atención"
 
-#: admin/admin-page.php:101
+#: admin/admin-page.php:113
 msgid ""
 "Revoking removes your catalog from KaliCart Global federated search. Agents "
 "using the federated index will no longer discover your products there. Your "
@@ -146,19 +154,19 @@ msgstr ""
 "Tus datos quedan aparcados, no eliminados, y se restauran si vuelves a "
 "activar."
 
-#: admin/admin-page.php:103
+#: admin/admin-page.php:115
 msgid "Yes, revoke consent"
 msgstr "Sí, revocar el consentimiento"
 
-#: admin/admin-page.php:104
+#: admin/admin-page.php:116
 msgid "Keep my catalog federated"
 msgstr "Mantener mi catálogo federado"
 
-#: admin/admin-page.php:117
+#: admin/admin-page.php:129
 msgid "Federated distribution channels"
 msgstr "Canales de distribución federada"
 
-#: admin/admin-page.php:118
+#: admin/admin-page.php:130
 msgid ""
 "These optional authorizations allow KaliCart Global to distribute your "
 "public product catalog through a named external system. They are separate "
@@ -170,7 +178,7 @@ msgstr ""
 "independientes de la adhesión al Catálogo Federado y del feed directo del "
 "comercio configurado en la pestaña Feed de ChatGPT."
 
-#: admin/admin-page.php:124
+#: admin/admin-page.php:136
 msgid ""
 "Activate the Federated Catalog above before authorizing this distribution "
 "channel."
@@ -179,7 +187,7 @@ msgstr ""
 "de distribución."
 
 #. translators: 1: consent terms version, 2: opening Privacy Notice link, 3: closing link, 4: privacy version, 5: opening Global Terms link, 6: closing link, 7: global terms version
-#: admin/admin-page.php:136
+#: admin/admin-page.php:148
 #, php-format
 msgid ""
 "Authorization terms: %1$s · %2$sPrivacy Notice%3$s (%4$s) · %5$sKaliCart "
@@ -188,19 +196,19 @@ msgstr ""
 "Condiciones de la autorización: %1$s · %2$sAviso de privacidad%3$s (%4$s) · "
 "%5$sCondiciones de KaliCart Global%6$s (%7$s)"
 
-#: admin/admin-page.php:147
+#: admin/admin-page.php:159
 msgid "Authorize this channel"
 msgstr "Autorizar este canal"
 
-#: admin/admin-page.php:153
+#: admin/admin-page.php:165
 msgid "Revoke channel authorization"
 msgstr "Revocar la autorización del canal"
 
-#: admin/admin-page.php:166
+#: admin/admin-page.php:178
 msgid "Authorization details and proof"
 msgstr "Detalles y prueba de la autorización"
 
-#: admin/admin-page.php:167
+#: admin/admin-page.php:179
 msgid ""
 "Your request has been recorded. Inclusion in the index built for OpenAI is "
 "not automatic: products or categories that OpenAI's commerce policies do not "
@@ -212,23 +220,19 @@ msgstr ""
 "comerciales de OpenAI no admiten pueden dejar tu tienda fuera de ese índice. "
 "Tu participación en el Catálogo Federado no cambia."
 
-#: admin/admin-page.php:168
-msgid "Consent ID"
-msgstr "ID del consentimiento"
-
-#: admin/admin-page.php:170
+#: admin/admin-page.php:181
 msgid "Export proof (JSON)"
 msgstr "Exportar la prueba (JSON)"
 
-#: admin/admin-page.php:171
+#: admin/admin-page.php:182
 msgid "Export proof (CSV)"
 msgstr "Exportar la prueba (CSV)"
 
-#: admin/admin-page.php:177
+#: admin/admin-page.php:188
 msgid "Confirm channel revocation"
 msgstr "Confirmar la revocación del canal"
 
-#: admin/admin-page.php:178
+#: admin/admin-page.php:189
 msgid ""
 "This stops authorization for this external channel only. Your Federated "
 "Catalog participation remains active, and the prior authorization stays in "
@@ -238,121 +242,121 @@ msgstr ""
 "participación en el Catálogo Federado permanece activa y la autorización "
 "anterior se conserva en el registro de pruebas."
 
-#: admin/admin-page.php:180
+#: admin/admin-page.php:191
 msgid "Yes, revoke this channel"
 msgstr "Sí, revocar este canal"
 
-#: admin/admin-page.php:181
+#: admin/admin-page.php:192
 msgid "Keep this channel authorized"
 msgstr "Mantener autorizado este canal"
 
-#: admin/admin-page.php:189
+#: admin/admin-page.php:200
 msgid "Overview"
 msgstr "Resumen"
 
-#: admin/admin-page.php:190
+#: admin/admin-page.php:201
 msgid "Quality Signals"
 msgstr "Señales de calidad"
 
-#: admin/admin-page.php:191
+#: admin/admin-page.php:202
 msgid "Endpoints"
 msgstr "Endpoints"
 
-#: admin/admin-page.php:193
+#: admin/admin-page.php:204
 msgid "Settings"
 msgstr "Ajustes"
 
-#: admin/admin-page.php:194
+#: admin/admin-page.php:205
 msgid "Coupons"
 msgstr "Cupones"
 
-#: admin/admin-page.php:195
+#: admin/admin-page.php:206
 msgid "Stats"
 msgstr "Estadísticas"
 
-#: admin/admin-page.php:202
+#: admin/admin-page.php:213
 msgid "Analysing catalog…"
 msgstr "Analizando el catálogo…"
 
-#: admin/admin-page.php:212
+#: admin/admin-page.php:223
 msgid "quality score"
 msgstr "puntuación de calidad"
 
-#: admin/admin-page.php:215
+#: admin/admin-page.php:226
 msgid "Catalog coverage"
 msgstr "Cobertura del catálogo"
 
-#: admin/admin-page.php:217 admin/admin-page.php:255
+#: admin/admin-page.php:228 admin/admin-page.php:266
 msgid "In stock"
 msgstr "En stock"
 
-#: admin/admin-page.php:222
+#: admin/admin-page.php:233
 msgid "Images"
 msgstr "Imágenes"
 
-#: admin/admin-page.php:227
+#: admin/admin-page.php:238
 msgid "Description"
 msgstr "Descripción"
 
-#: admin/admin-page.php:243
+#: admin/admin-page.php:254
 msgid "Total products"
 msgstr "Productos totales"
 
-#: admin/admin-page.php:247
+#: admin/admin-page.php:258
 msgid "Healthy"
 msgstr "Correctos"
 
-#: admin/admin-page.php:251
+#: admin/admin-page.php:262
 msgid "Quality signals"
 msgstr "Señales de calidad"
 
-#: admin/admin-page.php:259 includes/class-admin.php:210
+#: admin/admin-page.php:270 includes/class-admin.php:218
 #: includes/class-quarantine.php:388
 msgid "Out of stock"
 msgstr "Agotados"
 
-#: admin/admin-page.php:263 includes/class-admin.php:209
+#: admin/admin-page.php:274 includes/class-admin.php:217
 msgid "No SKU"
 msgstr "Sin SKU"
 
-#: admin/admin-page.php:268
+#: admin/admin-page.php:279
 msgid "Catalog issues"
 msgstr "Problemas del catálogo"
 
-#: admin/admin-page.php:272
+#: admin/admin-page.php:283
 msgid "Bad title"
 msgstr "Título incorrecto"
 
-#: admin/admin-page.php:276 includes/class-admin.php:208
+#: admin/admin-page.php:287 includes/class-admin.php:216
 msgid "No image"
 msgstr "Sin imagen"
 
-#: admin/admin-page.php:280 includes/class-admin.php:205
+#: admin/admin-page.php:291 includes/class-admin.php:213
 msgid "No description"
 msgstr "Sin descripción"
 
-#: admin/admin-page.php:284 includes/class-admin.php:206
+#: admin/admin-page.php:295 includes/class-admin.php:214
 #: includes/class-quarantine.php:304
 msgid "No category"
 msgstr "Sin categoría"
 
-#: admin/admin-page.php:288
+#: admin/admin-page.php:299
 msgid "Zero price"
 msgstr "Precio cero"
 
-#: admin/admin-page.php:293
+#: admin/admin-page.php:304
 msgid "Suggestions"
 msgstr "Sugerencias"
 
-#: admin/admin-page.php:299
+#: admin/admin-page.php:310
 msgid "Refresh"
 msgstr "Actualizar"
 
-#: admin/admin-page.php:308
+#: admin/admin-page.php:319
 msgid "Products with quality signals"
 msgstr "Productos con señales de calidad"
 
-#: admin/admin-page.php:311
+#: admin/admin-page.php:322
 msgid ""
 "Nothing here is blocked or hidden: these products stay fully served to "
 "agents in catalog, search and MCP. Their issues travel with the data as "
@@ -367,22 +371,22 @@ msgstr ""
 "aumentar la computabilidad - usa los filtros de abajo para trabajar cada "
 "problema en la lista nativa de productos."
 
-#: admin/admin-page.php:317
+#: admin/admin-page.php:328
 msgid "API Endpoints"
 msgstr "Endpoints de la API"
 
 #. translators: %s: the /health endpoint path, shown as code
-#: admin/admin-page.php:318
+#: admin/admin-page.php:329
 #, php-format
 msgid "Read-only REST surfaces. No authentication required except %s."
 msgstr ""
 "Superficies REST de solo lectura. No se requiere autenticación excepto %s."
 
-#: admin/admin-page.php:357
+#: admin/admin-page.php:368
 msgid "Refund and Returns Policy URL"
 msgstr "URL de la política de reembolsos y devoluciones"
 
-#: admin/admin-page.php:359
+#: admin/admin-page.php:370
 msgid ""
 "Add your refund and returns policy page so AI agents can inform buyers about "
 "your return conditions. Without this, the catalog health score is reduced by "
@@ -393,19 +397,19 @@ msgstr ""
 "devolución. Sin esto, la puntuación de salud del catálogo se reduce en 10 "
 "puntos."
 
-#: admin/admin-page.php:371 includes/class-admin.php:216
+#: admin/admin-page.php:382 includes/class-admin.php:224
 msgid "Test link:"
 msgstr "Enlace de prueba:"
 
-#: admin/admin-page.php:376
+#: admin/admin-page.php:387
 msgid "Signal settings"
 msgstr "Ajustes de señales"
 
-#: admin/admin-page.php:382
+#: admin/admin-page.php:393
 msgid "AI catalog badge"
 msgstr "Insignia de catálogo IA"
 
-#: admin/admin-page.php:383
+#: admin/admin-page.php:394
 msgid ""
 "Speaking HTML badge visible on the storefront — machine-readable anchor for "
 "AI agents."
@@ -413,46 +417,46 @@ msgstr ""
 "Insignia HTML parlante visible en la tienda — ancla legible por máquinas "
 "para los agentes de IA."
 
-#: admin/admin-page.php:391
+#: admin/admin-page.php:402
 msgid "Position"
 msgstr "Posición"
 
-#: admin/admin-page.php:394
+#: admin/admin-page.php:405
 msgid "Top left"
 msgstr "Arriba a la izquierda"
 
-#: admin/admin-page.php:394
+#: admin/admin-page.php:405
 msgid "Top right"
 msgstr "Arriba a la derecha"
 
-#: admin/admin-page.php:394
+#: admin/admin-page.php:405
 msgid "Bottom left"
 msgstr "Abajo a la izquierda"
 
-#: admin/admin-page.php:394
+#: admin/admin-page.php:405
 msgid "Bottom right"
 msgstr "Abajo a la derecha"
 
-#: admin/admin-page.php:407
+#: admin/admin-page.php:418
 msgid "robots.txt directive"
 msgstr "Directiva robots.txt"
 
 #. translators: %s: a robots.txt Allow directive, shown as code
-#: admin/admin-page.php:408
+#: admin/admin-page.php:419
 #, php-format
 msgid "Adds %s to robots.txt."
 msgstr "Añade %s a robots.txt."
 
-#: admin/admin-page.php:415
+#: admin/admin-page.php:426
 msgid "Checkout sessions"
 msgstr "Sesiones de pago"
 
-#: admin/admin-page.php:415
+#: admin/admin-page.php:426
 msgid "optional"
 msgstr "opcional"
 
 #. translators: %s: the POST /checkout/session endpoint, shown as code
-#: admin/admin-page.php:416
+#: admin/admin-page.php:427
 #, php-format
 msgid ""
 "Enables %s — agent creates a session, merchant gets a checkout URL, human "
@@ -463,22 +467,22 @@ msgstr ""
 "pago, el humano completa el pago en WooCommerce. Sin OAuth, sin PII, sin "
 "pago del lado del agente."
 
-#: admin/admin-page.php:423
+#: admin/admin-page.php:434
 msgid "Agentic sitemap"
 msgstr "Sitemap agéntico"
 
 #. translators: %s: a link to the agentic sitemap file
-#: admin/admin-page.php:424
+#: admin/admin-page.php:435
 #, php-format
 msgid "Serves %s with annotated catalog endpoints."
 msgstr "Sirve %s con endpoints del catálogo anotados."
 
-#: admin/admin-page.php:431
+#: admin/admin-page.php:442
 msgid "Agent discovery files"
 msgstr "Archivos de discovery para agentes"
 
 #. translators: %1$s and %2$s: .well-known discovery file paths, shown as code
-#: admin/admin-page.php:432
+#: admin/admin-page.php:443
 #, php-format
 msgid ""
 "Writes %1$s and %2$s — standard discovery points for AI agents that probe "
@@ -487,15 +491,15 @@ msgstr ""
 "Escribe %1$s y %2$s — puntos de discovery estándar para los agentes de IA "
 "que sondean el sitio antes de navegarlo."
 
-#: admin/admin-page.php:437
+#: admin/admin-page.php:448
 msgid "Agent discovery hints"
 msgstr "Pistas de discovery para agentes"
 
-#: admin/admin-page.php:441
+#: admin/admin-page.php:452
 msgid "Search form link"
 msgstr "Enlace en el formulario de búsqueda"
 
-#: admin/admin-page.php:442
+#: admin/admin-page.php:453
 msgid ""
 "Appends a visible \"Structured catalog for AI agents\" link after every "
 "search form."
@@ -503,11 +507,11 @@ msgstr ""
 "Añade un enlace visible «Catálogo estructurado para agentes de IA» después "
 "de cada formulario de búsqueda."
 
-#: admin/admin-page.php:449
+#: admin/admin-page.php:460
 msgid "Search results link"
 msgstr "Enlace en los resultados de búsqueda"
 
-#: admin/admin-page.php:450
+#: admin/admin-page.php:461
 msgid ""
 "Shows a minimal \"Machine-readable catalog\" link at the bottom of search "
 "pages, with or without results."
@@ -515,11 +519,11 @@ msgstr ""
 "Muestra un enlace mínimo «Catálogo legible por máquinas» al final de las "
 "páginas de búsqueda, con o sin resultados."
 
-#: admin/admin-page.php:457
+#: admin/admin-page.php:468
 msgid "Category & product page links"
 msgstr "Enlaces en las páginas de categoría y producto"
 
-#: admin/admin-page.php:458
+#: admin/admin-page.php:469
 msgid ""
 "Shows a \"Machine-readable category data\" link on category pages and a "
 "\"Machine-readable product data\" link above the product meta on single "
@@ -530,19 +534,19 @@ msgstr ""
 "los metadatos del producto en las páginas de producto — ambos apuntan al "
 "endpoint de API estructurado."
 
-#: admin/admin-page.php:466 admin/admin-page.php:496
+#: admin/admin-page.php:477 admin/admin-page.php:507
 msgid "Save settings"
 msgstr "Guardar ajustes"
 
-#: admin/admin-page.php:467 admin/admin-page.php:497
+#: admin/admin-page.php:478 admin/admin-page.php:508
 msgid "Saved"
 msgstr "Guardado"
 
-#: admin/admin-page.php:474
+#: admin/admin-page.php:485
 msgid "Agent coupon exposure"
 msgstr "Exposición de cupones a los agentes"
 
-#: admin/admin-page.php:476
+#: admin/admin-page.php:487
 msgid ""
 "By default the catalog tells agents nothing about your coupons. Turn this on "
 "and pick exactly which active coupons agents may see. Selected coupons are "
@@ -557,11 +561,11 @@ msgstr ""
 "si un cupón se aplica realmente. Los códigos privados, dirigidos o de "
 "newsletter que no marques nunca se exponen."
 
-#: admin/admin-page.php:482
+#: admin/admin-page.php:493
 msgid "Expose coupons to agents"
 msgstr "Exponer cupones a los agentes"
 
-#: admin/admin-page.php:483
+#: admin/admin-page.php:494
 msgid ""
 "Master switch. When off, active_coupons is always empty regardless of "
 "selection below."
@@ -569,25 +573,25 @@ msgstr ""
 "Interruptor general. Cuando está apagado, active_coupons queda siempre vacío "
 "independientemente de la selección de abajo."
 
-#: admin/admin-page.php:490
+#: admin/admin-page.php:501
 msgid "Eligible coupons"
 msgstr "Cupones elegibles"
 
-#: admin/admin-page.php:517
+#: admin/admin-page.php:528
 msgid "AI assistants and your store"
 msgstr "Asistentes de IA y tu tienda"
 
-#: admin/admin-page.php:518
+#: admin/admin-page.php:529
 msgid "Beta"
 msgstr "Beta"
 
 #. translators: %d: number of days observed
-#: admin/admin-page.php:522
+#: admin/admin-page.php:533
 #, php-format
 msgid "Last %d days observed · counts of requests, not of people."
 msgstr "Últimos %d días observados · recuentos de solicitudes, no de personas."
 
-#: admin/admin-page.php:524
+#: admin/admin-page.php:535
 msgid ""
 "Beta: this section is new and will change in future versions. The counts are "
 "real requests to your site; what we cannot yet say with certainty is how "
@@ -597,7 +601,7 @@ msgstr ""
 "son solicitudes reales a tu sitio; lo que aún no podemos decir con certeza "
 "es cuánto pesan en tus pedidos."
 
-#: admin/admin-page.php:527
+#: admin/admin-page.php:538
 msgid ""
 "Counting is turned off: this section is not measuring anything. That is not "
 "the same as no assistant having visited."
@@ -605,31 +609,31 @@ msgstr ""
 "El recuento está desactivado: esta sección no está midiendo nada. No "
 "significa que ningún asistente haya pasado."
 
-#: admin/admin-page.php:533
+#: admin/admin-page.php:544
 msgid "Activity observed on your site"
 msgstr "Actividad observada en tu sitio"
 
-#: admin/admin-page.php:534
+#: admin/admin-page.php:545
 msgid "Recorded by KaliCart"
 msgstr "Datos registrados por KaliCart"
 
-#: admin/admin-page.php:542
+#: admin/admin-page.php:553
 msgid "requests to the KaliCart structured catalog"
 msgstr "solicitudes al catálogo estructurado KaliCart"
 
-#: admin/admin-page.php:543
+#: admin/admin-page.php:554
 msgid "Available only while the Bridge is active."
 msgstr "Disponible solo mientras el Bridge está activo."
 
-#: admin/admin-page.php:547
+#: admin/admin-page.php:558
 msgid "Automated reads by AI providers"
 msgstr "Lecturas automáticas de los proveedores de IA"
 
-#: admin/admin-page.php:556
+#: admin/admin-page.php:567
 msgid "Lookups while a person was using an assistant"
 msgstr "Consultas durante el uso de un asistente"
 
-#: admin/admin-page.php:566
+#: admin/admin-page.php:577
 msgid ""
 "In the selected period, on this store, no catalog lookups were observed "
 "while a person was using an assistant."
@@ -638,45 +642,45 @@ msgstr ""
 "catálogo durante el uso de un asistente."
 
 #. translators: %s: number of requests
-#: admin/admin-page.php:572
+#: admin/admin-page.php:583
 #, php-format
 msgid "Agents that do not identify themselves: %s requests."
 msgstr "Agentes que no se identifican: %s solicitudes."
 
-#: admin/admin-page.php:578
+#: admin/admin-page.php:589
 msgid "requests to your store pages"
 msgstr "solicitudes a las páginas de tu tienda"
 
-#: admin/admin-page.php:579
+#: admin/admin-page.php:590
 msgid "These would exist and be reachable without KaliCart too."
 msgstr "Existirían y serían accesibles también sin KaliCart."
 
-#: admin/admin-page.php:593
+#: admin/admin-page.php:604
 msgid "Orders sourced from recognised assistants"
 msgstr "Pedidos con procedencia de asistentes reconocidos"
 
-#: admin/admin-page.php:594
+#: admin/admin-page.php:605
 msgid "WooCommerce order attribution"
 msgstr "Atribución de pedidos de WooCommerce"
 
 #. translators: %s: assistant name
-#: admin/admin-page.php:603
+#: admin/admin-page.php:614
 #, php-format
 msgid "orders sourced from %s"
 msgstr "pedidos con procedencia de %s"
 
 #. translators: 1: paid orders, 2: net value
-#: admin/admin-page.php:606
+#: admin/admin-page.php:617
 #, php-format
 msgid "%1$s with payment recorded · %2$s net of refunds"
 msgstr "%1$s con pago registrado · %2$s neto de reembolsos"
 
-#: admin/admin-page.php:612
+#: admin/admin-page.php:623
 msgid "No orders with an assistant as their recorded source in this period."
 msgstr ""
 "Ningún pedido con un asistente como procedencia registrada en este periodo."
 
-#: admin/admin-page.php:614
+#: admin/admin-page.php:625
 msgid ""
 "WooCommerce records the source; KaliCart recognises a maintained list of "
 "known domains, which can fall behind when new services appear."
@@ -685,15 +689,15 @@ msgstr ""
 "de dominios conocidos, que puede quedarse atrás cuando aparecen servicios "
 "nuevos."
 
-#: admin/admin-page.php:625
+#: admin/admin-page.php:636
 msgid "KaliCart's impact on sales"
 msgstr "Impacto de KaliCart en las ventas"
 
-#: admin/admin-page.php:627
+#: admin/admin-page.php:638
 msgid "Not estimable with the available data."
 msgstr "No estimable con los datos disponibles."
 
-#: admin/admin-page.php:628
+#: admin/admin-page.php:639
 msgid ""
 "Catalog requests and orders come from different systems and share no "
 "identifier that would let them be linked: the bot queries from the "
@@ -705,11 +709,11 @@ msgstr ""
 "los servidores del proveedor, el cliente compra desde su propio navegador, a "
 "menudo días después."
 
-#: admin/admin-page.php:633
+#: admin/admin-page.php:644
 msgid "Agent checkout"
 msgstr "Checkout asistido por agente"
 
-#: admin/admin-page.php:634
+#: admin/admin-page.php:645
 msgid ""
 "Last 30 days. Local counters only — no cloud. Orders created from a Bridge "
 "checkout session, through either classic checkout or Checkout Block, are "
@@ -719,7 +723,7 @@ msgstr ""
 "creados a partir de una sesión de checkout de Bridge, ya sea mediante el "
 "checkout clásico o Checkout Block, se vinculan con esa sesión."
 
-#: admin/admin-page.php:657
+#: admin/admin-page.php:668
 msgid ""
 "When an assistant builds the cart and completes the order on its own, with "
 "no human step, it will show up here. The Bridge already keeps that "
@@ -729,23 +733,23 @@ msgstr ""
 "sin paso humano, aparecerá aquí. El Bridge ya mantiene abierta esa "
 "posibilidad: hoy ningún asistente lo hace a escala."
 
-#: admin/admin-page.php:664
+#: admin/admin-page.php:675
 msgid "Sessions created"
 msgstr "Sesiones creadas"
 
-#: admin/admin-page.php:668
+#: admin/admin-page.php:679
 msgid "Carts loaded"
 msgstr "Carritos cargados"
 
-#: admin/admin-page.php:672
+#: admin/admin-page.php:683
 msgid "Orders linked"
 msgstr "Pedidos vinculados"
 
-#: admin/admin-page.php:676
+#: admin/admin-page.php:687
 msgid "Net value, payment confirmed"
 msgstr "Valor neto, pago confirmado"
 
-#: admin/admin-page.php:679
+#: admin/admin-page.php:690
 msgid ""
 "Cash on delivery, bank transfer and cheque orders are included in “Orders "
 "linked”, but excluded from net value unless WooCommerce records a payment "
@@ -1294,25 +1298,25 @@ msgstr ""
 msgid "Official documentation: %s."
 msgstr "Documentación oficial: %s."
 
-#: includes/class-admin.php:130
+#: includes/class-admin.php:137
 msgid "Unknown error"
 msgstr "Error desconocido"
 
-#: includes/class-admin.php:131
+#: includes/class-admin.php:138
 msgid "Registered on"
 msgstr "Registrado el"
 
 #. translators: %s: consent text identifier, e.g. federated-catalog-1.1
-#: includes/class-admin.php:133
+#: includes/class-admin.php:140
 #, php-format
 msgid "Consent text: %s"
 msgstr "Texto del consentimiento: %s"
 
-#: includes/class-admin.php:134
+#: includes/class-admin.php:141
 msgid "Consent given before version 1.0.139 (text v1)"
 msgstr "Consentimiento dado antes de la versión 1.0.139 (texto v1)"
 
-#: includes/class-admin.php:135
+#: includes/class-admin.php:142
 msgid ""
 "The OpenAI / ChatGPT channel authorization has been recorded as a separate "
 "act, with its own receipt."
@@ -1320,7 +1324,7 @@ msgstr ""
 "La autorización del canal OpenAI / ChatGPT se ha registrado como un acto "
 "separado, con su propio recibo."
 
-#: includes/class-admin.php:136
+#: includes/class-admin.php:143
 msgid ""
 "The Federated Catalog is active, but the channel authorization could not be "
 "recorded. You can authorize the channel in the section below."
@@ -1328,75 +1332,75 @@ msgstr ""
 "El Catálogo Federado está activo, pero no se ha podido registrar la "
 "autorización del canal. Puedes autorizar el canal en la sección de abajo."
 
-#: includes/class-admin.php:137
+#: includes/class-admin.php:144
 msgid "Tick the consent box above first."
 msgstr "Marca primero la casilla de consentimiento de arriba."
 
-#: includes/class-admin.php:138
+#: includes/class-admin.php:145
 msgid "Activation failed. Please try again."
 msgstr "La activación ha fallado. Inténtalo de nuevo."
 
-#: includes/class-admin.php:139
+#: includes/class-admin.php:146
 msgid ""
 "Activate the Federated Catalog before authorizing a distribution channel."
 msgstr ""
 "Activa el Catálogo Federado antes de autorizar un canal de distribución."
 
-#: includes/class-admin.php:140
+#: includes/class-admin.php:147
 msgid "Select the authorization checkbox first."
 msgstr "Marca primero la casilla de autorización."
 
-#: includes/class-admin.php:141
+#: includes/class-admin.php:148
 msgid "Authorization could not be recorded. Please try again."
 msgstr "No se pudo registrar la autorización. Inténtalo de nuevo."
 
-#: includes/class-admin.php:142
+#: includes/class-admin.php:149
 msgid "Revocation could not be recorded. Please try again."
 msgstr "No se pudo registrar la revocación. Inténtalo de nuevo."
 
-#: includes/class-admin.php:143
+#: includes/class-admin.php:150
 msgid "Authorized on"
 msgstr "Autorizado el"
 
-#: includes/class-admin.php:144
+#: includes/class-admin.php:151
 msgid "Revoked on"
 msgstr "Revocado el"
 
-#: includes/class-admin.php:145
+#: includes/class-admin.php:152
 msgid "Receipt"
 msgstr "Acuse de recibo"
 
-#: includes/class-admin.php:146
+#: includes/class-admin.php:153
 msgid "awaiting delivery to KaliCart Global"
 msgstr "en espera de entrega a KaliCart Global"
 
-#: includes/class-admin.php:147
+#: includes/class-admin.php:154
 msgid "accepted by KaliCart Global"
 msgstr "aceptado por KaliCart Global"
 
-#: includes/class-admin.php:148
+#: includes/class-admin.php:155
 msgid "delivery failed"
 msgstr "entrega fallida"
 
-#: includes/class-admin.php:149
+#: includes/class-admin.php:156
 msgid "received by KaliCart Global; verification pending"
 msgstr "recibido por KaliCart Global; verificación pendiente"
 
-#: includes/class-admin.php:150
+#: includes/class-admin.php:157
 msgid "verified by KaliCart Global"
 msgstr "verificado por KaliCart Global"
 
-#: includes/class-admin.php:151
+#: includes/class-admin.php:158
 msgid "rejected by KaliCart Global"
 msgstr "rechazado por KaliCart Global"
 
-#: includes/class-admin.php:152
+#: includes/class-admin.php:159
 msgid "Could not reach KaliCart Global. Try again in a moment."
 msgstr ""
 "No se pudo contactar con KaliCart Global. Inténtalo de nuevo dentro de un "
 "momento."
 
-#: includes/class-admin.php:153
+#: includes/class-admin.php:160
 msgid ""
 "Not observed from outside yet. Activate the Federated Catalog above to "
 "trigger a check."
@@ -1404,49 +1408,49 @@ msgstr ""
 "Todavía no se ha registrado ninguna observación desde el exterior. Activa el "
 "Catálogo Federado de arriba para iniciar una comprobación."
 
-#: includes/class-admin.php:154
+#: includes/class-admin.php:161
 msgid "Discovery reachable from outside:"
 msgstr "Discovery accesible desde el exterior:"
 
-#: includes/class-admin.php:155
+#: includes/class-admin.php:162
 msgid "Bridge detected:"
 msgstr "Bridge detectado:"
 
-#: includes/class-admin.php:156
+#: includes/class-admin.php:163
 msgid "Last checked:"
 msgstr "Última comprobación:"
 
-#: includes/class-admin.php:157
+#: includes/class-admin.php:164
 msgid "Reachable"
 msgstr "Accesible"
 
-#: includes/class-admin.php:158
+#: includes/class-admin.php:165
 msgid "Not reachable"
 msgstr "No accesible"
 
-#: includes/class-admin.php:159
+#: includes/class-admin.php:166
 msgid "Access from outside:"
 msgstr "Acceso desde el exterior:"
 
-#: includes/class-admin.php:160
+#: includes/class-admin.php:167
 msgid "Limited external access"
 msgstr "Acceso externo limitado"
 
 #. translators: %s: name of the service that protects the site, e.g. Cloudflare
-#: includes/class-admin.php:162
+#: includes/class-admin.php:169
 #, php-format
 msgid "anti-bot challenge from %s"
 msgstr "verificación anti-bot de %s"
 
-#: includes/class-admin.php:163
+#: includes/class-admin.php:170
 msgid "anti-bot challenge from the service that protects the site"
 msgstr "verificación anti-bot del servicio que protege el sitio"
 
-#: includes/class-admin.php:164
+#: includes/class-admin.php:171
 msgid "disallowed by your robots.txt"
 msgstr "prohibido por tu robots.txt"
 
-#: includes/class-admin.php:165
+#: includes/class-admin.php:172
 msgid ""
 "Your store stays in the KaliCart Federated Catalog with the last catalog "
 "read; price and availability cannot be verified live."
@@ -1454,7 +1458,7 @@ msgstr ""
 "Tu tienda sigue en el Catálogo federado de KaliCart con el último catálogo "
 "leído; precio y disponibilidad no se pueden verificar en vivo."
 
-#: includes/class-admin.php:166
+#: includes/class-admin.php:173
 msgid ""
 "Your catalog is not in the KaliCart Federated Catalog, because KaliCart "
 "Global cannot read it."
@@ -1462,14 +1466,14 @@ msgstr ""
 "Tu catálogo no está en el Catálogo federado de KaliCart, porque KaliCart "
 "Global no puede leerlo."
 
-#: includes/class-admin.php:167
+#: includes/class-admin.php:174
 msgid ""
 "Other automated clients, including AI agents, may receive the same challenge."
 msgstr ""
 "Otros clientes automatizados, incluidos los agentes de IA, pueden recibir la "
 "misma verificación."
 
-#: includes/class-admin.php:168
+#: includes/class-admin.php:175
 msgid ""
 "KaliCart Global respects your robots.txt and does not read the Bridge paths "
 "it disallows."
@@ -1477,63 +1481,67 @@ msgstr ""
 "KaliCart Global respeta tu robots.txt y no lee las rutas del Bridge que "
 "prohíbe."
 
-#: includes/class-admin.php:169
+#: includes/class-admin.php:176
 msgid "Unknown (the check was blocked)"
 msgstr "Desconocido (la comprobación fue bloqueada)"
 
-#: includes/class-admin.php:170
+#: includes/class-admin.php:177
 msgid "Never checked"
 msgstr "Nunca comprobado"
 
-#: includes/class-admin.php:171
+#: includes/class-admin.php:178
 msgid "This observation is more than 7 days old."
 msgstr "Esta observación se realizó hace más de 7 días."
 
+#: includes/class-admin.php:179
+msgid "Details and diagnosis"
+msgstr "Detalles y diagnóstico"
+
 #. translators: %d: number of days since the last external observation
-#: includes/class-admin.php:173
+#: includes/class-admin.php:181
 #, php-format
 msgid "%d day ago"
 msgstr "hace %d día"
 
 #. translators: %d: number of days since the last external observation
-#: includes/class-admin.php:175
+#: includes/class-admin.php:183
 #, php-format
 msgid "%d days ago"
 msgstr "hace %d días"
 
 #. translators: %d: number of hours since the last external observation
-#: includes/class-admin.php:177
+#: includes/class-admin.php:185
 #, php-format
 msgid "%d hour ago"
 msgstr "hace %d hora"
 
 #. translators: %d: number of hours since the last external observation
-#: includes/class-admin.php:179
+#: includes/class-admin.php:187
 #, php-format
 msgid "%d hours ago"
 msgstr "hace %d horas"
 
-#: includes/class-admin.php:180
+#: includes/class-admin.php:188
 msgid "just now"
 msgstr "ahora mismo"
 
-#: includes/class-admin.php:181
+#: includes/class-admin.php:189
 msgid "Store identity:"
 msgstr "Identidad de la tienda:"
 
-#: includes/class-admin.php:182
+#: includes/class-admin.php:190
 msgid "Verified"
 msgstr "Verificada"
 
-#: includes/class-admin.php:183
+#: includes/class-admin.php:191
 msgid "Verification pending"
 msgstr "Verificación pendiente"
 
-#: includes/class-admin.php:184
+#: includes/class-admin.php:192
 msgid "Verification failed"
 msgstr "Verificación fallida"
 
-#: includes/class-admin.php:185
+#: includes/class-admin.php:193
 msgid ""
 "Identity verified, but the catalog cannot be received yet: KaliCart Global "
 "cannot read it from outside."
@@ -1541,7 +1549,7 @@ msgstr ""
 "Identidad verificada, pero el catálogo aún no se puede recibir: KaliCart "
 "Global no puede leerlo desde fuera."
 
-#: includes/class-admin.php:186
+#: includes/class-admin.php:194
 msgid ""
 "KaliCart Global could not read this site to verify it. It retries "
 "automatically."
@@ -1549,7 +1557,7 @@ msgstr ""
 "KaliCart Global no pudo leer este sitio para verificarlo. Lo reintenta "
 "automáticamente."
 
-#: includes/class-admin.php:187
+#: includes/class-admin.php:195
 msgid ""
 "KaliCart Global read this site but did not find this installation’s key. It "
 "retries automatically."
@@ -1557,59 +1565,59 @@ msgstr ""
 "KaliCart Global leyó este sitio pero no encontró la clave de esta "
 "instalación. Lo reintenta automáticamente."
 
-#: includes/class-admin.php:188
+#: includes/class-admin.php:196
 msgid ""
 "KaliCart Global has not received a signal from this store in the last 7 days."
 msgstr ""
 "KaliCart Global no ha recibido ninguna señal de esta tienda en los últimos 7 "
 "días."
 
-#: includes/class-admin.php:189
+#: includes/class-admin.php:197
 msgid "Yes"
 msgstr "Sí"
 
-#: includes/class-admin.php:190
+#: includes/class-admin.php:198
 msgid "No"
 msgstr "No"
 
-#: includes/class-admin.php:191
+#: includes/class-admin.php:199
 msgid "Error:"
 msgstr "Error:"
 
-#: includes/class-admin.php:192
+#: includes/class-admin.php:200
 msgid "Loading…"
 msgstr "Cargando…"
 
-#: includes/class-admin.php:193
+#: includes/class-admin.php:201
 msgid "No issues. Catalog looks great!"
 msgstr "Sin problemas. ¡El catálogo se ve genial!"
 
-#: includes/class-admin.php:194
+#: includes/class-admin.php:202
 msgid "products"
 msgstr "productos"
 
-#: includes/class-admin.php:195
+#: includes/class-admin.php:203
 msgid "Configure"
 msgstr "Configurar"
 
-#: includes/class-admin.php:196
+#: includes/class-admin.php:204
 msgid "Updated:"
 msgstr "Actualizado:"
 
-#: includes/class-admin.php:197
+#: includes/class-admin.php:205
 msgid "No products for"
 msgstr "Ningún producto para"
 
-#: includes/class-admin.php:198
+#: includes/class-admin.php:206
 msgid "No products in quarantine."
 msgstr "Ningún producto en cuarentena."
 
-#: includes/class-admin.php:199
+#: includes/class-admin.php:207
 msgid "Showing"
 msgstr "Mostrando"
 
 #. translators: 1: number of items shown, 2: total number of items
-#: includes/class-admin.php:201
+#: includes/class-admin.php:209
 #, php-format
 msgid ""
 "Showing the most recent %1$s of %2$s - use the filters below for the full "
@@ -1618,51 +1626,51 @@ msgstr ""
 "Se muestran los %1$s más recientes de %2$s - usa los filtros de abajo para "
 "la lista completa."
 
-#: includes/class-admin.php:202
+#: includes/class-admin.php:210
 msgid "Critical signals"
 msgstr "Señales críticas"
 
-#: includes/class-admin.php:203
+#: includes/class-admin.php:211
 msgid "Improvements"
 msgstr "Mejoras"
 
-#: includes/class-admin.php:204
+#: includes/class-admin.php:212
 msgid "Short titles"
 msgstr "Títulos cortos"
 
-#: includes/class-admin.php:207
+#: includes/class-admin.php:215
 msgid "No price"
 msgstr "Sin precio"
 
-#: includes/class-admin.php:211
+#: includes/class-admin.php:219
 msgid "Clear filter"
 msgstr "Quitar filtro"
 
-#: includes/class-admin.php:212
+#: includes/class-admin.php:220
 msgid "Open product"
 msgstr "Abrir producto"
 
-#: includes/class-admin.php:213
+#: includes/class-admin.php:221
 msgid "admin only"
 msgstr "solo admin"
 
-#: includes/class-admin.php:214
+#: includes/class-admin.php:222
 msgid "Preview"
 msgstr "Vista previa"
 
-#: includes/class-admin.php:217
+#: includes/class-admin.php:225
 msgid "CONFIGURED"
 msgstr "CONFIGURADO"
 
-#: includes/class-admin.php:218
+#: includes/class-admin.php:226
 msgid "REQUIRED"
 msgstr "REQUERIDO"
 
-#: includes/class-admin.php:219
+#: includes/class-admin.php:227
 msgid "Why product titles matter"
 msgstr "Por qué importan los títulos de los productos"
 
-#: includes/class-admin.php:220
+#: includes/class-admin.php:228
 msgid ""
 "Agents use the title as the first matching signal. Titles should contain at "
 "least three useful words, usually product type, brand and model or variant."
@@ -1671,11 +1679,11 @@ msgstr ""
 "deben contener al menos tres palabras útiles, normalmente tipo de producto, "
 "marca y modelo o variante."
 
-#: includes/class-admin.php:221
+#: includes/class-admin.php:229
 msgid "Why descriptions matter"
 msgstr "Por qué importan las descripciones"
 
-#: includes/class-admin.php:222
+#: includes/class-admin.php:230
 msgid ""
 "Descriptions give agents the extra attributes that are often missing from "
 "filters, such as fit, material, use case, style and compatibility."
@@ -1684,11 +1692,11 @@ msgstr ""
 "faltan en los filtros, como el ajuste, el material, el caso de uso, el "
 "estilo y la compatibilidad."
 
-#: includes/class-admin.php:223
+#: includes/class-admin.php:231
 msgid "Why categories matter"
 msgstr "Por qué importan las categorías"
 
-#: includes/class-admin.php:224
+#: includes/class-admin.php:232
 msgid ""
 "Categories let agents browse and narrow the catalog even when the user does "
 "not know the exact product name used by the merchant."
@@ -1696,11 +1704,11 @@ msgstr ""
 "Las categorías permiten a los agentes explorar y acotar el catálogo aunque "
 "el usuario no conozca el nombre exacto del producto usado por el comerciante."
 
-#: includes/class-admin.php:225
+#: includes/class-admin.php:233
 msgid "Why price matters"
 msgstr "Por qué importa el precio"
 
-#: includes/class-admin.php:226
+#: includes/class-admin.php:234
 msgid ""
 "Price is required for budget checks, comparisons and purchase decisions. "
 "Products without a valid price cannot be trusted in commerce-intent results."
@@ -1709,11 +1717,11 @@ msgstr ""
 "decisiones de compra. No se puede confiar en productos sin un precio válido "
 "en los resultados commerce-intent."
 
-#: includes/class-admin.php:227
+#: includes/class-admin.php:235
 msgid "Why images matter"
 msgstr "Por qué importan las imágenes"
 
-#: includes/class-admin.php:228
+#: includes/class-admin.php:236
 msgid ""
 "Images do not block agent queries, but they improve visual verification and "
 "reduce ambiguity when products have similar names or variants."
@@ -1722,11 +1730,11 @@ msgstr ""
 "verificación visual y reducen la ambigüedad cuando los productos tienen "
 "nombres o variantes similares."
 
-#: includes/class-admin.php:229
+#: includes/class-admin.php:237
 msgid "Why SKUs matter"
 msgstr "Por qué importan los SKU"
 
-#: includes/class-admin.php:230
+#: includes/class-admin.php:238
 msgid ""
 "SKUs do not block agent queries, but they help identify, deduplicate and "
 "reconcile exact products across syncs, variants and downstream systems."
@@ -1735,11 +1743,11 @@ msgstr ""
 "deduplicar y conciliar productos exactos entre sincronizaciones, variantes y "
 "sistemas posteriores."
 
-#: includes/class-admin.php:231
+#: includes/class-admin.php:239
 msgid "Why stock matters"
 msgstr "Por qué importa el stock"
 
-#: includes/class-admin.php:232
+#: includes/class-admin.php:240
 msgid ""
 "Availability tells agents whether a product can be proposed now or should be "
 "excluded from purchase-ready results."
@@ -1747,20 +1755,20 @@ msgstr ""
 "La disponibilidad indica a los agentes si un producto puede proponerse ahora "
 "o debe excluirse de los resultados listos para comprar."
 
-#: includes/class-admin.php:233
+#: includes/class-admin.php:241
 msgid ""
 "KaliCart Bridge discovery entry point for agents probing well-known paths"
 msgstr ""
 "Punto de entrada de discovery de KaliCart Bridge para agentes que sondean "
 "las rutas well-known"
 
-#: includes/class-admin.php:234
+#: includes/class-admin.php:242
 msgid "Discovery document — entry point for every agent, full capability map"
 msgstr ""
 "Documento de discovery — punto de entrada para cada agente, mapa completo de "
 "capacidades"
 
-#: includes/class-admin.php:235
+#: includes/class-admin.php:243
 msgid ""
 "Model Context Protocol (MCP) server — JSON-RPC 2.0 over POST; the catalog as "
 "agent tools (search_products, get_product, list_products, list_categories, "
@@ -1770,37 +1778,37 @@ msgstr ""
 "como herramientas de agente (search_products, get_product, list_products, "
 "list_categories, get_meta)"
 
-#: includes/class-admin.php:236
+#: includes/class-admin.php:244
 msgid "Accepted filter values, category slugs, price range"
 msgstr "Valores de filtro aceptados, slugs de categorías, rango de precios"
 
-#: includes/class-admin.php:237
+#: includes/class-admin.php:245
 msgid ""
 "Full-text + filtered search — supports q, category, on_sale, in_stock, price"
 msgstr ""
 "Búsqueda full-text + filtrada — admite q, category, on_sale, in_stock, price"
 
-#: includes/class-admin.php:238
+#: includes/class-admin.php:246
 msgid "Browse products by filters (no text query needed)"
 msgstr "Explora los productos por filtros (no se necesita consulta de texto)"
 
-#: includes/class-admin.php:239
+#: includes/class-admin.php:247
 msgid "Single product — price, stock, variants[], barcodes, purchase_readiness"
 msgstr ""
 "Producto individual — precio, stock, variants[], barcodes, purchase_readiness"
 
-#: includes/class-admin.php:240
+#: includes/class-admin.php:248
 msgid "Full merchant category tree with has_products flag"
 msgstr ""
 "Árbol completo de categorías del comerciante con el indicador has_products"
 
-#: includes/class-admin.php:241
+#: includes/class-admin.php:249
 msgid "Catalog quality report — quarantine list, suggestions, scores"
 msgstr ""
 "Informe de calidad del catálogo — lista de cuarentena, sugerencias, "
 "puntuaciones"
 
-#: includes/class-admin.php:242
+#: includes/class-admin.php:250
 msgid ""
 "POST — agent creates cart session, returns cart_url and checkout_url for "
 "buyer"
@@ -1808,7 +1816,7 @@ msgstr ""
 "POST — el agente crea una sesión de carrito, devuelve cart_url y "
 "checkout_url para el comprador"
 
-#: includes/class-admin.php:243
+#: includes/class-admin.php:251
 msgid ""
 "The AI catalog badge is an optional discovery anchor in the storefront body "
 "DOM and is disabled by default. Agents that inspect the document head can "
@@ -1820,7 +1828,7 @@ msgstr ""
 "agentes que examinan el head del documento pueden descubrir el catálogo sin "
 "ella; la REST API, MCP y el feed de ChatGPT no dependen de la insignia."
 
-#: includes/class-admin.php:244
+#: includes/class-admin.php:252
 msgid ""
 "Disabling the robots.txt directive removes the crawl permission for AI "
 "agents. Some agents check robots.txt before querying any endpoint."
@@ -1829,7 +1837,7 @@ msgstr ""
 "agentes de IA. Algunos agentes comprueban robots.txt antes de consultar "
 "cualquier endpoint."
 
-#: includes/class-admin.php:245
+#: includes/class-admin.php:253
 msgid ""
 "Disabling Global indexing consent removes your catalog from KaliCart Global "
 "federated search. Agents using the federated index will no longer discover "
@@ -1840,7 +1848,7 @@ msgstr ""
 "federado ya no descubrirán tus productos allí. El acceso directo de los "
 "agentes a esta tienda permanece activo."
 
-#: includes/class-admin.php:246
+#: includes/class-admin.php:254
 msgid ""
 "Disabling the agentic sitemap removes the structured endpoint map that "
 "agents use to enumerate your catalog surfaces."
@@ -1848,7 +1856,7 @@ msgstr ""
 "Desactivar el sitemap agéntico elimina el mapa estructurado de endpoints que "
 "los agentes usan para enumerar las superficies de tu catálogo."
 
-#: includes/class-admin.php:247
+#: includes/class-admin.php:255
 msgid ""
 "Disabling .well-known discovery files removes the first-probe signal used by "
 "agents that check standard discovery paths before loading your storefront."
@@ -1857,7 +1865,7 @@ msgstr ""
 "sondeo que usan los agentes que comprueban las rutas de discovery estándar "
 "antes de cargar tu tienda."
 
-#: includes/class-admin.php:248
+#: includes/class-admin.php:256
 msgid ""
 "When enabled, only the coupons you tick below are exposed to agents. "
 "Selected coupons appear in catalog results as conditional checkout savings; "
@@ -1870,11 +1878,11 @@ msgstr ""
 "autoridad final sobre su validez. Los cupones que no marques — incluidos los "
 "códigos privados o dirigidos — nunca se envían a los agentes."
 
-#: includes/class-admin.php:249
+#: includes/class-admin.php:257
 msgid "No active coupons available to expose."
 msgstr "No hay cupones activos disponibles para exponer."
 
-#: includes/class-admin.php:250
+#: includes/class-admin.php:258
 msgid ""
 "Tick the coupons you want agents to see. Expired or used-up coupons are not "
 "listed."
@@ -1882,7 +1890,7 @@ msgstr ""
 "Marca los cupones que quieres que vean los agentes. Los cupones caducados o "
 "agotados no se muestran."
 
-#: includes/class-admin.php:266
+#: includes/class-admin.php:274
 msgid "Documentation"
 msgstr "Documentación"
 
@@ -1937,11 +1945,11 @@ msgstr ""
 "cualquier momento. He leído el Aviso de privacidad de KaliCart Bridge y las "
 "Condiciones de KaliCart Global aplicables a commerce-consent-1.0."
 
-#: includes/class-commerce-consent.php:389
+#: includes/class-commerce-consent.php:390
 msgid "Forbidden"
 msgstr "Operación no permitida"
 
-#: includes/class-commerce-consent.php:395
+#: includes/class-commerce-consent.php:396
 msgid "Unsupported export format."
 msgstr "Formato de exportación no compatible."
 
@@ -2585,6 +2593,3 @@ msgstr ""
 #: kalicart-bridge.php:190
 msgid "WooCommerce required"
 msgstr "WooCommerce necesario"
-
-#~ msgid "pending delivery"
-#~ msgstr "entrega pendiente"

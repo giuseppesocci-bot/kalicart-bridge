@@ -605,8 +605,6 @@
 
     if ( ! state.consent_id ) {
       if ( currentBox ) currentBox.style.display = 'none';
-      const evidenceId = $( 'providerConsentEvidenceId' );
-      if ( evidenceId ) evidenceId.textContent = '';
       return;
     }
 
@@ -636,8 +634,6 @@
         + '<span class="kali-consent-summary__meta"><code>' + esc( state.terms_version || '' ) + '</code></span>'
         + '<span class="kali-consent-summary__meta">' + esc( KaliBridge.i18n?.provider_receipt || 'Receipt' ) + ': ' + esc( receipt ) + '</span>';
     }
-    const evidenceId = $( 'providerConsentEvidenceId' );
-    if ( evidenceId ) evidenceId.textContent = state.consent_id || '';
   }
 
   function providerConsentRequest( action, extra ) {
@@ -723,10 +719,36 @@
   function initExternalVisibility() {
     const btn = $( 'externalVisibilityBtn' );
     const out = $( 'externalVisibilityResult' );
-    if ( ! btn ) return;
-    btn.addEventListener( 'click', () => {
+    if ( ! btn || ! out ) return;
+    const T = KaliBridge.i18n || {};
+    const cleanLabel = value => String( value || '' ).replace( /:\s*$/, '' );
+    const fact = ( icon, label, value, tone = 'neutral' ) => ''
+      + '<div class="kali-visibility-fact kali-visibility-fact--' + tone + '">'
+      +   '<span class="dashicons dashicons-' + icon + '" aria-hidden="true"></span>'
+      +   '<span class="kali-visibility-fact__text">'
+      +     '<span class="kali-visibility-fact__label">' + esc( cleanLabel( label ) ) + '</span>'
+      +     '<strong class="kali-visibility-fact__value">' + esc( value ) + '</strong>'
+      +   '</span>'
+      + '</div>';
+    const emptyState = ( icon, title, note, tone = 'neutral' ) => ''
+      + '<div class="kali-visibility-empty kali-visibility-empty--' + tone + '">'
+      +   '<span class="dashicons dashicons-' + icon + '" aria-hidden="true"></span>'
+      +   '<span><strong>' + esc( title ) + '</strong><span>' + esc( note ) + '</span></span>'
+      + '</div>';
+    const detailPanel = parts => {
+      if ( ! parts.length ) return '';
+      return '<details class="kali-visibility-detail">'
+        + '<summary><span class="dashicons dashicons-info-outline" aria-hidden="true"></span> '
+        + esc( T.external_check_details || 'Details and diagnosis' ) + '</summary>'
+        + '<div class="kali-visibility-detail__body">'
+        + parts.map( part => '<p>' + esc( part ) + '</p>' ).join( '' )
+        + '</div></details>';
+    };
+
+    const loadExternalVisibility = () => {
       btn.disabled = true;
-      out.textContent = KaliBridge.i18n?.loading || 'Loading\u2026';
+      out.innerHTML = '<div class="kali-visibility-loading"><span class="dashicons dashicons-update" aria-hidden="true"></span>'
+        + '<span>' + esc( T.loading || 'Loading\u2026' ) + '</span></div>';
       const fd = new FormData();
       fd.append( 'action', 'kalicart_external_visibility_check' );
       fd.append( 'nonce',  KaliBridge.nonce );
@@ -735,29 +757,24 @@
         .then( res => {
           btn.disabled = false;
           if ( ! res.success ) {
-            out.textContent = KaliBridge.i18n?.external_check_failed || 'Could not reach KaliCart Global.';
+            out.innerHTML = emptyState( 'warning', T.external_check_unreachable || 'Not reachable', T.external_check_failed || 'Could not reach KaliCart Global.', 'error' );
             return;
           }
           const d = res.data;
           if ( ! d.checked ) {
-            // Stato 3 di 3: MAI osservato. Distinto (grigio) da "non raggiungibile" (rosso):
-            // qui Global non ha ancora dati, non e' un fallimento.
-            out.innerHTML = '<div style="color:var(--kb-muted,#888)">&#9679; ' + ( KaliBridge.i18n?.external_check_never || 'Never checked' ) + '</div>'
-              + '<div style="margin-top:2px">' + ( KaliBridge.i18n?.external_check_not_probed || 'Not observed from outside yet.' ) + '</div>';
+            out.innerHTML = emptyState( 'clock', T.external_check_never || 'Never checked', T.external_check_not_probed || 'Not observed from outside yet.' );
             return;
           }
-          const yes = KaliBridge.i18n?.yes || 'Yes';
-          const no  = KaliBridge.i18n?.no  || 'No';
+          const yes = T.yes || 'Yes';
+          const no  = T.no  || 'No';
           const isReachable = ( d.probe_status === 'ok' );
           // 1.0.137: a blocked check is not "not a Bridge". The value is colored
           // like its dot and always carries its cause; a second line says what
           // it means for the store. The cause comes from KaliCart Global
           // (challenge_provider), so a new detector never needs a plugin release.
-          const T = KaliBridge.i18n || {};
           const isChallenged = ( d.probe_status === 'blocked_by_bot_challenge' );
           const isRobots     = ( d.probe_status === 'disallowed_by_robots' );
           const isLimited    = isChallenged || isRobots;
-          const dotColor  = isReachable ? 'var(--kb-ok,#00a32a)' : ( isLimited ? '#b26b00' : '#d63638' );
           const providerName = ( slug ) => {
             const known = { cloudflare: 'Cloudflare' };
             const s = String( slug || '' ).trim();
@@ -771,7 +788,6 @@
           const valueText = isReachable ? ( T.external_check_reachable || 'Reachable' )
             : isLimited ? ( T.external_check_challenged || 'Limited external access' )
             : ( T.external_check_unreachable || 'Not reachable' );
-          const reachable = '<strong style="color:' + dotColor + '">' + esc( valueText ) + '</strong>' + ( cause ? ' — ' + esc( cause ) : '' );
           const inCatalog = d.consent_global_indexing === true && d.consent_federated_search === true && d.serving_status === 'active';
           let limitDetail = '';
           if ( isLimited ) {
@@ -788,7 +804,7 @@
           // Eta' relativa + soglia di staleness a 7 giorni (stesso valore che Global usa
           // internamente, LIVENESS_STALE_DAYS, per decidere quando un merchant e' "sospeso"
           // per staleness - qui solo per avvisare, non per nascondere il dato).
-          let ago = '—', staleWarning = '';
+          let ago = '—', isStale = false;
           if ( d.last_probed_at ) {
             const ms = Date.now() - new Date( d.last_probed_at ).getTime();
             const days = ms / 86400000;
@@ -808,50 +824,56 @@
               ago = KaliBridge.i18n?.external_check_ago_now || 'just now';
             }
             if ( days > 7 ) {
-              staleWarning = '<div style="margin-top:4px;color:#b26b00">&#9888; ' + ( KaliBridge.i18n?.external_check_stale || 'This observation is more than 7 days old.' ) + '</div>';
+              isStale = true;
             }
           }
           const when = d.last_probed_at ? new Date( d.last_probed_at ).toLocaleString() + ' (' + ago + ')' : '—';
 
           // 1.0.138: store identity as KaliCart Global sees it. "Verified" is not
           // "served": without a received catalog the panel says so.
-          let identityHtml = '';
+          let identityText = '—';
+          let identityTone = 'neutral';
+          let identityNote = '';
           const idn = d.identity;
           if ( idn && idn.mode && idn.mode !== 'off' && idn.domain_verification ) {
             const v = idn.domain_verification;
-            const idColor = v === 'verified' ? '#1a7f37' : ( v === 'failed' ? '#b32d2e' : '#b26b00' );
-            const idText = v === 'verified' ? ( T.identity_verified || 'Verified' )
+            identityTone = v === 'verified' ? 'ok' : ( v === 'failed' ? 'error' : 'warn' );
+            identityText = v === 'verified' ? ( T.identity_verified || 'Verified' )
               : v === 'failed' ? ( T.identity_failed || 'Verification failed' )
               : ( T.identity_pending || 'Verification pending' );
-            let idNote = '';
             if ( v === 'verified' && idn.catalog_sync === 'not_accepted' ) {
-              idNote = T.identity_not_received || 'Identity verified, but the catalog cannot be received yet: KaliCart Global cannot read it from outside.';
+              identityNote = T.identity_not_received || 'Identity verified, but the catalog cannot be received yet: KaliCart Global cannot read it from outside.';
             } else if ( v === 'pending' ) {
-              idNote = T.identity_pending_note || 'KaliCart Global could not read this site to verify it. It retries automatically.';
+              identityNote = T.identity_pending_note || 'KaliCart Global could not read this site to verify it. It retries automatically.';
             } else if ( v === 'failed' ) {
-              idNote = T.identity_failed_note || 'KaliCart Global read this site but did not find this installation’s key. It retries automatically.';
+              identityNote = T.identity_failed_note || 'KaliCart Global read this site but did not find this installation’s key. It retries automatically.';
             }
             if ( v === 'verified' && idn.heartbeat_fresh === false ) {
-              idNote = ( idNote ? idNote + ' ' : '' ) + ( T.identity_stale || 'KaliCart Global has not received a signal from this store in the last 7 days.' );
+              identityNote = ( identityNote ? identityNote + ' ' : '' ) + ( T.identity_stale || 'KaliCart Global has not received a signal from this store in the last 7 days.' );
+              identityTone = 'warn';
             }
-            identityHtml = '<div><span style="color:' + idColor + '">&#9679;</span> ' + ( T.identity_label || 'Store identity:' )
-              + ' <strong style="color:' + idColor + '">' + esc( idText ) + '</strong></div>'
-              + ( idNote ? '<div style="margin:2px 0 4px;color:var(--kb-muted,#646970)">' + esc( idNote ) + '</div>' : '' );
           }
 
-          out.innerHTML = ''
-            + '<div><span style="color:' + dotColor + '">&#9679;</span> ' + ( KaliBridge.i18n?.external_check_label_access || 'Access from outside:' ) + ' ' + reachable + '</div>'
-            + ( limitDetail ? '<div style="margin:2px 0 4px;color:var(--kb-muted,#646970)">' + esc( limitDetail ) + '</div>' : '' )
-            + '<div>' + ( KaliBridge.i18n?.external_check_label_detected  || 'Bridge detected:' )                  + ' <strong>' + detected  + '</strong></div>'
-            + identityHtml
-            + '<div>' + ( KaliBridge.i18n?.external_check_label_checked   || 'Last checked:' )                     + ' ' + when + '</div>'
-            + staleWarning;
+          const details = [];
+          if ( cause ) details.push( cause );
+          if ( limitDetail ) details.push( limitDetail );
+          if ( identityNote ) details.push( identityNote );
+          if ( isStale ) details.push( T.external_check_stale || 'This observation is more than 7 days old.' );
+          out.innerHTML = '<div class="kali-visibility-facts">'
+            + fact( 'visibility', T.external_check_label_access || 'Access from outside:', valueText, isReachable ? 'ok' : ( isLimited ? 'warn' : 'error' ) )
+            + fact( 'admin-plugins', T.external_check_label_detected || 'Bridge detected:', detected, d.bridge_detected ? 'ok' : ( isLimited ? 'warn' : 'error' ) )
+            + fact( 'shield-alt', T.identity_label || 'Store identity:', identityText, identityTone )
+            + fact( 'clock', T.external_check_label_checked || 'Last checked:', when, isStale ? 'warn' : 'neutral' )
+            + '</div>' + detailPanel( details );
         } )
         .catch( () => {
           btn.disabled = false;
-          out.textContent = KaliBridge.i18n?.external_check_failed || 'Could not reach KaliCart Global.';
+          out.innerHTML = emptyState( 'warning', T.external_check_unreachable || 'Not reachable', T.external_check_failed || 'Could not reach KaliCart Global.', 'error' );
         } );
-    } );
+    };
+
+    btn.addEventListener( 'click', loadExternalVisibility );
+    loadExternalVisibility();
   }
 
   function initFederation() {

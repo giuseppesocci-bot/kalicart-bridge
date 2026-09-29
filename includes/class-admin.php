@@ -42,14 +42,14 @@ class KaliCart_Bridge_Admin {
             'kalicart-bridge-admin',
             KALICART_BRIDGE_URL . 'admin/assets/admin.css',
             [],
-            KALICART_BRIDGE_VERSION
+            self::asset_version( 'admin/assets/admin.css' )
         );
 
         wp_enqueue_script(
             'kalicart-bridge-admin',
             KALICART_BRIDGE_URL . 'admin/assets/admin.js',
             [ 'wp-util' ],
-            KALICART_BRIDGE_VERSION,
+            self::asset_version( 'admin/assets/admin.js' ),
             true
         );
 
@@ -81,6 +81,13 @@ class KaliCart_Bridge_Admin {
             'site_url'           => trailingslashit( get_site_url() ),
             'i18n'               => self::js_i18n(),
         ] );
+    }
+
+    /** Cache-bust changed admin assets even while a release candidate keeps the prior plugin version. */
+    private static function asset_version( string $relative_path ): string {
+        $path  = KALICART_BRIDGE_DIR . ltrim( $relative_path, '/' );
+        $mtime = is_file( $path ) ? filemtime( $path ) : false;
+        return KALICART_BRIDGE_VERSION . ( false !== $mtime ? '.' . $mtime : '' );
     }
 
     /**
@@ -169,6 +176,7 @@ class KaliCart_Bridge_Admin {
             'external_check_detected_unknown' => __( 'Unknown (the check was blocked)', 'kalicart-bridge' ),
             'external_check_never'         => __( 'Never checked', 'kalicart-bridge' ),
             'external_check_stale'         => __( 'This observation is more than 7 days old.', 'kalicart-bridge' ),
+            'external_check_details'       => __( 'Details and diagnosis', 'kalicart-bridge' ),
             /* translators: %d: number of days since the last external observation */
             'external_check_ago_day'       => __( '%d day ago', 'kalicart-bridge' ),
             /* translators: %d: number of days since the last external observation */

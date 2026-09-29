@@ -1020,15 +1020,113 @@
 .kali-consent-summary__meta { color: var(--kb-muted, #666); font-size: 12px; white-space: nowrap; }
 .kali-consent-summary__action { flex: 0 0 auto; margin-left: auto; }
 .kali-external-visibility {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--kb-border, #dcdcde);
+  border-radius: 8px;
+  background: var(--kb-surface, #fff);
+}
+.kali-external-visibility__header {
   display: flex;
   align-items: center;
-  gap: 8px 12px;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--kb-border, #e2e2e2);
+  justify-content: space-between;
+  gap: 12px;
 }
-.kali-external-visibility p { flex: 1 1 auto; margin: 0; color: var(--kb-muted, #666); font-size: 12px; }
-#externalVisibilityResult { flex: 0 1 auto; font-size: 13px; }
+.kali-external-visibility__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--kb-text, #1d2327);
+  font-size: 14px;
+}
+.kali-external-visibility__heading .dashicons { color: #2271b1; }
+.kali-external-visibility__header .kali-btn { gap: 5px; }
+.kali-external-visibility__header .kali-btn .dashicons { width: 16px; height: 16px; font-size: 16px; }
+.kali-external-visibility__result { margin-top: 12px; font-size: 13px; }
+.kali-visibility-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--kb-muted, #646970);
+}
+.kali-visibility-loading .dashicons { color: #2271b1; animation: kali-visibility-spin .9s linear infinite; }
+@keyframes kali-visibility-spin { to { transform: rotate(360deg); } }
+.kali-visibility-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.kali-visibility-fact {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--kb-border, #dcdcde);
+  border-radius: 7px;
+  background: var(--kb-surface2, #f6f7f7);
+}
+.kali-visibility-fact > .dashicons {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e9ecef;
+  color: #50575e;
+  font-size: 17px;
+}
+.kali-visibility-fact__text { min-width: 0; }
+.kali-visibility-fact__label {
+  display: block;
+  overflow: hidden;
+  color: var(--kb-muted, #646970);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kali-visibility-fact__value {
+  display: block;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  color: var(--kb-text, #1d2327);
+  font-size: 13px;
+  line-height: 1.3;
+}
+.kali-visibility-fact--ok > .dashicons { background: #edfaef; color: #16833b; }
+.kali-visibility-fact--warn > .dashicons { background: #fff5d7; color: #996800; }
+.kali-visibility-fact--error > .dashicons { background: #fce8e8; color: #b32d2e; }
+.kali-visibility-detail {
+  margin-top: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--kb-border, #dcdcde);
+  border-radius: 7px;
+  color: var(--kb-muted, #50575e);
+}
+.kali-visibility-detail summary,
+.kali-external-visibility__help summary { cursor: pointer; color: #2271b1; font-weight: 600; }
+.kali-visibility-detail__body { padding: 4px 0 0 22px; line-height: 1.45; }
+.kali-visibility-detail__body p { margin: 6px 0 0; }
+.kali-external-visibility__help { margin-top: 10px; color: var(--kb-muted, #646970); font-size: 12px; }
+.kali-external-visibility__help p { margin: 6px 0 0 16px; max-width: 860px; line-height: 1.45; }
+.kali-visibility-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 7px;
+  background: var(--kb-surface2, #f6f7f7);
+  color: var(--kb-muted, #646970);
+}
+.kali-visibility-empty .dashicons { color: #787c82; }
+.kali-visibility-empty--error { background: #fce8e8; }
+.kali-visibility-empty--error .dashicons { color: #b32d2e; }
+.kali-visibility-empty strong { display: block; color: var(--kb-text, #1d2327); }
+.kali-visibility-empty span:last-child { display: block; margin-top: 2px; }
 
 /* Provider-specific consent is intentionally outside the merchant feed tab. */
 .kali-provider-consent {
@@ -1077,7 +1175,6 @@
 .kali-provider-consent .kali-warn-alert { margin-top: 12px; }
 .kali-consent-details { margin-top: 8px; color: var(--kb-muted, #666); font-size: 12px; }
 .kali-consent-details summary { cursor: pointer; font-weight: 600; }
-.kali-provider-consent__evidence-id { margin: 10px 0 0; overflow-wrap: anywhere; }
 
 /* Le tab restavano in orizzontale e sforavano su schermi stretti: .kali-tabs
    era flex con width:fit-content e nessuna media query in tutto il file. */
@@ -1085,14 +1182,19 @@
   .kali-blocks { grid-template-columns: 1fr; }
   .kali-provider-consent__head { flex-direction: column; gap: 4px; }
   .kali-consent-summary,
-  .kali-consent-summary__state,
-  .kali-external-visibility { flex-wrap: wrap; }
+  .kali-consent-summary__state { flex-wrap: wrap; }
   .kali-consent-summary__action { margin-left: 0; }
   .kali-consent-summary__status,
   .kali-consent-summary__meta { white-space: normal; }
   .kali-provider-consent__current > .kali-consent-summary { display: grid; grid-template-columns: minmax(0, 1fr); }
   .kali-provider-consent__current .kali-consent-summary__action { justify-self: end; margin-left: 0; }
-  .kali-external-visibility p { flex-basis: 100%; }
+  .kali-visibility-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kali-tabs { flex-direction: column; width: 100%; }
   .kali-tabs .kali-tab { width: 100%; text-align: left; }
+}
+
+@media (max-width: 520px) {
+  .kali-external-visibility__header { align-items: stretch; flex-direction: column; }
+  .kali-external-visibility__header .kali-btn { align-self: flex-start; }
+  .kali-visibility-facts { grid-template-columns: 1fr; }
 }
