@@ -278,6 +278,34 @@ class KaliCart_Bridge_Commerce_Consent {
 			'previous_record_hash' => $row['previous_record_hash'] ?: null,
 			'record_hash'          => $row['record_hash'],
 		];
+
+		// 1.0.141: prefer the installation-bound RFC 9421 channel. Older Global
+		// deployments and installations whose identity is not verified yet keep
+		// the existing discovery-verified endpoint as an explicit fallback.
+		if ( class_exists( 'KaliCart_Bridge_Identity' ) && method_exists( 'KaliCart_Bridge_Identity', 'post_signed' ) ) {
+			[ $signed_code, $signed_body, $signed_error ] = KaliCart_Bridge_Identity::post_signed(
+				'/v1/bridge/identity/provider-consent',
+				[ 'receipt' => $payload ],
+				10
+			);
+			if ( $signed_code >= 200 && $signed_code < 300 && is_array( $signed_body ) && ! empty( $signed_body['ok'] ) ) {
+				self::update_receipt_state( $row, 'accepted', $signed_body, null );
+				return [ 'ok' => true, 'retryable' => false, 'reason' => null ];
+			}
+			$fallback_errors = [
+				'identity_not_verified', 'not_verified', 'installation_mismatch',
+				'identity_disabled', 'http_404', 'http_405', 'http_501',
+			];
+			$local_unavailable = 0 === strpos( (string) $signed_error, 'identity_unavailable_' );
+			$fallback = 0 === $signed_code || $local_unavailable || in_array( (string) $signed_error, $fallback_errors, true );
+			if ( ! $fallback ) {
+				$reason    = sanitize_key( (string) ( $signed_error ?: 'http_' . $signed_code ) );
+				$retryable = 429 === $signed_code || $signed_code >= 500;
+				self::update_receipt_state( $row, $retryable ? 'pending' : 'failed', $signed_body, $reason );
+				return [ 'ok' => false, 'retryable' => $retryable, 'reason' => $reason ];
+			}
+		}
+
 		$response = wp_remote_post( KALICART_BRIDGE_GLOBAL . '/v1/bridge/provider-consent', [
 			'timeout'   => 10,
 			'sslverify' => true,

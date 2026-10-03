@@ -1,5 +1,13 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-03 - version 1.0.141
+
+* New: when the installation identity is verified, grants and revocations for a federated provider channel are signed with that installation's existing key. KaliCart Global can verify the receipt directly even when a firewall or anti-bot service blocks its request to the store's public discovery endpoint.
+* Compatibility: an older KaliCart Global, a temporary network failure or an unavailable local identity uses the existing discovery-verified delivery path. A rejected signature or an installation mismatch is never bypassed through that fallback.
+* The receipt contains the same consent evidence as before, plus the existing host and installation ID and a one-time anti-replay request ID. The private key never leaves the store.
+* No consent text changes: existing authorizations and their receipts stay valid.
+
+
 2026-09-29 - version 1.0.140
 
 * Fix: the receipt of a distribution channel authorization was retried only twice, after one and five minutes, and then stayed "awaiting delivery" for good. It is now sent again after about 30 minutes, 2 hours and 12 hours, then once a day until KaliCart Global has received or rejected it (retries use WP-Cron). Receipts left waiting by earlier versions are sent again without a new click: at the next visit to an admin screen or at the daily status signal, whichever comes first.

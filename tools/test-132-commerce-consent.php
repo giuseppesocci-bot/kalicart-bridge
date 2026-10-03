@@ -48,6 +48,17 @@ $payloads      = [];
 $scheduled_retries = [];
 $scheduled_at      = [];
 $intercept = static function( $preempt, array $args, string $url ) use ( &$delivery_mode, &$payloads ) {
+	if ( false !== strpos( $url, '/v1/bridge/identity/provider-consent' ) ) {
+		// A 1.0.141 candidate first tries the signed route. This historical 1.0.132
+		// suite exercises the backwards-compatible unsigned path.
+		return [
+			'headers'  => [],
+			'body'     => wp_json_encode( [ 'ok' => false, 'error' => 'http_404' ] ),
+			'response' => [ 'code' => 404, 'message' => 'Not Found' ],
+			'cookies'  => [],
+			'filename' => null,
+		];
+	}
 	if ( false === strpos( $url, '/v1/bridge/provider-consent' ) ) {
 		return $preempt;
 	}

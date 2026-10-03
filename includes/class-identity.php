@@ -218,6 +218,29 @@ class KaliCart_Bridge_Identity {
 		return [ $code, $data, ( $code >= 200 && $code < 300 ) ? null : ( $data['error'] ?? 'http_' . $code ) ];
 	}
 
+	/**
+	 * Reusable signed POST for subsystems that already have an explicit Global
+	 * delivery contract. It never creates or rotates identity material: until the
+	 * installation is verified the caller can retain its existing fallback.
+	 *
+	 * @return array{0:int,1:?array,2:?string}
+	 */
+	public static function post_signed( string $path, array $body, int $timeout = 15 ): array {
+		$reason = self::unavailable_reason();
+		if ( '' !== $reason ) {
+			return [ 0, null, 'identity_unavailable_' . $reason ];
+		}
+		$s  = self::state();
+		$sk = self::secret_key( $s );
+		if ( ! $sk || 'verified' !== ( $s['status'] ?? '' ) || empty( $s['installation_id'] ) ) {
+			return [ 0, null, 'identity_not_verified' ];
+		}
+		return self::post( $path, [
+			'host'            => self::host(),
+			'installation_id' => (string) $s['installation_id'],
+		] + $body, $s, $sk, $timeout );
+	}
+
 	// ── lifecycle ──────────────────────────────────────────────────────────
 
 	/** Daily job (and right after consent): prove if needed, then heartbeat. Never throws. */
