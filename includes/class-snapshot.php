@@ -882,6 +882,11 @@ class KaliCart_Bridge_Snapshot {
 		if ( get_option( 'kalicart_bridge_well_known_enabled', true ) && class_exists( 'KaliCart_Bridge_Signals' ) ) {
 			KaliCart_Bridge_Signals::write_well_known_files(); // pointer last
 		}
+		// Signal the new signed generation without adding network I/O to the build.
+		// The identity worker collapses successive publications to the latest seq.
+		if ( class_exists( 'KaliCart_Bridge_Identity' ) ) {
+			KaliCart_Bridge_Identity::snapshot_published();
+		}
 	}
 
 	private static function prune( string $dir, array $keep ): void {

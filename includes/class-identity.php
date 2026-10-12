@@ -29,12 +29,15 @@ class KaliCart_Bridge_Identity {
 	const OPTION      = 'kalicart_bridge_identity';
 	const FATAL_OPT   = 'kalicart_bridge_identity_fatal';
 	const CRON_HOOK   = 'kalicart_bridge_identity_tick';
+	const SNAPSHOT_HEARTBEAT_HOOK = 'kalicart_bridge_snapshot_heartbeat';
+	const ACTION_GROUP = 'kalicart-bridge';
 	const TAG         = 'kalicart-bridge-v1';
 	const LABEL       = 'kalicart-bridge-identity-v1';
 	const HEARTBEAT_S = 20 * HOUR_IN_SECONDS;
 
 	public static function init(): void {
 		add_action( self::CRON_HOOK, [ __CLASS__, 'tick' ] );
+		add_action( self::SNAPSHOT_HEARTBEAT_HOOK, [ __CLASS__, 'snapshot_heartbeat' ] );
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
 			wp_schedule_event( time() + 5 * MINUTE_IN_SECONDS, 'daily', self::CRON_HOOK );
 		}
@@ -306,8 +309,9 @@ class KaliCart_Bridge_Identity {
 		}
 	}
 
-	private static function heartbeat( array $s, string $sk, ?bool $consent = null ): void {
+	private static function heartbeat( array $s, string $sk, ?bool $consent = null ): bool {
 		$fatal = get_option( self::FATAL_OPT, null );
+		$snapshot_fields = class_exists( 'KaliCart_Bridge_Snapshot' ) ? KaliCart_Bridge_Snapshot::heartbeat_fields() : [];
 		[ $code, $data, $err ] = self::post( '/v1/bridge/identity/heartbeat', [
 			'host'            => self::host(),
 			'installation_id' => $s['installation_id'],
@@ -319,7 +323,7 @@ class KaliCart_Bridge_Identity {
 			// 1.0.139: which consent text is in force (federated-catalog-1.1 or
 			// federated-catalog-1-legacy). A label only: the receipt stays on the site.
 			'consent_version' => class_exists( 'KaliCart_Bridge_Federation_Consent' ) ? KaliCart_Bridge_Federation_Consent::version() : '',
-		] + ( class_exists( 'KaliCart_Bridge_Snapshot' ) ? KaliCart_Bridge_Snapshot::heartbeat_fields() : [] ), $s, $sk, 10 );
+		] + $snapshot_fields, $s, $sk, 10 );
 		if ( ! $err ) {
 			delete_option( self::FATAL_OPT );
 			// 1.0.139: KaliCart Global's decision (decision_v1). Stored as data only:
@@ -327,12 +331,94 @@ class KaliCart_Bridge_Identity {
 			$decision = ( is_array( $data ) && isset( $data['decision'] ) && class_exists( 'KaliCart_Bridge_Site_Health' ) )
 				? KaliCart_Bridge_Site_Health::validate_decision( $data['decision'] ) // known fields only, action always null
 				: null;
-			self::record( [ 'last_heartbeat_at' => time(), 'last_error' => '', 'decision' => $decision ] );
+			$patch = [ 'last_heartbeat_at' => time(), 'last_error' => '', 'decision' => $decision ];
+			if ( isset( $snapshot_fields['snapshot']['seq'] ) ) {
+				$patch['last_snapshot_heartbeat_seq'] = (int) $snapshot_fields['snapshot']['seq'];
+				$patch['snapshot_heartbeat_attempt'] = 0;
+			}
+			self::record( $patch );
+			return true;
 		} elseif ( 'not_verified' === $err || 'keyid_mismatch' === $err ) {
 			// Global no longer recognises this key for the domain: prove again.
 			self::record( [ 'status' => 'new', 'last_error' => (string) $err ] );
 		} else {
 			self::record( [ 'last_error' => (string) $err ] );
+		}
+		return false;
+	}
+
+	/**
+	 * Snapshot publication signal. The build never performs network I/O: it only
+	 * queues one background action. The handler reads the CURRENT snapshot, so
+	 * multiple publications collapse to the latest generation.
+	 */
+	public static function snapshot_published(): void {
+		self::schedule_snapshot_heartbeat( MINUTE_IN_SECONDS );
+	}
+
+	private static function schedule_snapshot_heartbeat( int $delay ): void {
+		$when = time() + max( 1, $delay );
+		if ( function_exists( 'as_get_scheduled_actions' ) && class_exists( 'ActionScheduler_Store' ) ) {
+			$pending = as_get_scheduled_actions( [
+				'hook' => self::SNAPSHOT_HEARTBEAT_HOOK,
+				'group' => self::ACTION_GROUP,
+				'status' => ActionScheduler_Store::STATUS_PENDING,
+				'per_page' => 1,
+			], 'ids' );
+			if ( $pending ) {
+				// A newly published generation must not remain behind a long retry
+				// for the previous one. Keep an earlier/equal action; otherwise move
+				// our sole pending action forward.
+				$next = function_exists( 'as_next_scheduled_action' )
+					? as_next_scheduled_action( self::SNAPSHOT_HEARTBEAT_HOOK, [], self::ACTION_GROUP )
+					: false;
+				if ( false === $next || (int) $next <= $when || ! function_exists( 'as_unschedule_all_actions' ) ) {
+					return;
+				}
+				as_unschedule_all_actions( self::SNAPSHOT_HEARTBEAT_HOOK, [], self::ACTION_GROUP );
+			}
+			as_schedule_single_action( $when, self::SNAPSHOT_HEARTBEAT_HOOK, [], self::ACTION_GROUP, true );
+			return;
+		}
+		$next = wp_next_scheduled( self::SNAPSHOT_HEARTBEAT_HOOK );
+		if ( $next && (int) $next <= $when ) {
+			return;
+		}
+		if ( $next && function_exists( 'wp_unschedule_event' ) ) {
+			wp_unschedule_event( $next, self::SNAPSHOT_HEARTBEAT_HOOK );
+		}
+		wp_schedule_single_event( $when, self::SNAPSHOT_HEARTBEAT_HOOK );
+	}
+
+	/** Send the newest published generation, with bounded retry and no rebuild. */
+	public static function snapshot_heartbeat(): void {
+		try {
+			if ( '' !== self::unavailable_reason() ) {
+				return;
+			}
+			$s = self::state();
+			$sk = self::secret_key( $s );
+			if ( ! $sk || 'verified' !== ( $s['status'] ?? '' ) ) {
+				return;
+			}
+			$fields = class_exists( 'KaliCart_Bridge_Snapshot' ) ? KaliCart_Bridge_Snapshot::heartbeat_fields() : [];
+			$seq = (int) ( $fields['snapshot']['seq'] ?? 0 );
+			if ( $seq <= 0 || $seq <= (int) ( $s['last_snapshot_heartbeat_seq'] ?? 0 ) ) {
+				return;
+			}
+			$attempt = ( (int) ( $s['snapshot_heartbeat_seq'] ?? 0 ) === $seq )
+				? (int) ( $s['snapshot_heartbeat_attempt'] ?? 0 ) : 0;
+			self::record( [ 'snapshot_heartbeat_seq' => $seq, 'snapshot_heartbeat_attempt' => $attempt ] );
+			if ( self::heartbeat( self::state(), $sk ) ) {
+				return;
+			}
+			$attempt++;
+			self::record( [ 'snapshot_heartbeat_seq' => $seq, 'snapshot_heartbeat_attempt' => $attempt ] );
+			$delays = [ 5 * MINUTE_IN_SECONDS, 30 * MINUTE_IN_SECONDS, 2 * HOUR_IN_SECONDS, 6 * HOUR_IN_SECONDS, DAY_IN_SECONDS ];
+			self::schedule_snapshot_heartbeat( $delays[ min( $attempt - 1, count( $delays ) - 1 ) ] );
+		} catch ( \Throwable $e ) {
+			self::record( [ 'snapshot_heartbeat_error' => 'exception' ] );
+			self::schedule_snapshot_heartbeat( 30 * MINUTE_IN_SECONDS );
 		}
 	}
 
