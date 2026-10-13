@@ -67,10 +67,26 @@ $ok( false !== strpos( $main, "register_deactivation_hook( __FILE__, 'kalicart_b
 $ok( '' !== $shutdown && ! preg_match( '/\b(?:flush_rewrite_rules|wp_remote_[a-z_]+|leaving|glob|as_unschedule_all_actions)\b/', $shutdown ), 'shutdown has no network, rewrite, glob or mass Action Scheduler call' );
 $ok( false !== strpos( $shutdown, "wp_cache_delete( 'active_plugins', 'options' )" ) && false !== strpos( $shutdown, "get_site_option( 'active_sitewide_plugins'" ), 'shutdown refreshes local and multisite activation state' );
 $guard_pos = strpos( $shutdown, 'in_array( $plugin, $active, true )' );
-$cleanup_pos = strpos( $shutdown, "delete_option( 'rewrite_rules' )" );
+$cleanup_pos = strpos( $shutdown, 'wp_clear_scheduled_hook( $hook )' );
 $ok( false !== $guard_pos && false !== $cleanup_pos && $guard_pos < $cleanup_pos, 'shutdown exits for a still-active plugin before any cleanup' );
-$ok( false !== strpos( $activation, "delete_option( 'rewrite_rules' )" ) && false === strpos( $activation, 'flush_rewrite_rules' ), 'activation defers a soft rewrite rebuild until the next init' );
-$ok( 1 === substr_count( $main, 'flush_rewrite_rules( false )' ) && false !== strpos( $shutdown, "delete_option( 'rewrite_rules' )" ), 'only the versioned init flushes softly and deactivation invalidates stored rules' );
+// 1.0.143: the stored rewrite rules are never emptied by the lifecycle.
+$all_php = '';
+foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS ) ) as $f ) {
+	$path = $f->getPathname();
+	if ( substr( $path, -4 ) === '.php' && false === strpos( $path, '/tools/' ) && false === strpos( $path, '/.git/' ) ) {
+		$all_php .= (string) file_get_contents( $path );
+	}
+}
+$ok( ! preg_match( "/delete_option\\(\\s*'rewrite_rules'/", $all_php ), '1.0.143: no code path deletes the stored rewrite rules' );
+$ok( ! preg_match( '/flush_rewrite_rules\\(\\s*\\)/', $all_php ) && ! preg_match( '/flush_rewrite_rules\\(\\s*true/', $all_php ), '1.0.143: no hard rewrite flush anywhere in the plugin' );
+$ok( false === strpos( $shutdown, 'rewrite' ), '1.0.143: deactivation leaves rewrite rules untouched' );
+$ok( false !== strpos( $activation, "update_option( 'kalicart_bridge_rewrite_pending', 1, false )" ) && false === strpos( $activation, 'flush_rewrite_rules' ), '1.0.143: activation only sets the pending flag' );
+$ok( 1 === substr_count( $main, 'flush_rewrite_rules( false )' ), '1.0.143: a single soft refresh in the init callback' );
+$init_pos = strpos( $main, "\$rewrite_pending = (bool) get_option( 'kalicart_bridge_rewrite_pending', false );" );
+$flush_pos = strpos( $main, 'flush_rewrite_rules( false )' );
+$clear_pos = strpos( $main, "delete_option( 'kalicart_bridge_rewrite_pending' )" );
+$ok( false !== $init_pos && $init_pos < $flush_pos && $flush_pos < $clear_pos, '1.0.143: pending flag cleared only after the soft refresh' );
+$ok( false !== strpos( $uninstall, "'kalicart_bridge_rewrite_pending'" ), '1.0.143: uninstall removes the pending flag' );
 $ok( false !== strpos( $snapshot, 'public static function deactivation_cleanup' ) && false !== strpos( $snapshot, "'owned_paths'" ), 'snapshot cleanup uses a persisted finite ownership list' );
 $ok( false === strpos( $uninstall, '::leaving(' ) && ! preg_match( '/wp_remote_[a-z_]+\s*\(/', $uninstall ), 'uninstall is local-only' );
 $last_cleanup = max( strrpos( $uninstall, 'wp_delete_file' ), strrpos( $uninstall, 'delete_transient' ), strrpos( $uninstall, 'DROP TABLE' ) );

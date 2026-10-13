@@ -170,6 +170,13 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.143 =
+**Activating or deactivating the plugin no longer empties the site's stored permalink rules.**
+
+* Fix: deactivation leaves the stored rewrite rules untouched, and activation refreshes them softly on the next request instead of clearing them. On some managed hosts an empty rule set made another plugin request a full .htaccess rewrite during the next admin page, which could end in an HTTP 500 even though the plugin had been activated or deactivated correctly.
+* Fix: turning the agentic sitemap on or off refreshes the permalink rules without writing .htaccess.
+* No data, consent or catalog changes.
+
 = 1.0.142 =
 **Deactivation and deletion can no longer be blocked by a host rewrite or network failure.**
 

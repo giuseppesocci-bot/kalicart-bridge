@@ -98,23 +98,34 @@ add_action( 'plugins_loaded', function () {
     KaliCart_Bridge_Push_Notice::init(); // 1.0.139: off (PUSH_AVAILABLE=false), hooks nothing
     // Version-gated migration — runs once per plugin version, on init (needs $wp_rewrite).
     // Removes legacy extension-less static files (served as text/plain by the webserver)
-    // and flushes rewrite rules so serve_well_known() answers on every install.
+    // and refreshes rewrite rules so serve_well_known() answers on every install.
+    // 1.0.143: activation only leaves a pending flag; the single soft refresh
+    // happens here, after our rules were registered at init priority 10.
     add_action( 'init', function () {
-        if ( get_option( 'kalicart_bridge_wk_version' ) === KALICART_BRIDGE_VERSION ) {
+        $version_changed = get_option( 'kalicart_bridge_wk_version' ) !== KALICART_BRIDGE_VERSION;
+        $rewrite_pending = (bool) get_option( 'kalicart_bridge_rewrite_pending', false );
+        if ( ! $version_changed && ! $rewrite_pending ) {
             return;
         }
-        if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
-            KaliCart_Bridge_Signals::write_well_known_files();
-        } else {
-            KaliCart_Bridge_Signals::remove_well_known_files();
+        if ( $version_changed ) {
+            if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
+                KaliCart_Bridge_Signals::write_well_known_files();
+            } else {
+                KaliCart_Bridge_Signals::remove_well_known_files();
+            }
+            KaliCart_Bridge_Catalog_Engine::invalidate_query_cache();
         }
-		KaliCart_Bridge_Catalog_Engine::invalidate_query_cache();
-        // Soft invalidation only. A hard flush writes web-server configuration
-        // and can fatally fail on managed hosts before WordPress completes the
-        // surrounding lifecycle request.
+        // Soft refresh only, never an empty rule set: WordPress rebuilds the
+        // stored rules at wp_loaded while the previous rules stay in place, so
+        // no other plugin sees empty rules and requests a hard (.htaccess) flush.
         flush_rewrite_rules( false );
-        KaliCart_Bridge_Snapshot::reconcile_lifecycle();
-        update_option( 'kalicart_bridge_wk_version', KALICART_BRIDGE_VERSION );
+        if ( $version_changed ) {
+            KaliCart_Bridge_Snapshot::reconcile_lifecycle();
+            update_option( 'kalicart_bridge_wk_version', KALICART_BRIDGE_VERSION );
+        }
+        if ( $rewrite_pending ) {
+            delete_option( 'kalicart_bridge_rewrite_pending' );
+        }
     }, 20 );
     KaliCart_Bridge_Quarantine::init_hooks();
     KaliCart_Bridge_Shortcodes::init();
@@ -199,9 +210,10 @@ register_activation_hook( __FILE__, function () {
     kalicart_bridge_ensure_default_options();
     KaliCart_Bridge_Commerce_Consent::ensure_schema();
     // Activation runs after init, so our rewrite rules have not been registered
-    // in this request. Invalidate the stored rules and let WordPress rebuild
-    // them softly on the next normal request, after every init callback ran.
-    delete_option( 'rewrite_rules' );
+    // in this request. Never empty the stored rules (an empty set makes other
+    // plugins request a hard .htaccess flush): leave a local flag and let the
+    // init callback refresh softly on the next request.
+    update_option( 'kalicart_bridge_rewrite_pending', 1, false );
     KaliCart_Bridge_Snapshot::reconcile_lifecycle();
     if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
         KaliCart_Bridge_Signals::write_well_known_files();
@@ -235,11 +247,6 @@ function kalicart_bridge_deactivation_shutdown(): void {
 	}
 
 	foreach ( [
-		static function (): void {
-			// Rebuild softly on the next request, after this plugin is no longer
-			// present on init. Never write web-server configuration here.
-			delete_option( 'rewrite_rules' );
-		},
 		static function (): void {
 			foreach ( [
 				'kalicart_bridge_facets_rebuild',

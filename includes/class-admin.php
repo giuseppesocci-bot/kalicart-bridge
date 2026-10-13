@@ -336,7 +336,7 @@ class KaliCart_Bridge_Admin {
 
 		// Rewrite flushing is expensive and is needed only when the sitemap route changes.
 		if ( $previous_sitemap_enabled !== (bool) $settings['sitemap_enabled'] ) {
-			flush_rewrite_rules();
+			flush_rewrite_rules( false ); // soft: the sitemap route needs no .htaccess write
 		}
 
         wp_send_json_success( [ 'saved' => true ] );

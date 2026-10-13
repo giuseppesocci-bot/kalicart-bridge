@@ -61,6 +61,7 @@ $kalicart_bridge_options = [
 	'kalicart_bridge_commerce_schema_version',
 	'kalicart_bridge_identity',
 	'kalicart_bridge_snapshot',
+	'kalicart_bridge_rewrite_pending',
 	'kalicart_bridge_identity_fatal',
 	'kalicart_bridge_federation_consent_log', // 1.0.139 consent receipts: kept on deactivation, removed on delete like the commerce ledger
     'kalicart_rate_guard_checkout',
