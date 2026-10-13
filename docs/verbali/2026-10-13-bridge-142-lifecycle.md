@@ -1,7 +1,7 @@
 # Bridge 1.0.142 — lifecycle sicuro
 
-Data: 2026-10-13  
-Base: tag pubblico `v1.0.141`, commit `23b0fc3bc4db756d2b592f4ad2f901b66da662ce`  
+Data: 2026-10-13\
+Base: tag pubblico `v1.0.141`, commit `23b0fc3bc4db756d2b592f4ad2f901b66da662ce`\
 Perimetro: disattivazione, cancellazione e riattivazione del plugin. Le modifiche
 snapshot/fallback del canary restano fuori da questa release e appartengono alla
 1.0.143.
