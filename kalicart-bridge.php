@@ -115,16 +115,23 @@ add_action( 'plugins_loaded', function () {
             }
             KaliCart_Bridge_Catalog_Engine::invalidate_query_cache();
         }
+        // The refresh below is deferred by WordPress to wp_loaded. Keep (or set)
+        // the pending flag until it has really completed, so a request that dies
+        // before then is retried on the next one, upgrades included.
+        if ( ! $rewrite_pending ) {
+            update_option( 'kalicart_bridge_rewrite_pending', 1, false );
+        }
         // Soft refresh only, never an empty rule set: WordPress rebuilds the
         // stored rules at wp_loaded while the previous rules stay in place, so
         // no other plugin sees empty rules and requests a hard (.htaccess) flush.
         flush_rewrite_rules( false );
+        // Runs after the core refresh (wp_loaded, priority 10): confirmation only.
+        add_action( 'wp_loaded', static function () {
+            delete_option( 'kalicart_bridge_rewrite_pending' );
+        }, PHP_INT_MAX );
         if ( $version_changed ) {
             KaliCart_Bridge_Snapshot::reconcile_lifecycle();
             update_option( 'kalicart_bridge_wk_version', KALICART_BRIDGE_VERSION );
-        }
-        if ( $rewrite_pending ) {
-            delete_option( 'kalicart_bridge_rewrite_pending' );
         }
     }, 20 );
     KaliCart_Bridge_Quarantine::init_hooks();

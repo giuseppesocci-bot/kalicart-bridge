@@ -85,7 +85,9 @@ $ok( 1 === substr_count( $main, 'flush_rewrite_rules( false )' ), '1.0.143: a si
 $init_pos = strpos( $main, "\$rewrite_pending = (bool) get_option( 'kalicart_bridge_rewrite_pending', false );" );
 $flush_pos = strpos( $main, 'flush_rewrite_rules( false )' );
 $clear_pos = strpos( $main, "delete_option( 'kalicart_bridge_rewrite_pending' )" );
-$ok( false !== $init_pos && $init_pos < $flush_pos && $flush_pos < $clear_pos, '1.0.143: pending flag cleared only after the soft refresh' );
+$confirm  = strpos( $main, "add_action( 'wp_loaded', static function () {" );
+$ok( false !== $init_pos && $init_pos < $flush_pos && $flush_pos < $confirm && $confirm < $clear_pos && false !== strpos( $main, '}, PHP_INT_MAX );' ), '1.0.143: pending flag cleared only on wp_loaded after the core refresh' );
+$ok( 2 === substr_count( $main, "update_option( 'kalicart_bridge_rewrite_pending', 1, false )" ), '1.0.143: pending is set on activation and before every init refresh (upgrades included)' );
 $ok( false !== strpos( $uninstall, "'kalicart_bridge_rewrite_pending'" ), '1.0.143: uninstall removes the pending flag' );
 $ok( false !== strpos( $snapshot, 'public static function deactivation_cleanup' ) && false !== strpos( $snapshot, "'owned_paths'" ), 'snapshot cleanup uses a persisted finite ownership list' );
 $ok( false === strpos( $uninstall, '::leaving(' ) && ! preg_match( '/wp_remote_[a-z_]+\s*\(/', $uninstall ), 'uninstall is local-only' );
