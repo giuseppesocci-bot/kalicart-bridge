@@ -8,19 +8,18 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
-// 1.0.138: signed "leaving" (uninstalled) before the identity key is deleted. Best effort.
-if ( ! defined( 'KALICART_BRIDGE_GLOBAL' ) ) {
-	define( 'KALICART_BRIDGE_GLOBAL', 'https://dashboard.kalicart.com' );
-}
+// Uninstall is deliberately local-only. A synchronous network call can make
+// WordPress report a failed deletion and cannot be made reliable at this
+// lifecycle boundary.
 if ( ! defined( 'KALICART_BRIDGE_DIR' ) ) {
 	define( 'KALICART_BRIDGE_DIR', plugin_dir_path( __FILE__ ) );
 }
 if ( ! defined( 'KALICART_BRIDGE_VERSION' ) ) {
 	define( 'KALICART_BRIDGE_VERSION', 'uninstall' );
 }
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-identity.php';
-KaliCart_Bridge_Identity::leaving( 'uninstalled' );
-// 1.0.139: every catalog snapshot file goes (manifest first).
+// Every catalog snapshot file goes (manifest first). The implementation accepts
+// only canonical directories and plugin-owned filenames and never recurses.
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-snapshot-profile.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-snapshot.php';
 KaliCart_Bridge_Snapshot::delete_all();
 
@@ -77,10 +76,6 @@ $kalicart_bridge_options = [
     'kalicart_rate_guard_lock_mcp',
 	'kalicart_rate_guard_lock_telemetry_html',
 ];
-foreach ( $kalicart_bridge_options as $kalicart_bridge_option ) {
-    delete_option( $kalicart_bridge_option );
-}
-
 // Cron
 wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
 wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
@@ -140,22 +135,36 @@ foreach ( $kalicart_bridge_transients as $kalicart_bridge_transient ) {
 // this plugin. Never recurse through uploads and never trust an arbitrary path.
 if ( preg_match( '/^[A-Za-z0-9]{16,64}$/', $kalicart_bridge_acp_token ) ) {
 	$kalicart_bridge_uploads = wp_upload_dir();
-	$kalicart_bridge_base    = trailingslashit( $kalicart_bridge_uploads['basedir'] ) . 'kalicart-bridge/';
-	$kalicart_bridge_dir     = $kalicart_bridge_base . $kalicart_bridge_acp_token . '/';
-	foreach ( [ 'index.html', 'acp-products.jsonl', 'acp-products.jsonl.gz', 'acp-products.jsonl.tmp', 'acp-products.jsonl.tmp.gz' ] as $kalicart_bridge_file ) {
-		$kalicart_bridge_path = $kalicart_bridge_dir . $kalicart_bridge_file;
-		if ( is_file( $kalicart_bridge_path ) ) {
-			wp_delete_file( $kalicart_bridge_path );
-		}
+	if ( ! empty( $kalicart_bridge_uploads['error'] ) || empty( $kalicart_bridge_uploads['basedir'] ) ) {
+		$kalicart_bridge_uploads = [];
 	}
-	if ( is_dir( $kalicart_bridge_dir ) ) {
-		if ( ! function_exists( 'WP_Filesystem' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/file.php';
+}
+if ( $kalicart_bridge_acp_token && ! empty( $kalicart_bridge_uploads['basedir'] ) ) {
+	$kalicart_bridge_base    = trailingslashit( (string) $kalicart_bridge_uploads['basedir'] ) . 'kalicart-bridge/';
+	$kalicart_bridge_dir     = $kalicart_bridge_base . $kalicart_bridge_acp_token . '/';
+	$kalicart_bridge_real_uploads = realpath( $kalicart_bridge_uploads['basedir'] );
+	$kalicart_bridge_real_dir     = realpath( rtrim( $kalicart_bridge_dir, '/' ) );
+	$kalicart_bridge_safe_dir     = false !== $kalicart_bridge_real_uploads
+		&& false !== $kalicart_bridge_real_dir
+		&& ! is_link( rtrim( $kalicart_bridge_dir, '/' ) )
+		&& rtrim( wp_normalize_path( $kalicart_bridge_real_dir ), '/' )
+			=== rtrim( wp_normalize_path( $kalicart_bridge_real_uploads ), '/' ) . '/kalicart-bridge/' . $kalicart_bridge_acp_token;
+	if ( $kalicart_bridge_safe_dir ) {
+		foreach ( [ 'index.html', 'acp-products.jsonl', 'acp-products.jsonl.gz', 'acp-products.jsonl.tmp', 'acp-products.jsonl.tmp.gz' ] as $kalicart_bridge_file ) {
+			$kalicart_bridge_path = $kalicart_bridge_dir . $kalicart_bridge_file;
+			if ( ! is_link( $kalicart_bridge_path ) && is_file( $kalicart_bridge_path ) ) {
+				wp_delete_file( $kalicart_bridge_path );
+			}
 		}
-		global $wp_filesystem;
-		if ( WP_Filesystem() && $wp_filesystem ) {
-			// Non-recursive on purpose: a merchant-owned file keeps the directory intact.
-			$wp_filesystem->rmdir( $kalicart_bridge_dir, false );
+		if ( is_dir( $kalicart_bridge_dir ) ) {
+			if ( ! function_exists( 'WP_Filesystem' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+			}
+			global $wp_filesystem;
+			if ( WP_Filesystem() && $wp_filesystem ) {
+				// Non-recursive on purpose: a merchant-owned file keeps the directory intact.
+				$wp_filesystem->rmdir( $kalicart_bridge_dir, false );
+			}
 		}
 	}
 }
@@ -163,9 +172,17 @@ if ( preg_match( '/^[A-Za-z0-9]{16,64}$/', $kalicart_bridge_acp_token ) ) {
 // Physical discovery mirrors otherwise bypass WordPress and remain publicly
 // reachable after uninstall. Delete only files whose body identifies KaliCart.
 $kalicart_bridge_well_known = trailingslashit( ABSPATH ) . '.well-known/';
+$kalicart_bridge_real_root  = realpath( ABSPATH );
+$kalicart_bridge_real_wk    = realpath( rtrim( $kalicart_bridge_well_known, '/' ) );
+$kalicart_bridge_safe_wk    = false !== $kalicart_bridge_real_root
+	&& false !== $kalicart_bridge_real_wk
+	&& ! is_link( rtrim( $kalicart_bridge_well_known, '/' ) )
+	&& rtrim( wp_normalize_path( $kalicart_bridge_real_wk ), '/' )
+		=== rtrim( wp_normalize_path( $kalicart_bridge_real_root ), '/' ) . '/.well-known';
+if ( $kalicart_bridge_safe_wk ) {
 foreach ( [ 'agent.json', 'kalicart-bridge.json', 'agent-catalog.json', 'ucp.json', 'api-catalog.json', 'kalicart-bridge', 'agent-catalog', 'api-catalog', 'ucp' ] as $kalicart_bridge_mirror ) {
 	$kalicart_bridge_path = $kalicart_bridge_well_known . $kalicart_bridge_mirror;
-	if ( is_file( $kalicart_bridge_path ) ) {
+	if ( ! is_link( $kalicart_bridge_path ) && is_file( $kalicart_bridge_path ) ) {
 		$kalicart_bridge_body = (string) @file_get_contents( $kalicart_bridge_path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- ownership check must fail closed on unreadable files.
 		if ( false !== stripos( $kalicart_bridge_body, 'kalicart' ) ) {
 			wp_delete_file( $kalicart_bridge_path );
@@ -174,6 +191,15 @@ foreach ( [ 'agent.json', 'kalicart-bridge.json', 'agent-catalog.json', 'ucp.jso
 }
 $kalicart_bridge_htaccess = $kalicart_bridge_well_known . '.htaccess';
 $kalicart_bridge_legacy_htaccess = "<Files 'kalicart-bridge'>\n  ForceType application/json\n</Files>\n<Files 'agent-catalog'>\n  ForceType application/json\n</Files>\n<Files 'ucp'>\n  ForceType application/json\n</Files>\n";
-if ( is_file( $kalicart_bridge_htaccess ) && (string) @file_get_contents( $kalicart_bridge_htaccess ) === $kalicart_bridge_legacy_htaccess ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- exact ownership check.
+if ( ! is_link( $kalicart_bridge_htaccess ) && is_file( $kalicart_bridge_htaccess ) && (string) @file_get_contents( $kalicart_bridge_htaccess ) === $kalicart_bridge_legacy_htaccess ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- exact ownership check.
 	wp_delete_file( $kalicart_bridge_htaccess );
+}
+}
+
+// Options are intentionally deleted last. If a prior local cleanup step fails,
+// a second uninstall attempt still has the identity and path metadata it needs.
+// Removing the identity option here guarantees a fresh installation identity
+// and domain proof after a later reinstall.
+foreach ( $kalicart_bridge_options as $kalicart_bridge_option ) {
+	delete_option( $kalicart_bridge_option );
 }

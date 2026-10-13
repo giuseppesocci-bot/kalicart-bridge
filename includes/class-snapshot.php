@@ -360,6 +360,133 @@ class KaliCart_Bridge_Snapshot {
 		return false === $free || $free >= $need; // unknown free space: do not block
 	}
 
+	/**
+	 * Canonical catalog locations. The configured WordPress root and uploads
+	 * directory are trusted anchors; child symlinks are never followed.
+	 *
+	 * @return array<int,array{dir:string,base:string,suffix:string}>
+	 */
+	private static function canonical_dirs(): array {
+		$out  = [];
+		$base = rtrim( wp_normalize_path( ABSPATH ), '/' );
+		$out[] = [
+			'dir'    => $base . '/.well-known/kalicart/',
+			'base'   => $base,
+			'suffix' => '.well-known/kalicart',
+		];
+		$up = wp_upload_dir( null, false );
+		if ( empty( $up['error'] ) && ! empty( $up['basedir'] ) ) {
+			$uploads = rtrim( wp_normalize_path( (string) $up['basedir'] ), '/' );
+			$out[] = [
+				'dir'    => $uploads . '/kalicart/',
+				'base'   => $uploads,
+				'suffix' => 'kalicart',
+			];
+		}
+		return $out;
+	}
+
+	/** Return the canonical directory or an empty string for an unsafe path. */
+	private static function safe_catalog_dir( string $dir ): string {
+		$dir = rtrim( wp_normalize_path( $dir ), '/' ) . '/';
+		foreach ( self::canonical_dirs() as $candidate ) {
+			if ( $dir !== $candidate['dir'] || ! is_dir( $dir ) || is_link( rtrim( $dir, '/' ) ) ) {
+				continue;
+			}
+			$real_base = realpath( $candidate['base'] );
+			$real_dir  = realpath( rtrim( $dir, '/' ) );
+			if ( false === $real_base || false === $real_dir ) {
+				continue;
+			}
+			$expected = rtrim( wp_normalize_path( $real_base ), '/' ) . '/' . $candidate['suffix'];
+			if ( rtrim( wp_normalize_path( $real_dir ), '/' ) === $expected ) {
+				return $dir;
+			}
+		}
+		return '';
+	}
+
+	/** Strictly plugin-owned variable filenames. */
+	private static function valid_owned_name( string $name ): bool {
+		return (bool) preg_match( KaliCart_Bridge_Snapshot_Profile::SHARD_RE, $name )
+			|| (bool) preg_match( '/^(?:manifest\.json|c-[0-9a-f]{32}\.jsonl\.gz)\.tmp-[A-Za-z0-9]+$/', $name );
+	}
+
+	/**
+	 * Files explicitly recorded in the option. No directory scan is required in
+	 * the deactivation shutdown path.
+	 *
+	 * @return string[] basenames only
+	 */
+	private static function state_owned_names( array $s, string $dir ): array {
+		$names = [ 'manifest.json', 'building.part', 'index.php' ];
+		$pub   = is_array( $s['published'] ?? null ) ? $s['published'] : [];
+		if ( $dir === rtrim( wp_normalize_path( (string) ( $pub['dir'] ?? '' ) ), '/' ) . '/' ) {
+			$recorded = (array) ( $pub['owned_paths'] ?? $pub['shard_paths'] ?? [] );
+			$names    = array_merge( $names, $recorded );
+		}
+		$job = is_array( $s['job'] ?? null ) ? $s['job'] : [];
+		if ( $dir === rtrim( wp_normalize_path( (string) ( $job['dir'] ?? '' ) ), '/' ) . '/' ) {
+			foreach ( (array) ( $job['done'] ?? [] ) as $bucket ) {
+				if ( is_array( $bucket ) ) {
+					$names = array_merge( $names, array_column( (array) ( $bucket['shards'] ?? [] ), 'path' ) );
+				}
+			}
+		}
+		$names = array_values( array_unique( array_filter( array_map( 'strval', $names ), static function ( $name ) {
+			return in_array( $name, [ 'manifest.json', 'building.part', 'index.php' ], true ) || self::valid_owned_name( $name );
+		} ) ) );
+		return array_slice( $names, 0, 10000 );
+	}
+
+	/** @return string[]|null Null means the finite safety ceiling was exceeded. */
+	private static function scan_owned_names( string $dir ): ?array {
+		$dir = self::safe_catalog_dir( $dir );
+		if ( '' === $dir ) {
+			return [];
+		}
+		$out   = [];
+		$seen  = 0;
+		$limit = 10000;
+		try {
+			foreach ( new \FilesystemIterator( $dir, \FilesystemIterator::SKIP_DOTS ) as $file ) {
+				$seen++;
+				if ( $seen > $limit ) {
+					return null;
+				}
+				$name = $file->getFilename();
+				if ( ! $file->isLink() && $file->isFile() && self::valid_owned_name( $name ) ) {
+					$out[] = $name;
+				}
+			}
+		} catch ( \Throwable $e ) {
+			return null;
+		}
+		return $out;
+	}
+
+	/** Delete a finite allowlisted set, manifest first, without following links. */
+	private static function delete_known_files( string $dir, array $names ): void {
+		$dir = self::safe_catalog_dir( $dir );
+		if ( '' === $dir ) {
+			return;
+		}
+		$names = array_values( array_unique( array_map( 'strval', $names ) ) );
+		usort( $names, static function ( $a, $b ) {
+			return ( 'manifest.json' === $a ? -1 : 0 ) <=> ( 'manifest.json' === $b ? -1 : 0 );
+		} );
+		foreach ( array_slice( $names, 0, 10000 ) as $name ) {
+			if ( ! in_array( $name, [ 'manifest.json', 'building.part', 'index.php' ], true ) && ! self::valid_owned_name( $name ) ) {
+				continue;
+			}
+			$path = $dir . $name;
+			if ( ! is_link( $path ) && is_file( $path ) ) {
+				wp_delete_file( $path );
+			}
+		}
+		@rmdir( $dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir,WordPress.PHP.NoSilencedErrors.Discouraged -- exact canonical plugin directory, non-recursive.
+	}
+
 	// ── projection federated-1 ──────────────────────────────────────────────
 
 	/**
@@ -735,6 +862,9 @@ class KaliCart_Bridge_Snapshot {
 				'bytes'           => (int) array_sum( array_map( static function ( $m ) { return array_sum( array_column( $m['shards'], 'bytes' ) ); }, $buckets ) ),
 				'buckets'         => $buckets,
 				'shard_paths'     => $paths,
+				// Complete finite ownership list (current + one retained generation).
+				// Lifecycle cleanup never needs a glob or directory walk.
+				'owned_paths'     => array_values( array_unique( $keep ) ),
 			],
 		] );
 		wp_delete_file( $job['dir'] . 'building.part' );
@@ -762,32 +892,77 @@ class KaliCart_Bridge_Snapshot {
 	}
 
 	private static function delete_dir_files( string $dir ): void {
-		if ( '' === $dir || ! is_dir( $dir ) || 'kalicart' !== basename( rtrim( $dir, '/' ) ) ) {
+		$names = self::scan_owned_names( $dir );
+		if ( null === $names ) {
 			return;
 		}
-		wp_delete_file( $dir . 'manifest.json' ); // manifest first (contract §2)
-		foreach ( (array) glob( $dir . 'c-*.jsonl.gz' ) as $f ) {
-			wp_delete_file( $f );
-		}
-		foreach ( [ 'building.part', 'index.php' ] as $f ) {
-			wp_delete_file( $dir . $f );
-		}
-		foreach ( (array) glob( $dir . '*.tmp-*' ) as $f ) {
-			wp_delete_file( $f );
-		}
-		@rmdir( $dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir, WordPress.PHP.NoSilencedErrors.Discouraged -- non-recursive: a folder with other files stays.
+		self::delete_known_files( $dir, array_merge( [ 'manifest.json', 'building.part', 'index.php' ], $names ) );
 	}
 
-	/** Revoke, deactivation, uninstall: every snapshot file goes, manifest first. */
+	/**
+	 * Deactivation shutdown: exact state-owned files only, with no network,
+	 * glob, recursive delete or Action Scheduler scan.
+	 */
+	public static function deactivation_cleanup(): void {
+		$s = self::state();
+		foreach ( self::canonical_dirs() as $candidate ) {
+			$dir = self::safe_catalog_dir( $candidate['dir'] );
+			if ( '' !== $dir ) {
+				self::delete_known_files( $dir, self::state_owned_names( $s, $dir ) );
+			}
+		}
+		wp_clear_scheduled_hook( self::HOOK_BUILD );
+		wp_clear_scheduled_hook( self::HOOK_DAILY );
+		self::save( [ 'seq' => (int) ( $s['seq'] ?? 0 ), 'state' => 'disabled' ] );
+	}
+
+	/**
+	 * Activation/upgrade reconciliation. Directory discovery is bounded and is
+	 * deliberately outside the deactivation callback. A valid published
+	 * generation is retained; a disabled lifecycle is cleaned and fully rearmed.
+	 */
+	public static function reconcile_lifecycle(): void {
+		$s        = self::state();
+		$disabled = 'disabled' === ( $s['state'] ?? '' );
+		$pub      = is_array( $s['published'] ?? null ) ? $s['published'] : [];
+		foreach ( self::canonical_dirs() as $candidate ) {
+			$dir   = self::safe_catalog_dir( $candidate['dir'] );
+			$names = '' === $dir ? [] : self::scan_owned_names( $dir );
+			if ( null === $names ) {
+				continue;
+			}
+			if ( $disabled ) {
+				self::delete_known_files( $dir, array_merge( [ 'manifest.json', 'building.part', 'index.php' ], $names ) );
+			} elseif ( $pub && $dir === rtrim( wp_normalize_path( (string) ( $pub['dir'] ?? '' ) ), '/' ) . '/' ) {
+				$pub['owned_paths'] = array_values( array_unique( array_merge( (array) ( $pub['owned_paths'] ?? [] ), $names ) ) );
+			}
+		}
+		if ( $pub && ! $disabled ) {
+			$s['published'] = $pub;
+			self::save( $s );
+		}
+		if ( ! $disabled || ! self::eligible() ) {
+			return;
+		}
+		if ( function_exists( 'as_unschedule_all_actions' ) ) {
+			as_unschedule_all_actions( self::HOOK_BUILD, [], self::GROUP );
+		}
+		wp_clear_scheduled_hook( self::HOOK_BUILD );
+		wp_clear_scheduled_hook( self::HOOK_DAILY );
+		self::delete_markers();
+		self::put_row( self::FULL_KEY, self::token() );
+		self::save( [ 'seq' => (int) ( $s['seq'] ?? 0 ), 'state' => 'disabled' ] );
+		if ( ! wp_next_scheduled( self::HOOK_DAILY ) ) {
+			wp_schedule_event( time() + wp_rand( 300, 3600 ), 'daily', self::HOOK_DAILY );
+		}
+		self::schedule_build( 5 );
+	}
+
+	/** Revoke and uninstall: every bounded plugin-owned snapshot file goes. */
 	public static function delete_all(): void {
 		$s = self::state();
-		foreach ( [ $s['published']['dir'] ?? '', $s['job']['dir'] ?? '' ] as $d ) {
-			self::delete_dir_files( (string) $d );
-		}
-		self::delete_dir_files( rtrim( ABSPATH, '/' ) . '/.well-known/kalicart/' );
-		$up = wp_upload_dir( null, false );
-		if ( empty( $up['error'] ) && ! empty( $up['basedir'] ) ) {
-			self::delete_dir_files( trailingslashit( $up['basedir'] ) . 'kalicart/' );
+		foreach ( self::canonical_dirs() as $candidate ) {
+			self::delete_dir_files( $candidate['dir'] );
 		}
 		if ( function_exists( 'as_unschedule_all_actions' ) ) {
 			as_unschedule_all_actions( self::HOOK_BUILD, [], self::GROUP );

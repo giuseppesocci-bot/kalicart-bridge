@@ -1192,11 +1192,11 @@ class KaliCart_Bridge_Signals {
      */
     public static function cleanup_well_known_static_files(): void {
         $dir = rtrim( ABSPATH, '/' ) . '/.well-known/';
-        if ( ! is_dir( $dir ) ) return;
+        if ( ! self::safe_well_known_dir( $dir ) ) return;
 
         foreach ( [ 'kalicart-bridge', 'agent-catalog', 'api-catalog', 'ucp' ] as $stale ) {
             $path = $dir . $stale;
-            if ( ! file_exists( $path ) ) continue;
+            if ( ! file_exists( $path ) || is_link( $path ) ) continue;
             $body = (string) @file_get_contents( $path );
             if ( strpos( $body, 'kalicart' ) !== false ) {
                 wp_delete_file( $path );
@@ -1206,9 +1206,23 @@ class KaliCart_Bridge_Signals {
         // Legacy Apache-only .htaccess: remove only if byte-identical to ours.
         $htaccess = $dir . '.htaccess';
         $legacy   = "<Files 'kalicart-bridge'>\n  ForceType application/json\n</Files>\n<Files 'agent-catalog'>\n  ForceType application/json\n</Files>\n<Files 'ucp'>\n  ForceType application/json\n</Files>\n";
-        if ( file_exists( $htaccess ) && @file_get_contents( $htaccess ) === $legacy ) {
+        if ( file_exists( $htaccess ) && ! is_link( $htaccess ) && @file_get_contents( $htaccess ) === $legacy ) {
             wp_delete_file( $htaccess );
         }
+    }
+
+    /** The fixed child directory must resolve below the real WordPress root. */
+    private static function safe_well_known_dir( string $dir ): bool {
+        $dir = rtrim( wp_normalize_path( $dir ), '/' ) . '/';
+        if ( ! is_dir( $dir ) || is_link( rtrim( $dir, '/' ) ) ) {
+            return false;
+        }
+        $root = realpath( ABSPATH );
+        $real = realpath( rtrim( $dir, '/' ) );
+        if ( false === $root || false === $real ) {
+            return false;
+        }
+        return rtrim( wp_normalize_path( $real ), '/' ) === rtrim( wp_normalize_path( $root ), '/' ) . '/.well-known';
     }
 
     /**
@@ -1217,7 +1231,7 @@ class KaliCart_Bridge_Signals {
      */
     public static function remove_well_known_files(): void {
         $dir = rtrim( ABSPATH, '/' ) . '/.well-known/';
-        if ( ! is_dir( $dir ) ) return;
+        if ( ! self::safe_well_known_dir( $dir ) ) return;
 
         $owned_names = [
             'agent.json',
@@ -1232,7 +1246,7 @@ class KaliCart_Bridge_Signals {
         ];
         foreach ( $owned_names as $name ) {
             $path = $dir . $name;
-            if ( ! file_exists( $path ) ) continue;
+            if ( ! file_exists( $path ) || is_link( $path ) ) continue;
             $body = (string) @file_get_contents( $path );
             if ( stripos( $body, 'kalicart' ) !== false ) {
                 wp_delete_file( $path );
@@ -1242,7 +1256,7 @@ class KaliCart_Bridge_Signals {
         // Legacy Apache-only .htaccess: remove only if byte-identical to ours.
         $htaccess = $dir . '.htaccess';
         $legacy   = "<Files 'kalicart-bridge'>\n  ForceType application/json\n</Files>\n<Files 'agent-catalog'>\n  ForceType application/json\n</Files>\n<Files 'ucp'>\n  ForceType application/json\n</Files>\n";
-        if ( file_exists( $htaccess ) && @file_get_contents( $htaccess ) === $legacy ) {
+        if ( file_exists( $htaccess ) && ! is_link( $htaccess ) && @file_get_contents( $htaccess ) === $legacy ) {
             wp_delete_file( $htaccess );
         }
     }
@@ -1251,6 +1265,9 @@ class KaliCart_Bridge_Signals {
         $dir = rtrim( ABSPATH, '/' ) . '/.well-known/';
         if ( ! is_dir( $dir ) ) {
             wp_mkdir_p( $dir );
+        }
+        if ( ! self::safe_well_known_dir( $dir ) ) {
+            return;
         }
 
         // Extension-less convention paths (kalicart-bridge, agent-catalog)

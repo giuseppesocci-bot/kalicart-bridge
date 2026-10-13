@@ -157,7 +157,7 @@ This plugin works fully standalone. It connects to one external service **only a
 
 **Service:** KaliCart Global (https://dashboard.kalicart.com)
 
-**When data is sent:** When an administrator activates or revokes the Federated Catalog, requests its external-visibility status, or explicitly grants or revokes a named federated distribution channel. After a provider receipt exists, opening the plugin page requests its processing status using the public site URL and consent ID. A provider receipt that could not be delivered is sent again after about 1 minute, 5 minutes, 30 minutes, 2 hours and 12 hours, then once a day until KaliCart Global has received or rejected it (retries use WP-Cron). When this installation already has a verified identity, provider receipts are signed with that identity; the compatibility path for an older KaliCart Global or an unavailable local identity verifies them against the public discovery document. While the Federated Catalog is active, the plugin also proves this installation's identity once and then sends a signed status signal about once a day; it sends a signed leaving signal when the plugin is deactivated or deleted, and a signed consent-off signal when federation is revoked. Nothing is sent merely because the plugin is installed or activated.
+**When data is sent:** When an administrator activates or revokes the Federated Catalog, requests its external-visibility status, or explicitly grants or revokes a named federated distribution channel. After a provider receipt exists, opening the plugin page requests its processing status using the public site URL and consent ID. A provider receipt that could not be delivered is sent again after about 1 minute, 5 minutes, 30 minutes, 2 hours and 12 hours, then once a day until KaliCart Global has received or rejected it (retries use WP-Cron). When this installation already has a verified identity, provider receipts are signed with that identity; the compatibility path for an older KaliCart Global or an unavailable local identity verifies them against the public discovery document. While the Federated Catalog is active, the plugin also proves this installation's identity once and then sends a signed status signal about once a day; it sends a signed consent-off signal when federation is revoked. Deactivating or deleting the plugin performs local cleanup only and sends no request. Nothing is sent merely because the plugin is installed or activated.
 
 **What is sent:** Federated Catalog activation, revocation and visibility checks send the site's public URL (e.g. https://yourstore.com). A provider authorization receipt additionally sends its consent ID, provider, purpose, action, UTC timestamp, plugin and terms versions, consent locale, and SHA-256 evidence-chain hashes. A signed receipt also carries a random one-time request ID, the site's host and the existing random installation ID. The administrator's WordPress user ID and localized consent text remain only in the store's local evidence log. The identity signals send the site's host, a random installation ID, this installation's public key, a one-time verification code, the consent state and the consent text version, the plugin, WordPress and PHP versions, the status of the public catalog files (sequence number, file address and hashes, product count, whether complete, generation time) and whether the store is in WooCommerce "coming soon" or WordPress maintenance mode; when the plugin itself hit a fatal error, a normalized error code, the time and a short non-reversible hash - never the error message, file paths or stack traces. The private key never leaves the site. No customer, order, payment, credential or API-key data is transmitted.
 
@@ -169,6 +169,15 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.142 =
+**Deactivation and deletion can no longer be blocked by a host rewrite or network failure.**
+
+* Fix: WordPress records the plugin as inactive before KaliCart performs any cleanup. Cleanup is local-only, finite and best-effort; no external request and no web-server configuration write runs in the deactivation path.
+* Fix: activation and upgrades invalidate WordPress rewrite rules without writing `.htaccess`, then reconcile the public catalog files outside the critical deactivation request.
+* Hardening: uninstall is repeatable, deletes only validated plugin-owned paths, and removes identity and other options only after local files, schedules and records have been handled.
+* Existing Federated Catalog and provider consents are preserved on deactivation. Deleting and reinstalling the plugin creates a new installation identity.
+* No consent text changes: existing authorizations and their receipts stay valid.
 
 = 1.0.141 =
 **Channel authorization receipts can now be verified without reading the store's discovery endpoint.**

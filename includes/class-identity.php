@@ -13,8 +13,9 @@ defined( 'ABSPATH' ) || exit;
  *   on this site: register -> nonce -> the nonce is published in the Bridge's
  *   own /.well-known/kalicart-bridge.json and discovery -> prove (signed).
  * - Daily signed heartbeat (versions, consent, and at most a normalized fatal
- *   error code of this plugin - never messages or paths). Signed "leaving" on
- *   deactivation and uninstall, sent BEFORE the well-known files are removed.
+ *   error code of this plugin - never messages or paths). The legacy signed
+ *   "leaving" method remains for mixed-version compatibility, but lifecycle
+ *   callbacks from 1.0.142 onward are deliberately local-only.
  * - Only with the merchant's Federated Catalog consent, only on production
  *   environments, only for root installs. Nothing here can block the plugin,
  *   the catalog or the feed: every failure is recorded and retried later.
@@ -348,7 +349,7 @@ class KaliCart_Bridge_Identity {
 		}
 	}
 
-	/** Deactivation / uninstall: signed "leaving", sent BEFORE files are removed. Best effort. */
+	/** Legacy <=1.0.141 leaving protocol; 1.0.142 lifecycle callbacks do not call it. */
 	public static function leaving( string $reason ): void {
 		try {
 			$s  = self::state();

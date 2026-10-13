@@ -109,7 +109,11 @@ add_action( 'plugins_loaded', function () {
             KaliCart_Bridge_Signals::remove_well_known_files();
         }
 		KaliCart_Bridge_Catalog_Engine::invalidate_query_cache();
-        flush_rewrite_rules();
+        // Soft invalidation only. A hard flush writes web-server configuration
+        // and can fatally fail on managed hosts before WordPress completes the
+        // surrounding lifecycle request.
+        flush_rewrite_rules( false );
+        KaliCart_Bridge_Snapshot::reconcile_lifecycle();
         update_option( 'kalicart_bridge_wk_version', KALICART_BRIDGE_VERSION );
     }, 20 );
     KaliCart_Bridge_Quarantine::init_hooks();
@@ -194,24 +198,58 @@ register_activation_hook( __FILE__, function () {
 
     kalicart_bridge_ensure_default_options();
     KaliCart_Bridge_Commerce_Consent::ensure_schema();
-    // Flush rewrite rules per registrare sitemap-agentic-bridge.xml
-    flush_rewrite_rules();
+    // Register the new routes in WordPress only. Never write .htaccess from a
+    // plugin lifecycle callback.
+    flush_rewrite_rules( false );
+    KaliCart_Bridge_Snapshot::reconcile_lifecycle();
     if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
         KaliCart_Bridge_Signals::write_well_known_files();
     }
 
 } );
 
-register_deactivation_hook( __FILE__, function () {
-	wp_clear_scheduled_hook( 'kalicart_bridge_facets_rebuild' );
-	wp_clear_scheduled_hook( 'kalicart_bridge_cleanup_claims' );
-	wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
-	wp_unschedule_hook( KaliCart_Bridge_Commerce_Consent::RETRY_HOOK );
-	wp_clear_scheduled_hook( KaliCart_Bridge_Identity::CRON_HOOK );
-	// 1.0.138: signed "leaving" BEFORE the well-known files disappear (best effort, 5 s).
-	KaliCart_Bridge_Identity::leaving( 'deactivated' );
-	// 1.0.139: snapshot files go with the plugin (manifest first).
-	KaliCart_Bridge_Snapshot::delete_all();
-    KaliCart_Bridge_Signals::remove_well_known_files();
-    flush_rewrite_rules();
-} );
+/**
+ * Runs only after WordPress has had the opportunity to persist the inactive
+ * plugin list. Every operation is local, finite and isolated: cleanup failure
+ * must never turn a completed deactivation into an HTTP 500.
+ */
+function kalicart_bridge_deactivation_shutdown(): void {
+	if ( function_exists( 'fastcgi_finish_request' ) ) {
+		fastcgi_finish_request();
+	}
+
+	foreach ( [
+		static function (): void {
+			foreach ( [
+				'kalicart_bridge_facets_rebuild',
+				'kalicart_bridge_cleanup_claims',
+				'kalicart_bridge_acp_feed_generate',
+				KaliCart_Bridge_Commerce_Consent::RETRY_HOOK,
+				KaliCart_Bridge_Identity::CRON_HOOK,
+			] as $hook ) {
+				wp_clear_scheduled_hook( $hook );
+			}
+		},
+		static function (): void {
+			KaliCart_Bridge_Snapshot::deactivation_cleanup();
+		},
+		static function (): void {
+			KaliCart_Bridge_Signals::remove_well_known_files();
+		},
+	] as $cleanup ) {
+		try {
+			$cleanup();
+		} catch ( \Throwable $e ) {
+			// Best effort after deactivation is committed. Never call the network,
+			// emit output or rethrow from this path.
+			continue;
+		}
+	}
+}
+
+/** The critical callback deliberately performs no persistent write. */
+function kalicart_bridge_schedule_deactivation_cleanup(): void {
+	register_shutdown_function( 'kalicart_bridge_deactivation_shutdown' );
+}
+
+register_deactivation_hook( __FILE__, 'kalicart_bridge_schedule_deactivation_cleanup' );
