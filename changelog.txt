@@ -1,5 +1,14 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-13 - version 1.0.142
+
+* Fix: WordPress records the plugin as inactive before KaliCart performs any cleanup. Cleanup is local-only, finite and best-effort; no external request and no web-server configuration write runs in the deactivation path.
+* Fix: activation and upgrades invalidate WordPress rewrite rules without writing `.htaccess`, then reconcile the public catalog files outside the critical deactivation request.
+* Hardening: uninstall is repeatable, deletes only validated plugin-owned paths, and removes identity and other options only after local files, schedules and records have been handled.
+* Existing Federated Catalog and provider consents are preserved on deactivation. Deleting and reinstalling the plugin creates a new installation identity.
+* No consent text changes: existing authorizations and their receipts stay valid.
+
+
 2026-10-03 - version 1.0.141
 
 * New: when the installation identity is verified, grants and revocations for a federated provider channel are signed with that installation's existing key. KaliCart Global can verify the receipt directly even when a firewall or anti-bot service blocks its request to the store's public discovery endpoint.
