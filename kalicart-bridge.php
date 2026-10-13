@@ -198,9 +198,10 @@ register_activation_hook( __FILE__, function () {
 
     kalicart_bridge_ensure_default_options();
     KaliCart_Bridge_Commerce_Consent::ensure_schema();
-    // Register the new routes in WordPress only. Never write .htaccess from a
-    // plugin lifecycle callback.
-    flush_rewrite_rules( false );
+    // Activation runs after init, so our rewrite rules have not been registered
+    // in this request. Invalidate the stored rules and let WordPress rebuild
+    // them softly on the next normal request, after every init callback ran.
+    delete_option( 'rewrite_rules' );
     KaliCart_Bridge_Snapshot::reconcile_lifecycle();
     if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
         KaliCart_Bridge_Signals::write_well_known_files();
@@ -218,7 +219,27 @@ function kalicart_bridge_deactivation_shutdown(): void {
 		fastcgi_finish_request();
 	}
 
+	// A registered deactivation callback does not prove that WordPress committed
+	// the new active-plugin list: another callback may have failed later in the
+	// same request, or the option update itself may have failed. Refresh both
+	// caches and leave every artifact untouched unless deactivation is real.
+	wp_cache_delete( 'alloptions', 'options' );
+	wp_cache_delete( 'active_plugins', 'options' );
+	$plugin        = plugin_basename( KALICART_BRIDGE_FILE );
+	$active        = (array) get_option( 'active_plugins', [] );
+	$network_active = is_multisite()
+		? (array) get_site_option( 'active_sitewide_plugins', [] )
+		: [];
+	if ( in_array( $plugin, $active, true ) || isset( $network_active[ $plugin ] ) ) {
+		return;
+	}
+
 	foreach ( [
+		static function (): void {
+			// Rebuild softly on the next request, after this plugin is no longer
+			// present on init. Never write web-server configuration here.
+			delete_option( 'rewrite_rules' );
+		},
 		static function (): void {
 			foreach ( [
 				'kalicart_bridge_facets_rebuild',

@@ -55,12 +55,22 @@ $snapshot  = (string) file_get_contents( $root . '/includes/class-snapshot.php' 
 $readme    = (string) file_get_contents( $root . '/readme.txt' );
 $schedule  = $function_body( $main, 'kalicart_bridge_schedule_deactivation_cleanup' );
 $shutdown  = $function_body( $main, 'kalicart_bridge_deactivation_shutdown' );
+$activation_pos = strpos( $main, 'register_activation_hook' );
+$deactivation_pos = strpos( $main, 'function kalicart_bridge_deactivation_shutdown' );
+$activation = false !== $activation_pos && false !== $deactivation_pos
+	? substr( $main, $activation_pos, $deactivation_pos - $activation_pos )
+	: '';
 
 $ok( '' !== $schedule && false !== strpos( $schedule, "register_shutdown_function( 'kalicart_bridge_deactivation_shutdown' )" ), 'deactivation callback only registers the named shutdown' );
 $ok( ! preg_match( '/\b(?:update_option|delete_option|wp_clear_scheduled_hook|flush_rewrite_rules|wp_remote_[a-z_]+|leaving)\b/', $schedule ), 'deactivation callback has no persistent write, rewrite or network operation' );
 $ok( false !== strpos( $main, "register_deactivation_hook( __FILE__, 'kalicart_bridge_schedule_deactivation_cleanup' )" ), 'WordPress hook uses the minimal callback' );
 $ok( '' !== $shutdown && ! preg_match( '/\b(?:flush_rewrite_rules|wp_remote_[a-z_]+|leaving|glob|as_unschedule_all_actions)\b/', $shutdown ), 'shutdown has no network, rewrite, glob or mass Action Scheduler call' );
-$ok( ! preg_match( '/flush_rewrite_rules\s*\(\s*\)/', $main ) && substr_count( $main, 'flush_rewrite_rules( false )' ) >= 2, 'activation and upgrade use soft rewrite invalidation only' );
+$ok( false !== strpos( $shutdown, "wp_cache_delete( 'active_plugins', 'options' )" ) && false !== strpos( $shutdown, "get_site_option( 'active_sitewide_plugins'" ), 'shutdown refreshes local and multisite activation state' );
+$guard_pos = strpos( $shutdown, 'in_array( $plugin, $active, true )' );
+$cleanup_pos = strpos( $shutdown, "delete_option( 'rewrite_rules' )" );
+$ok( false !== $guard_pos && false !== $cleanup_pos && $guard_pos < $cleanup_pos, 'shutdown exits for a still-active plugin before any cleanup' );
+$ok( false !== strpos( $activation, "delete_option( 'rewrite_rules' )" ) && false === strpos( $activation, 'flush_rewrite_rules' ), 'activation defers a soft rewrite rebuild until the next init' );
+$ok( 1 === substr_count( $main, 'flush_rewrite_rules( false )' ) && false !== strpos( $shutdown, "delete_option( 'rewrite_rules' )" ), 'only the versioned init flushes softly and deactivation invalidates stored rules' );
 $ok( false !== strpos( $snapshot, 'public static function deactivation_cleanup' ) && false !== strpos( $snapshot, "'owned_paths'" ), 'snapshot cleanup uses a persisted finite ownership list' );
 $ok( false === strpos( $uninstall, '::leaving(' ) && ! preg_match( '/wp_remote_[a-z_]+\s*\(/', $uninstall ), 'uninstall is local-only' );
 $last_cleanup = max( strrpos( $uninstall, 'wp_delete_file' ), strrpos( $uninstall, 'delete_transient' ), strrpos( $uninstall, 'DROP TABLE' ) );
