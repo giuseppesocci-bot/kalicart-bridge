@@ -827,6 +827,10 @@ class KaliCart_Bridge_Snapshot {
 			$keep = array_merge( $keep, (array) ( $prev['shard_paths'] ?? [] ) );
 		}
 		self::prune( $job['dir'], array_unique( $keep ) );
+		$owned = self::scan_owned_names( $job['dir'] );
+		if ( null === $owned ) {
+			$owned = array_values( array_unique( $keep ) );
+		}
 		if ( $prev && ( $prev['dir'] ?? '' ) !== $job['dir'] ) {
 			self::delete_dir_files( (string) $prev['dir'] );
 		}
@@ -864,7 +868,7 @@ class KaliCart_Bridge_Snapshot {
 				'shard_paths'     => $paths,
 				// Complete finite ownership list (current + one retained generation).
 				// Lifecycle cleanup never needs a glob or directory walk.
-				'owned_paths'     => array_values( array_unique( $keep ) ),
+				'owned_paths'     => $owned,
 			],
 		] );
 		wp_delete_file( $job['dir'] . 'building.part' );
