@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-13 - version 1.0.143
+
+* Fix: deactivation leaves the stored rewrite rules untouched, and activation refreshes them softly on the next request instead of clearing them. On some managed hosts an empty rule set made another plugin request a full .htaccess rewrite during the next admin page, which could end in an HTTP 500 even though the plugin had been activated or deactivated correctly.
+* Fix: turning the agentic sitemap on or off refreshes the permalink rules without writing .htaccess.
+* No data, consent or catalog changes.
+
+
 2026-10-13 - version 1.0.142
 
 * Fix: WordPress records the plugin as inactive before KaliCart performs any cleanup. Cleanup is local-only, finite and best-effort; no external request and no web-server configuration write runs in the deactivation path.
