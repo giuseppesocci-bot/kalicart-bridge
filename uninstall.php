@@ -62,6 +62,7 @@ $kalicart_bridge_options = [
 	'kalicart_bridge_identity',
 	'kalicart_bridge_snapshot',
 	'kalicart_bridge_rewrite_pending',
+	'kalicart_bridge_identity_reentry',
 	'kalicart_bridge_identity_fatal',
 	'kalicart_bridge_federation_consent_log', // 1.0.139 consent receipts: kept on deactivation, removed on delete like the commerce ledger
     'kalicart_rate_guard_checkout',
@@ -84,6 +85,8 @@ wp_clear_scheduled_hook( 'kalicart_bridge_acp_feed_generate' );
 wp_clear_scheduled_hook( 'kalicart_bridge_federation_announce' );
 wp_unschedule_hook( 'kalicart_bridge_provider_consent_retry' );
 wp_clear_scheduled_hook( 'kalicart_bridge_identity_tick' );
+wp_clear_scheduled_hook( 'kalicart_bridge_identity_reentry' );
+wp_clear_scheduled_hook( 'kalicart_bridge_snapshot_heartbeat' );
 
 // Checkout session claim rows (kalicart_session_claimed_{id}): dynamically keyed, one per
 // attributed checkout — not in the fixed options list above, needs a LIKE-pattern sweep.

@@ -30,6 +30,11 @@ class KaliCart_Bridge_Identity {
 	const FATAL_OPT   = 'kalicart_bridge_identity_fatal';
 	const CRON_HOOK   = 'kalicart_bridge_identity_tick';
 	const SNAPSHOT_HEARTBEAT_HOOK = 'kalicart_bridge_snapshot_heartbeat';
+	// 1.0.144: after activation or upgrade, one signed heartbeat soon (background), so
+	// KaliCart Global can restore a store paused by an earlier "leaving" signal without
+	// waiting for the 20 h heartbeat interval.
+	const REENTRY_HOOK = 'kalicart_bridge_identity_reentry';
+	const REENTRY_OPT  = 'kalicart_bridge_identity_reentry';
 	const ACTION_GROUP = 'kalicart-bridge';
 	const TAG         = 'kalicart-bridge-v1';
 	const LABEL       = 'kalicart-bridge-identity-v1';
@@ -38,6 +43,7 @@ class KaliCart_Bridge_Identity {
 	public static function init(): void {
 		add_action( self::CRON_HOOK, [ __CLASS__, 'tick' ] );
 		add_action( self::SNAPSHOT_HEARTBEAT_HOOK, [ __CLASS__, 'snapshot_heartbeat' ] );
+		add_action( self::REENTRY_HOOK, [ __CLASS__, 'tick' ] );
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
 			wp_schedule_event( time() + 5 * MINUTE_IN_SECONDS, 'daily', self::CRON_HOOK );
 		}
@@ -258,13 +264,35 @@ class KaliCart_Bridge_Identity {
 				self::prove_now( $s, $sk );
 				return;
 			}
-			if ( time() - (int) ( $s['last_heartbeat_at'] ?? 0 ) >= self::HEARTBEAT_S ) {
-				self::heartbeat( $s, $sk );
+			$reentry = (bool) get_option( self::REENTRY_OPT, false );
+			if ( $reentry || time() - (int) ( $s['last_heartbeat_at'] ?? 0 ) >= self::HEARTBEAT_S ) {
+				if ( self::heartbeat( $s, $sk ) ) {
+					if ( $reentry ) {
+						delete_option( self::REENTRY_OPT );
+					}
+				} elseif ( $reentry ) {
+					self::schedule_reentry( 30 * MINUTE_IN_SECONDS ); // one request per retry, never a burst
+				}
 			}
 		} catch ( \Throwable $e ) {
 			$s = self::state();
 			$s['last_error'] = 'exception';
 			self::save( $s );
+		}
+	}
+
+	/**
+	 * Activation/upgrade: local flag plus one background event. No network here;
+	 * the signed heartbeat is sent by the event (tick) a couple of minutes later.
+	 */
+	public static function request_reentry(): void {
+		update_option( self::REENTRY_OPT, 1, false );
+		self::schedule_reentry( 2 * MINUTE_IN_SECONDS );
+	}
+
+	private static function schedule_reentry( int $delay ): void {
+		if ( ! wp_next_scheduled( self::REENTRY_HOOK ) ) {
+			wp_schedule_single_event( time() + max( 60, $delay ), self::REENTRY_HOOK );
 		}
 	}
 

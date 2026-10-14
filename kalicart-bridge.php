@@ -130,6 +130,7 @@ add_action( 'plugins_loaded', function () {
             delete_option( 'kalicart_bridge_rewrite_pending' );
         }, PHP_INT_MAX );
         if ( $version_changed ) {
+            KaliCart_Bridge_Identity::request_reentry();
             KaliCart_Bridge_Snapshot::reconcile_lifecycle();
             update_option( 'kalicart_bridge_wk_version', KALICART_BRIDGE_VERSION );
         }
@@ -221,6 +222,8 @@ register_activation_hook( __FILE__, function () {
     // plugins request a hard .htaccess flush): leave a local flag and let the
     // init callback refresh softly on the next request.
     update_option( 'kalicart_bridge_rewrite_pending', 1, false );
+    // 1.0.144: queue one signed heartbeat soon (background) so Global can restore the store.
+    KaliCart_Bridge_Identity::request_reentry();
     KaliCart_Bridge_Snapshot::reconcile_lifecycle();
     if ( get_option( 'kalicart_bridge_well_known_enabled', true ) ) {
         KaliCart_Bridge_Signals::write_well_known_files();
@@ -261,6 +264,8 @@ function kalicart_bridge_deactivation_shutdown(): void {
 				'kalicart_bridge_acp_feed_generate',
 				KaliCart_Bridge_Commerce_Consent::RETRY_HOOK,
 				KaliCart_Bridge_Identity::CRON_HOOK,
+				KaliCart_Bridge_Identity::REENTRY_HOOK,
+				KaliCart_Bridge_Identity::SNAPSHOT_HEARTBEAT_HOOK,
 			] as $hook ) {
 				wp_clear_scheduled_hook( $hook );
 			}
