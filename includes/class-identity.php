@@ -367,6 +367,7 @@ class KaliCart_Bridge_Identity {
 			'installation_id' => $s['installation_id'],
 			'consent'         => null === $consent ? (bool) get_option( 'kalicart_bridge_global_consent', false ) : $consent,
 			'plugin_version'  => KALICART_BRIDGE_VERSION,
+			'catalog_data_version' => defined( 'KALICART_BRIDGE_CATALOG_DATA_VERSION' ) ? (int) KALICART_BRIDGE_CATALOG_DATA_VERSION : 1,
 			'wp_version'      => get_bloginfo( 'version' ),
 			'php_version'     => PHP_VERSION,
 			'fatal'           => is_array( $fatal ) ? $fatal : null,

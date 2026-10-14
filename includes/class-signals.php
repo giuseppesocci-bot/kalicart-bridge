@@ -1103,6 +1103,7 @@ class KaliCart_Bridge_Signals {
         return wp_json_encode( [
             'type'          => 'kalicart-merchant-bridge-v1',
             'version'       => KALICART_BRIDGE_VERSION,
+            'catalog_data_version' => (int) KALICART_BRIDGE_CATALOG_DATA_VERSION,
             'name'          => get_bloginfo( 'name' ),
             'discovery'     => $base . '/discovery',
             'catalog_api'   => $base . '/catalog',

@@ -234,6 +234,7 @@ class KaliCart_Bridge_API {
             'schema_version'         => '1.0',
             'provider'               => 'kalicart-bridge-plugin',
             'plugin_version'         => KALICART_BRIDGE_VERSION,
+            'catalog_data_version'   => (int) KALICART_BRIDGE_CATALOG_DATA_VERSION,
             'discovery_document_url' => $discovery,
             'link_relation'          => 'kalicart-agent',
 

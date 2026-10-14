@@ -21,6 +21,13 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'KALICART_BRIDGE_VERSION', '1.0.143' );
+// Version of the catalog DATA format (fields, normalisation, exclusion/quarantine rules),
+// independent of the plugin version. Bump it ONLY when what the catalog returns changes:
+// KaliCart Global re-reads every catalog in full when this value changes, not on every
+// plugin release (compatibility, text or lifecycle releases leave it unchanged).
+if ( ! defined( 'KALICART_BRIDGE_CATALOG_DATA_VERSION' ) ) {
+	define( 'KALICART_BRIDGE_CATALOG_DATA_VERSION', 1 );
+}
 define( 'KALICART_BRIDGE_FILE',    __FILE__ );
 define( 'KALICART_BRIDGE_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'KALICART_BRIDGE_URL',     plugin_dir_url( __FILE__ ) );

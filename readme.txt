@@ -175,6 +175,7 @@ This plugin works fully standalone. It connects to one external service **only a
 
 * New: after the public catalog snapshot is rebuilt, one signed status signal is queued in the background (about a minute later, with bounded retries), so KaliCart Global can verify the newest generation without waiting for the daily signal. The build itself never makes network requests.
 * New: after the plugin is activated or updated, one signed status signal is queued in the background a couple of minutes later. A store paused in KaliCart Global by an earlier deactivation is restored without waiting up to 20 hours.
+* New: the discovery document and the signed status signal declare `catalog_data_version`, the version of the catalog data format. It changes only when what the catalog returns changes, so KaliCart Global can avoid re-reading every catalog after releases that do not touch the data.
 * Deactivation clears the scheduled WP-Cron events of these signals; uninstall also removes the re-entry flag. Background jobs already queued in Action Scheduler are left in place on deactivation (they do nothing while the plugin is inactive). If the first signal cannot be delivered it is retried every 30 minutes, at most 6 times, then the daily signal takes over. No consent text changes.
 
 = 1.0.143 =
