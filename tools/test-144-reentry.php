@@ -30,9 +30,16 @@ $ok( false !== strpos( $id, "add_action( self::REENTRY_HOOK, [ __CLASS__, 'tick'
 $t0 = strpos( $id, 'public static function tick' );
 $tick = substr( $id, $t0, strpos( $id, 'public static function request_reentry' ) - $t0 );
 $ok( false !== strpos( $tick, '$reentry || time() -' ), 'tick sends the heartbeat when re-entry is pending, regardless of the 20 h interval' );
-$ok( strpos( $tick, 'delete_option( self::REENTRY_OPT )' ) > strpos( $tick, 'self::heartbeat( $s, $sk )' ), 'flag cleared only after a successful heartbeat' );
-$ok( false !== strpos( $tick, 'self::schedule_reentry( 30 * MINUTE_IN_SECONDS )' ), 'failed re-entry retried once per 30 min (no burst)' );
-$ok( strpos( $tick, "'verified' !== ( \$s['status'] ?? '' )" ) < strpos( $tick, '$reentry' ), 'unverified identity keeps the existing prove path first' );
+$ok( preg_match( '/if \( self::heartbeat\( \$s, \$sk \) \) \{\s*if \( \$reentry \) \{\s*delete_option\( self::REENTRY_OPT \);/', $tick ) === 1, 'verified identity: flag cleared only inside the successful-heartbeat branch' );
+$ok( substr_count( $tick, 'self::reentry_failed()' ) === 2, 'failed re-entry (prove or heartbeat) goes through the bounded retry' );
+$f0 = strpos( $id, 'private static function reentry_failed' );
+$fail = substr( $id, $f0, strpos( $id, 'private static function schedule_reentry' ) - $f0 );
+$ok( false !== strpos( $fail, 'self::schedule_reentry( 30 * MINUTE_IN_SECONDS )' ) && false !== strpos( $fail, '>= self::REENTRY_MAX_ATTEMPTS' ), 'retry every 30 min, capped at REENTRY_MAX_ATTEMPTS, then the daily tick takes over' );
+$ok( false !== strpos( $tick, '$sent = self::prove_now( $s, $sk );' ) && false !== strpos( $tick, "\$sent ? delete_option( self::REENTRY_OPT ) : self::reentry_failed();" ), 'fresh identity: the post-proof heartbeat counts as re-entry (no second heartbeat)' );
+$p0 = strpos( $id, 'private static function prove_now' );
+$prove = substr( $id, $p0, strpos( $id, 'private static function heartbeat' ) - $p0 );
+$ok( false !== strpos( $prove, 'return self::heartbeat( $s, $sk );' ) && ! preg_match( '/return;\s/', $prove ), 'prove_now reports whether its heartbeat was delivered' );
+$ok( strpos( $tick, "'verified' !== ( \$s['status'] ?? '' )" ) < strpos( $tick, 'self::heartbeat( $s, $sk )' ), 'unverified identity keeps the existing prove path first' );
 
 $d0 = strpos( $main, 'function kalicart_bridge_deactivation_shutdown' );
 $shutdown = substr( $main, $d0, strpos( $main, 'function kalicart_bridge_schedule_deactivation_cleanup' ) - $d0 );

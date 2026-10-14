@@ -35,6 +35,7 @@ class KaliCart_Bridge_Identity {
 	// waiting for the 20 h heartbeat interval.
 	const REENTRY_HOOK = 'kalicart_bridge_identity_reentry';
 	const REENTRY_OPT  = 'kalicart_bridge_identity_reentry';
+	const REENTRY_MAX_ATTEMPTS = 6;
 	const ACTION_GROUP = 'kalicart-bridge';
 	const TAG         = 'kalicart-bridge-v1';
 	const LABEL       = 'kalicart-bridge-identity-v1';
@@ -260,18 +261,23 @@ class KaliCart_Bridge_Identity {
 				return;
 			}
 			[ $s, $sk ] = self::ensure_key();
+			$reentry = (bool) get_option( self::REENTRY_OPT, false );
 			if ( 'verified' !== ( $s['status'] ?? '' ) ) {
-				self::prove_now( $s, $sk );
+				// prove_now() already sends the first heartbeat after a successful proof:
+				// that heartbeat IS the re-entry signal, never a second one.
+				$sent = self::prove_now( $s, $sk );
+				if ( $reentry ) {
+					$sent ? delete_option( self::REENTRY_OPT ) : self::reentry_failed();
+				}
 				return;
 			}
-			$reentry = (bool) get_option( self::REENTRY_OPT, false );
 			if ( $reentry || time() - (int) ( $s['last_heartbeat_at'] ?? 0 ) >= self::HEARTBEAT_S ) {
 				if ( self::heartbeat( $s, $sk ) ) {
 					if ( $reentry ) {
 						delete_option( self::REENTRY_OPT );
 					}
 				} elseif ( $reentry ) {
-					self::schedule_reentry( 30 * MINUTE_IN_SECONDS ); // one request per retry, never a burst
+					self::reentry_failed();
 				}
 			}
 		} catch ( \Throwable $e ) {
@@ -290,6 +296,20 @@ class KaliCart_Bridge_Identity {
 		self::schedule_reentry( 2 * MINUTE_IN_SECONDS );
 	}
 
+	/**
+	 * One retry every 30 min, at most REENTRY_MAX_ATTEMPTS, then the normal daily
+	 * tick takes over (bounded: never a burst, never an endless loop).
+	 */
+	private static function reentry_failed(): void {
+		$attempts = (int) get_option( self::REENTRY_OPT, 1 );
+		if ( $attempts >= self::REENTRY_MAX_ATTEMPTS ) {
+			delete_option( self::REENTRY_OPT );
+			return;
+		}
+		update_option( self::REENTRY_OPT, $attempts + 1, false );
+		self::schedule_reentry( 30 * MINUTE_IN_SECONDS );
+	}
+
 	private static function schedule_reentry( int $delay ): void {
 		if ( ! wp_next_scheduled( self::REENTRY_HOOK ) ) {
 			wp_schedule_single_event( time() + max( 60, $delay ), self::REENTRY_HOOK );
@@ -302,7 +322,8 @@ class KaliCart_Bridge_Identity {
 		return $s;
 	}
 
-	private static function prove_now( array $s, string $sk ): void {
+	/** @return bool true only when the proof succeeded AND its first heartbeat was delivered. */
+	private static function prove_now( array $s, string $sk ): bool {
 		$host = self::host();
 		[ $code, $data, $err ] = self::post( '/v1/bridge/identity/register', [
 			'host'            => $host,
@@ -312,7 +333,7 @@ class KaliCart_Bridge_Identity {
 		], $s, $sk );
 		if ( $err || empty( $data['nonce'] ) ) {
 			self::record( [ 'last_attempt_at' => time(), 'last_outcome' => 'register_failed', 'last_error' => (string) $err ] );
-			return;
+			return false;
 		}
 		// Publish the nonce where Global reads it, then ask Global to read it.
 		$s = self::record( [ 'nonce' => (string) $data['nonce'], 'nonce_ts' => (int) round( microtime( true ) * 1000 ) ] );
@@ -333,8 +354,9 @@ class KaliCart_Bridge_Identity {
 		}
 		$s = self::record( $patch );
 		if ( 'verified' === $outcome ) {
-			self::heartbeat( $s, $sk );
+			return self::heartbeat( $s, $sk );
 		}
+		return false;
 	}
 
 	private static function heartbeat( array $s, string $sk, ?bool $consent = null ): bool {
