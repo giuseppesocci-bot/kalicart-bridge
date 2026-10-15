@@ -170,6 +170,9 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.145 =
+* Fix: when a product sits in two categories with the same name (for example "Sale" under two different parents), they are now always returned in the same order: by name, then full category path, then ID. Before, their order could change from one read to the next, so an unchanged product could look changed. Products without same-name categories return exactly the same data as before.
+
 = 1.0.144 =
 **KaliCart Global learns about a new catalog snapshot within minutes, and a reactivated store returns to the Federated Catalog quickly.**
 

@@ -754,7 +754,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 $gender     = $projection_context['gender'];
                 $cat_terms  = get_the_terms( $p->get_id(), 'product_cat' );
                 $categories = ( $cat_terms && ! is_wp_error( $cat_terms ) )
-                    ? array_values( wp_list_pluck( $cat_terms, 'slug' ) )
+                    ? array_values( wp_list_pluck( self::stable_category_terms( $cat_terms ), 'slug' ) )
                     : [];
             } else {
                 // Gender is part of the compact contract even when it is unknown.
@@ -2311,13 +2311,68 @@ class KaliCart_Bridge_Catalog_Engine {
         if ( ! $terms || is_wp_error( $terms ) ) return [];
 
         $out = [];
-        foreach ( $terms as $term ) {
+        foreach ( self::stable_category_terms( $terms ) as $term ) {
             $out[] = [
                 'id'   => $term->term_id,
                 'name' => $term->name,
                 'slug' => $term->slug,
                 'path' => self::get_category_path( $term ),
             ];
+        }
+        return $out;
+    }
+
+    /**
+     * CATEGORY-ORDER-v1 (1.0.145). get_the_terms() returns categories ordered by
+     * name under the database collation, so two categories with the same name
+     * (e.g. "Sale" under two different parents) came back in an arbitrary order
+     * that could change between reads. The same product then looked different to
+     * KaliCart Global (REST vs snapshot, or read to read) although nothing changed.
+     *
+     * Only runs of adjacent terms whose names compare equal are reordered, by
+     * exact name, then full path, then term_id. Every other position is kept as
+     * returned, so products without same-name categories produce exactly the
+     * same output as 1.0.144 (no data change, catalog_data_version stays 1).
+     *
+     * @param array $terms WP_Term[] as returned by get_the_terms().
+     * @return array WP_Term[] in deterministic order.
+     */
+    public static function stable_category_terms( array $terms ): array {
+        $terms = array_values( array_filter( $terms, static fn( $t ) => is_object( $t ) && isset( $t->term_id ) ) );
+        $n     = count( $terms );
+        if ( $n < 2 ) return $terms;
+
+        $tie_key = static function ( $t ): string {
+            $name = rtrim( (string) $t->name );
+            if ( function_exists( 'remove_accents' ) ) $name = remove_accents( $name );
+            return function_exists( 'mb_strtolower' ) ? mb_strtolower( $name, 'UTF-8' ) : strtolower( $name );
+        };
+        $paths   = [];
+        $path_of = static function ( $t ) use ( &$paths ): string {
+            $id = (int) $t->term_id;
+            if ( ! isset( $paths[ $id ] ) ) {
+                $paths[ $id ] = ( $t instanceof WP_Term ) ? self::get_category_path( $t ) : (string) $t->name;
+            }
+            return $paths[ $id ];
+        };
+        $cmp = static function ( $a, $b ) use ( $path_of ): int {
+            $c = strcmp( (string) $a->name, (string) $b->name );
+            if ( 0 !== $c ) return $c;
+            $c = strcmp( $path_of( $a ), $path_of( $b ) );
+            if ( 0 !== $c ) return $c;
+            return (int) $a->term_id <=> (int) $b->term_id;
+        };
+
+        $out = [];
+        $i   = 0;
+        while ( $i < $n ) {
+            $key = $tie_key( $terms[ $i ] );
+            $j   = $i + 1;
+            while ( $j < $n && $tie_key( $terms[ $j ] ) === $key ) $j++;
+            $run = array_slice( $terms, $i, $j - $i );
+            if ( count( $run ) > 1 ) usort( $run, $cmp );
+            foreach ( $run as $t ) $out[] = $t;
+            $i = $j;
         }
         return $out;
     }
