@@ -2331,8 +2331,12 @@ class KaliCart_Bridge_Catalog_Engine {
      *
      * Only runs of adjacent terms whose names compare equal are reordered, by
      * exact name, then full path, then term_id. Every other position is kept as
-     * returned, so products without same-name categories produce exactly the
-     * same output as 1.0.144 (no data change, catalog_data_version stays 1).
+     * returned, so the output changes ONLY for products assigned to same-name
+     * categories; every other product is byte-identical to 1.0.144. That change
+     * is still a change of what the catalog returns, so catalog_data_version
+     * goes to 2 and KaliCart Global re-reads each catalog once after upgrade
+     * (otherwise the already ingested REST rows could keep the old order while
+     * the new snapshot uses the canonical one).
      *
      * @param array $terms WP_Term[] as returned by get_the_terms().
      * @return array WP_Term[] in deterministic order.
