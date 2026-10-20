@@ -775,7 +775,11 @@ class KaliCart_Bridge_ACP_Feed {
 			'sku'         => 'NO_SKU',
 		];
 		if ( isset( $report_map[ $what ] ) ) {
-			$ids = KaliCart_Bridge_Quarantine::get_report()['issue_product_ids'][ $report_map[ $what ] ] ?? [];
+			// 1.0.146: NO_SKU ids in the report are capped at 100; the list must
+			// show ALL of them, so it runs the same SQL unbounded.
+			$ids = 'sku' === $what
+				? KaliCart_Bridge_Quarantine::issue_ids( 'NO_SKU' )
+				: ( KaliCart_Bridge_Quarantine::get_report()['issue_product_ids'][ $report_map[ $what ] ] ?? [] );
 			$query->set( 'post__in', $ids ? array_map( 'intval', $ids ) : [ 0 ] );
 			$query->set( 'orderby', 'post__in' ); // recenti prima, come in tab
 			return;

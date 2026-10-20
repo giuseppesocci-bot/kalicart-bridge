@@ -30,7 +30,20 @@ $total  = (int) ( $report['issues']['no_brand'] ?? -1 );
 $ids    = $report['issue_product_ids']['NO_BRAND'] ?? null;
 $ok( is_array( $ids ), 'issue_product_ids has NO_BRAND' );
 $ids = (array) $ids;
-$ok( $total === count( $ids ), "NO_BRAND count ($total) == id list total (" . count( $ids ) . ')' );
+$all_brand = $Q::issue_ids( 'NO_BRAND' ); // unbounded, same SQL
+$ok( $total === count( $all_brand ), "NO_BRAND count ($total) == unbounded id list total (" . count( $all_brand ) . ')' );
+$ok( $ids === array_slice( $all_brand, 0, $Q::ISSUE_LIST_CAP ), 'report NO_BRAND ids = first 100 of the unbounded list (same order, recent first)' );
+// 1.0.146 DB bound: every improvement list <= 100 while its true total may exceed it.
+foreach ( [ 'NO_IMAGE' => 'no_image', 'NO_SKU' => 'no_sku', 'NO_BRAND' => 'no_brand' ] as $kb_code => $kb_key ) {
+	$kb_list = $report['issue_product_ids'][ $kb_code ];
+	$kb_all  = $Q::issue_ids( $kb_code );
+	$ok( count( $kb_list ) <= 100 && count( $kb_list ) === min( 100, (int) $report['issues'][ $kb_key ] ) && count( $kb_all ) === (int) $report['issues'][ $kb_key ], "$kb_code: list " . count( $kb_list ) . ' <= 100, total ' . (int) $report['issues'][ $kb_key ] . ' from COUNT, unbounded query agrees' );
+	// Stubbed cap (no fixture products needed): a cap of 3 keeps the first 3 while the total stays complete.
+	$kb_small = $Q::issue_ids( $kb_code, 3 );
+	$ok( count( $kb_small ) === min( 3, count( $kb_all ) ) && $kb_small === array_slice( $kb_all, 0, 3 ), "$kb_code: LIMIT is applied in SQL and keeps the deterministic order (cap 3 of " . count( $kb_all ) . ')' );
+}
+$ok( $total > 100 ? 100 === count( $ids ) : true, "real data: NO_BRAND total $total > 100 with a list of " . count( $ids ) );
+$ok( count( $Q::issue_ids( 'NO_SKU' ) ) === (int) $report['issues']['no_sku'], 'native filter kalicart_missing=sku stays unbounded (all ' . (int) $report['issues']['no_sku'] . ' ids)' );
 $sugg = array_values( array_filter( $report['suggestions'], static fn( $s ) => 'NO_BRAND' === ( $s['code'] ?? '' ) ) );
 $ok( 0 === $total ? ! $sugg : ( isset( $sugg[0] ) && (int) $sugg[0]['affected'] === $total ), 'suggestion affected == list total' );
 $list = $report['issue_products']['NO_BRAND'] ?? [];
@@ -45,8 +58,8 @@ foreach ( $list as $row ) {
 	if ( 'NO_BRAND' !== ( $row['flags'][0]['code'] ?? '' ) || admin_url( 'post.php?post=' . $id . '&action=edit' ) !== $row['url'] ) { $bad++; }
 }
 $ok( 0 === $bad, 'every listed NO_BRAND row: publish product, no brand term, NO_BRAND flag, edit link' );
-if ( $ids ) {
-	$in = implode( ',', array_map( 'intval', $ids ) );
+if ( $all_brand ) {
+	$in = implode( ',', array_map( 'intval', $all_brand ) );
 	$viol = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT tr.object_id) FROM {$wpdb->term_relationships} tr JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id WHERE tr.object_id IN ($in) AND tt.taxonomy IN ($taxes)" ); // phpcs:ignore
 	$nonpub = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE ID IN ($in) AND NOT (post_type = 'product' AND post_status = 'publish')" ); // phpcs:ignore
 	$ok( 0 === $viol && 0 === $nonpub, 'the full NO_BRAND id set satisfies the predicate (not only the first 100)' );
@@ -72,7 +85,9 @@ if ( $old && is_readable( $old ) ) {
 	$ni = $report['issues']; unset( $ni['no_brand'] );
 	$ok( $ni === $r145['issues'], 'issues unchanged vs 1.0.145 except the new no_brand' );
 	$nl = $report['issue_product_ids']; unset( $nl['NO_BRAND'] );
-	$ok( $nl === $r145['issue_product_ids'], 'other issue id lists unchanged vs 1.0.145' );
+	$ol = $r145['issue_product_ids'];
+	$ol['NO_IMAGE'] = array_slice( $ol['NO_IMAGE'], 0, 100 ); $ol['NO_SKU'] = array_slice( $ol['NO_SKU'], 0, 100 );
+	$ok( $nl === $ol, 'issue id lists unchanged vs 1.0.145 (NO_IMAGE/NO_SKU: same first 100)' );
 	$np = $report['issue_products']; unset( $np['NO_BRAND'] );
 	$ok( $np == $r145['issue_products'], 'NO_IMAGE / NO_SKU lists unchanged vs 1.0.145' ); // phpcs:ignore
 } else {

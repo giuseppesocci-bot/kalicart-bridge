@@ -11,6 +11,9 @@ class KaliCart_Bridge_Quarantine {
     private const MIN_TITLE_WORDS = 3;
     private const MIN_DESCRIPTION_LENGTH = 40;
 
+    /** 1.0.146: rows kept per improvement list (NO_IMAGE/NO_SKU/NO_BRAND); totals stay complete. */
+    public const ISSUE_LIST_CAP = 100;
+
     public static function get_report( bool $force = false ): array {
         $cache_key = 'kalicart_bridge_health_v2';
         if ( ! $force ) {
@@ -215,13 +218,10 @@ class KaliCart_Bridge_Quarantine {
             self::MIN_TITLE_WORDS
         ) );
 
-        // Senza immagine
-        $no_image = $wpdb->get_col(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
-            "SELECT p.ID FROM {$wpdb->posts} p
-             LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_thumbnail_id'
-             WHERE p.post_type='product' AND p.post_status='publish'
-             AND (pm.meta_value IS NULL OR pm.meta_value='')"
-        );
+        // Senza immagine / senza SKU / senza brand: 1.0.146 bounded at the DB
+        // (first ISSUE_LIST_CAP, ID DESC = same order as the former rsort). The
+        // true totals come from the separate COUNT queries in build_report().
+        $no_image = self::issue_ids( 'NO_IMAGE', self::ISSUE_LIST_CAP );
 
         // Senza descrizione
         $no_desc = $wpdb->get_col( $wpdb->prepare(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
@@ -252,25 +252,8 @@ class KaliCart_Bridge_Quarantine {
              AND (pm.meta_value IS NULL OR pm.meta_value='')"
         );
 
-        // Senza SKU
-        $no_sku = $wpdb->get_col(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
-            "SELECT p.ID FROM {$wpdb->posts} p
-             LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_sku'
-             WHERE p.post_type='product' AND p.post_status='publish'
-             AND (pm.meta_value IS NULL OR pm.meta_value='')"
-        );
-
-        // Senza brand: STESSO predicato e ambito del conteggio $no_brand in build_report().
-        $no_brand = $wpdb->get_col(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
-            "SELECT p.ID FROM {$wpdb->posts} p
-             WHERE p.post_type='product' AND p.post_status='publish'
-             AND NOT EXISTS (
-               SELECT 1 FROM {$wpdb->term_relationships} tr
-               JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
-               WHERE tr.object_id = p.ID
-               AND tt.taxonomy IN ('product_brand','pwb-brand','pa_brand','pa_marca')
-             )"
-        );
+        $no_sku   = self::issue_ids( 'NO_SKU', self::ISSUE_LIST_CAP );
+        $no_brand = self::issue_ids( 'NO_BRAND', self::ISSUE_LIST_CAP );
 
         $lists = [
             'TITLE_TOO_SHORT' => array_map( 'intval', $bad_title ),
@@ -288,6 +271,31 @@ class KaliCart_Bridge_Quarantine {
         }
         unset( $l );
         return $lists;
+    }
+
+    /**
+     * 1.0.146: one SQL per improvement signal, shared by the report (bounded,
+     * $limit > 0) and by the native Products filter (unbounded, $limit = 0),
+     * so both use the same predicate by construction. ORDER BY ID DESC =
+     * "recenti prima", the order the report always used.
+     */
+    public static function issue_ids( string $code, int $limit = 0 ): array {
+        global $wpdb;
+        // Same JOIN/WHERE as the COUNT queries in build_report(): list and total
+        // share one predicate.
+        $parts = [
+            'NO_IMAGE' => [ "LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_thumbnail_id'", "AND (pm.meta_value IS NULL OR pm.meta_value='')" ],
+            'NO_SKU'   => [ "LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_sku'", "AND (pm.meta_value IS NULL OR pm.meta_value='')" ],
+            'NO_BRAND' => [ '', "AND NOT EXISTS ( SELECT 1 FROM {$wpdb->term_relationships} tr JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id WHERE tr.object_id = p.ID AND tt.taxonomy IN ('product_brand','pwb-brand','pa_brand','pa_marca') )" ],
+        ];
+        if ( ! isset( $parts[ $code ] ) ) {
+            return [];
+        }
+        $sql = "SELECT p.ID FROM {$wpdb->posts} p {$parts[ $code ][0]} WHERE p.post_type='product' AND p.post_status='publish' {$parts[ $code ][1]} ORDER BY p.ID DESC";
+        $ids = $limit > 0
+            ? $wpdb->get_col( $wpdb->prepare( $sql . ' LIMIT %d', $limit ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared -- fixed SQL fragments above, only the limit is variable; cached via transient
+            : $wpdb->get_col( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared -- fixed SQL, no user input; admin list filter only
+        return array_map( 'intval', $ids );
     }
 
     // ── Quarantine list dettagliata ───────────────────────────────────────────
