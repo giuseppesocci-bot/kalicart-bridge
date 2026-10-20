@@ -268,7 +268,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     </div>
 
     <!-- Issues -->
-    <div class="kali-section-title"><?php esc_html_e( 'Catalog issues', 'kalicart-bridge' ); ?> <span class="kali-src-note"><?php esc_html_e( 'current catalog data', 'kalicart-bridge' ); ?></span></div>
+    <div class="kali-section-title"><?php esc_html_e( 'Catalog issues', 'kalicart-bridge' ); ?></div>
     <div class="kali-issues-grid" id="issuesGrid">
       <div class="kali-issue" id="issue-bad_title">
         <span class="kali-issue__icon" aria-hidden="true"><img src="<?php echo esc_url( KALICART_BRIDGE_URL . 'admin/assets/icons/description-svgrepo-com.svg' ); ?>" alt="" loading="lazy"></span>
@@ -293,7 +293,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     </div>
 
     <!-- Suggestions -->
-    <div class="kali-section-title"><?php esc_html_e( 'Suggestions', 'kalicart-bridge' ); ?> <span class="kali-src-note"><?php esc_html_e( 'current catalog data', 'kalicart-bridge' ); ?></span></div>
+    <div class="kali-section-title"><?php esc_html_e( 'Suggestions', 'kalicart-bridge' ); ?></div>
     <div id="suggestionsList" class="kali-suggestions"></div>
 
     <div class="kali-refresh-wrap">

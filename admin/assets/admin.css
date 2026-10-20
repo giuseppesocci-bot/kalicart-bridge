@@ -10,8 +10,10 @@
   --kb-border:    rgba(0,0,0,.08);
   --kb-border2:   rgba(0,0,0,.14);
   --kb-text:      #111116;
-  --kb-muted:     #6b6b7a;
-  --kb-muted2:    #9a9aaa;
+  /* 1.0.146: testo secondario allineato a --kb-text per leggibilita' (richiesta Giuseppe 20/10).
+     Le due variabili colorano solo testo (verificato): bordi e sfondi non cambiano. */
+  --kb-muted:     var(--kb-text);
+  --kb-muted2:    var(--kb-text);
   --kb-green:     #1a7f3c;
   --kb-red:       #c0392b;
   --kb-yellow:    #b07a00;
@@ -238,6 +240,11 @@
 .kali-stat--clickable { cursor: pointer; }
 .kali-stat--clickable:hover { border-color: var(--kb-acc); }
 .kali-stat--clickable:focus { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
+.kali-stat--clickable { position: relative; }
+.kali-stat--clickable:hover, .kali-stat--clickable:focus-visible { background: var(--kb-surface2); }
+.kali-stat--clickable:hover .kali-stat__label, .kali-stat--clickable:focus-visible .kali-stat__label { color: var(--kb-acc-s); text-decoration: underline; text-underline-offset: 2px; }
+.kali-stat--clickable::after { content: "\203A"; content: "\203A" / ""; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; line-height: 1; color: var(--kb-acc-s); }
+.kali-stat--clickable:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
 
 /* ── Section title ────────────────────────────────────────────────────────── */
 .kali-section-title {
@@ -272,6 +279,12 @@
 }
 .kali-issue:hover { border-color: var(--kb-border2); }
 .kali-issue:focus { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
+/* 1.0.146: le card di "Problemi del catalogo" e le stat cliccabili devono SEMBRARE cliccabili
+   (sono gia' role=button + tabindex + Invio/Spazio in initIssueClicks/makeClickable). Solo affordance, nessun testo. */
+.kali-issue:hover, .kali-issue:focus-visible { background: var(--kb-surface2); border-color: var(--kb-acc); }
+.kali-issue:hover .kali-issue__label, .kali-issue:focus-visible .kali-issue__label { color: var(--kb-acc-s); text-decoration: underline; text-underline-offset: 2px; }
+.kali-issue::after { content: "\203A"; content: "\203A" / ""; margin-left: auto; font-size: 20px; line-height: 1; color: var(--kb-acc-s); }
+.kali-issue:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
 .kali-issue__icon {
   width: 28px;
   height: 28px;
@@ -895,16 +908,6 @@
 .kali-acp-row--action .kali-acp-row__info strong { color: #9b1c1c; }   /* 8.1:1 */
 .kali-acp-row--action .kali-acp-action { border-color: var(--kb-acc); background: var(--kb-acc-bg); }
 .kali-pill--fallback { color: #7a4500; }
-/* 1.0.146: Overview - controllo esplicito nelle card cliccabili */
-.kali-cta { display: flex; width: fit-content; align-items: center; gap: 4px; margin-top: 6px; padding: 2px 8px; border: 1px solid var(--kb-border2); border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--kb-acc-s); background: var(--kb-surface); }
-.kali-cta .dashicons { font-size: 14px; width: 14px; height: 14px; }
-.kali-issue--action, .kali-stat--action { box-shadow: inset 3px 0 0 var(--kb-red); }
-.kali-issue--ok .kali-issue__label { color: #0f6f3c; }
-.kali-issue[role="button"]:focus-visible, .kali-stat--clickable:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
-.kali-src-note { font-size: 12px; font-weight: 400; color: var(--kb-muted); margin-left: 8px; text-transform: none; letter-spacing: 0; }
-.kali-suggestion__affected .dashicons { font-size: 14px; width: 14px; height: 14px; vertical-align: -2px; margin-right: 2px; }
-.kali-suggestion__affected { color: var(--kb-acc-s); font-weight: 600; }
-.kali-suggestion__affected:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
 .kali-acp-src { display: block; font-size: 12px; color: var(--kb-muted); margin-top: 2px; }
 .kali-acp-action { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 1px solid var(--kb-border); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--kb-acc-s); background: #fff; text-decoration: none; }
 .kali-acp-action:hover { background: var(--kb-acc-bg); color: var(--kb-acc-s); }
