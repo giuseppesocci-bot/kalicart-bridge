@@ -1196,12 +1196,8 @@ msgstr ""
 "del feed sin marca. Los minoristas multimarca deberían dejarlo vacío."
 
 #: includes/class-acp-feed.php:865
-msgid ""
-"Comma-separated ISO 3166-1 alpha-2 codes. Defaults to WooCommerce selling "
-"locations."
-msgstr ""
-"Códigos ISO 3166-1 alpha-2 separados por comas. Por defecto, las ubicaciones "
-"de venta de WooCommerce."
+msgid "Leave blank to use WooCommerce selling countries. To choose countries, enter two-letter codes separated by commas (e.g. IT, DE, US)."
+msgstr "Déjalo vacío para usar los países de venta configurados en WooCommerce. Para elegir países, escribe códigos de dos letras separados por comas (p. ej., IT, DE, US)."
 
 #: includes/class-acp-feed.php:867
 msgid "Save and generate/validate now"

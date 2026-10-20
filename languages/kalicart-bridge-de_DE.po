@@ -1192,12 +1192,8 @@ msgstr ""
 "Feld leer lassen."
 
 #: includes/class-acp-feed.php:865
-msgid ""
-"Comma-separated ISO 3166-1 alpha-2 codes. Defaults to WooCommerce selling "
-"locations."
-msgstr ""
-"Kommagetrennte ISO-3166-1-alpha-2-Codes. Standard sind die WooCommerce-"
-"Verkaufsregionen."
+msgid "Leave blank to use WooCommerce selling countries. To choose countries, enter two-letter codes separated by commas (e.g. IT, DE, US)."
+msgstr "Leer lassen, um die Verkaufsländer aus WooCommerce zu übernehmen. Um Länder auszuwählen, zweistellige Codes durch Kommas getrennt eingeben (z. B. IT, DE, US)."
 
 #: includes/class-acp-feed.php:867
 msgid "Save and generate/validate now"

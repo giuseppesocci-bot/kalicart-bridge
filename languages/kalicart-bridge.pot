@@ -918,7 +918,7 @@ msgid "Leave empty unless every otherwise brandless product is genuinely sold un
 msgstr ""
 
 #: includes/class-acp-feed.php:865
-msgid "Comma-separated ISO 3166-1 alpha-2 codes. Defaults to WooCommerce selling locations."
+msgid "Leave blank to use WooCommerce selling countries. To choose countries, enter two-letter codes separated by commas (e.g. IT, DE, US)."
 msgstr ""
 
 #: includes/class-acp-feed.php:867

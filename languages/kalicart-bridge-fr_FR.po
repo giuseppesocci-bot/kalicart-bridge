@@ -1198,12 +1198,8 @@ msgstr ""
 "devraient laisser ce champ vide."
 
 #: includes/class-acp-feed.php:865
-msgid ""
-"Comma-separated ISO 3166-1 alpha-2 codes. Defaults to WooCommerce selling "
-"locations."
-msgstr ""
-"Codes ISO 3166-1 alpha-2 séparés par des virgules. Par défaut, les zones de "
-"vente WooCommerce."
+msgid "Leave blank to use WooCommerce selling countries. To choose countries, enter two-letter codes separated by commas (e.g. IT, DE, US)."
+msgstr "Laissez ce champ vide pour utiliser les pays de vente définis dans WooCommerce. Pour choisir des pays, saisissez leurs codes à deux lettres séparés par des virgules (ex. : IT, DE, US)."
 
 #: includes/class-acp-feed.php:867
 msgid "Save and generate/validate now"
