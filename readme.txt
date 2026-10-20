@@ -170,6 +170,20 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.146 =
+**Clearer catalog diagnostics in the admin, with lighter queries on large catalogs.**
+
+* Catalog issues: the list of products without a brand shows the first 100 of the total, with a link to the native WooCommerce product filter for the full list.
+* ChatGPT feed: each generation keeps a few diagnostic samples (brand fallback used, description replaced, image excluded, invalid rows). The feed summary rows show their status in colour with a direct action.
+* Feed counters for brand fallback, description fallback and GTIN now count only the rows actually written to the feed file.
+* Overview: the "Suggestions" and "Catalog issues" cards are clickable as a whole, also from the keyboard.
+* Consent: an "Authorization details and proof" button sits beside the revoke button.
+* Feed settings: clearer instruction for target countries, with examples (IT, DE, US).
+* Readability: secondary text now uses the main text colour.
+* Performance: issue ID lists are limited to 100 directly in the database; the SKU filter and the feed counts are cached for 5 minutes.
+* Complete Italian, German, French and Spanish translations for the new texts.
+* No change to the REST API, the catalog or the feed format: `catalog_data_version` stays 2, so KaliCart Global does not need to re-read catalogs after this update.
+
 = 1.0.145 =
 * Fix: when a product sits in two categories with the same name (for example "Sale" under two different parents), they are now always returned in the same order: by name, then full category path, then ID. Before, their order could change from one read to the next, so an unchanged product could look changed. Products without same-name categories return exactly the same data as before.
 * The catalog data version (`catalog_data_version`) goes from 1 to 2, because the returned data changes for products in same-name categories. After the update, KaliCart Global re-reads the catalog once so that live data and snapshot use the same order.
