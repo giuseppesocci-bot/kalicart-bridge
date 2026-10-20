@@ -141,17 +141,14 @@ foreach ( $s1['samples']['brand_fallback'] as $s ) {
 $ok( 0 === $bad, 'each brand_fallback sample has no product brand and its file row carries the fallback' );
 $fb_rows = 0;
 foreach ( $r1 as $iid => $row ) { if ( $row['brand'] === trim( (string) $opts['brand_fallback'] ) ) { $d = wc_get_product( ! empty( $row['group_id'] ) ? (int) substr( $row['group_id'], 3 ) : (int) substr( $iid, 3 ) ); if ( $d && '' === $call( $F, 'resolve_brand', [ $d ] ) ) { $fb_rows++; } else { echo 'INFO fallback-brand row with a product brand? ' . $iid . "\n"; } } }
-// 1.0.145 semantics kept (counters must not change): base_row() counts the brand
-// fallback BEFORE the empty-price gate, so a row dropped for having no price is
-// still counted. The samples mirror the counter exactly, so such rows appear there.
-$fb_gone = 0; $fb_gone_bad = 0;
-foreach ( $s1['samples']['brand_fallback'] as $s ) {
-	if ( isset( $r1[ $s['item_id'] ] ) ) { continue; }
-	$p = wc_get_product( $s['product_id'] );
-	if ( $p && '' === (string) $p->get_regular_price() && '' === (string) $p->get_price() ) { $fb_gone++; } else { $fb_gone_bad++; }
-}
-echo "INFO brand fallback: $fb_rows rows in file + $fb_gone counted rows dropped for empty price (pre-existing 1.0.145 counter semantics)\n";
-$ok( 0 === $fb_gone_bad && ( (int) $s1['fallback_brand_rows'] > $F::SAMPLE_CAP || $fb_rows + $fb_gone + (int) $s1['excluded_invalid'] >= (int) $s1['fallback_brand_rows'] ), 'brand fallback samples = file rows with fallback + rows dropped for empty price (ids match the counter)' );
+// 1.0.146: per-row counters count only rows WRITTEN to the file (brand fallback
+// used to be counted before the empty-price exit and the validator).
+$ok( $fb_rows === (int) $s1['fallback_brand_rows'], "fallback_brand_rows (" . (int) $s1['fallback_brand_rows'] . ") == file rows with the fallback brand from products without a brand term ($fb_rows)" );
+$missing = array_filter( $s1['samples']['brand_fallback'], static fn( $s ) => ! isset( $r1[ $s['item_id'] ] ) );
+$ok( ! $missing, 'every brand_fallback sample id is a row in the file' );
+$missing = array_filter( $s1['samples']['description_fallback'], static fn( $s ) => ! isset( $r1[ $s['item_id'] ] ) );
+$desc_rows = count( array_filter( $r1, static fn( $r ) => $r['description'] === $r['title'] ) );
+$ok( ! $missing && (int) $s1['fallback_description_rows'] <= $desc_rows, 'every description_fallback sample id is a row in the file' );
 
 $ok( is_readable( $real_file ) && $j1 === (string) file_get_contents( $real_file ), 'throw-away JSONL byte-identical to the live feed file (rows unchanged by 1.0.146)' );
 if ( is_readable( $real_file ) && $j1 !== (string) file_get_contents( $real_file ) ) {
@@ -190,6 +187,8 @@ $r2 = $rows_of( $tmp_file );
 $inv = array_values( array_filter( $s2['samples']['invalid'], static fn( $s ) => 'wc-486' === $s['item_id'] ) );
 $ok( ! isset( $r2['wc-486'] ) && (int) $s2['excluded_invalid'] === (int) $s1['excluded_invalid'] + 1, 'wc-486 at price 0 is excluded by the validator (counter +1)' );
 $ok( $inv && false !== strpos( $inv[0]['errors'], 'price must be positive' ) && 486 === $inv[0]['product_id'] && 0 === $inv[0]['parent_id'] && '' !== $inv[0]['title'], 'wc-486 is named in the invalid samples with its reason' );
+$fb486 = in_array( 'wc-486', array_column( $s1['samples']['brand_fallback'], 'item_id' ), true ) ? 1 : 0;
+$ok( (int) $s2['fallback_brand_rows'] === (int) $s1['fallback_brand_rows'] - $fb486 && ! in_array( 'wc-486', array_column( $s2['samples']['brand_fallback'], 'item_id' ), true ), 'a row dropped by the validator is not counted as brand fallback (wc-486 at price 0: -' . $fb486 . ')' );
 $r1_minus = $r1; unset( $r1_minus['wc-486'] );
 $ok( $r2 === $r1_minus, 'all other rows unchanged by the fixture' );
 remove_filter( 'upload_dir', $up_filter, 999 );

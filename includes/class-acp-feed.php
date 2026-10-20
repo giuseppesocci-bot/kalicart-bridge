@@ -244,7 +244,12 @@ class KaliCart_Bridge_ACP_Feed {
 					fwrite( $fh, wp_json_encode( $row, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . "\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- streaming export.
 					$stats['rows']++;
 					$row_count++;
+					// 1.0.146: per-row counters/samples only for rows actually written.
+					if ( isset( $stats['_pending'][ $row['item_id'] ] ) ) {
+						self::accept_row_flags( $stats, $stats['_pending'][ $row['item_id'] ] );
+					}
 				}
+				unset( $stats['_pending'] ); // rows dropped by the validator never count
 				if ( $row_count ) {
 					$stats['products']++;
 				}
@@ -326,7 +331,8 @@ class KaliCart_Bridge_ACP_Feed {
 	}
 
 	private static function base_row( WC_Product $p, array $opts, array $countries, array &$stats, ?WC_Product $parent = null ): ?array {
-		$display = $parent ?: $p;
+		$display  = $parent ?: $p;
+		$kb_flags = []; // 1.0.146: per-row counters, applied by generate_inner() after the row is written
 
 		$image = wp_get_attachment_image_url( $p->get_image_id() ?: $display->get_image_id(), 'full' );
 		if ( ! $image ) {
@@ -346,8 +352,7 @@ class KaliCart_Bridge_ACP_Feed {
 				self::note_sample( $stats, 'brand_excluded', $p, $parent );
 				return null;
 			} else {
-				$stats['fallback_brand_rows']++;
-				self::note_sample( $stats, 'brand_fallback', $p, $parent );
+				$kb_flags[] = 'brand_fallback'; // counted only if the row is written (1.0.146)
 			}
 		}
 		$currency = get_woocommerce_currency();
@@ -371,8 +376,7 @@ class KaliCart_Bridge_ACP_Feed {
 			// never fabricated. Count the row so the ChatGPT-feed readiness panel can report
 			// how many feed rows carry the name in place of a real description.
 			if ( '' !== $desc ) {
-				$stats['fallback_description_rows']++;
-				self::note_sample( $stats, 'description_fallback', $p, $parent );
+				$kb_flags[] = 'description_fallback';
 			}
 		}
 
@@ -421,7 +425,7 @@ class KaliCart_Bridge_ACP_Feed {
 			if ( self::is_valid_gtin( $gtin ) ) {
 				$row['gtin'] = $gtin; // spec: 8/12/13/14 digits with a valid check digit
 			} elseif ( '' !== trim( $raw_gtin ) ) {
-				$stats['gtin_omitted']++; // optional field: omitted, the row stays
+				$kb_flags[] = 'gtin_omitted'; // optional field: omitted, the row stays
 			}
 		}
 		$cats = wp_get_post_terms( $display->get_id(), 'product_cat', [ 'fields' => 'names' ] );
@@ -439,6 +443,9 @@ class KaliCart_Bridge_ACP_Feed {
 		if ( $display->get_review_count() > 0 ) {
 			$row['review_count'] = (int) $display->get_review_count();
 			$row['star_rating']  = number_format( (float) $display->get_average_rating(), 2, '.', '' ); // spec: decimal String, two decimals
+		}
+		if ( $kb_flags ) {
+			$stats['_pending'][ $row['item_id'] ] = [ 'flags' => $kb_flags, 'p' => $p, 'parent' => $parent ];
 		}
 		return $row;
 	}
@@ -493,6 +500,21 @@ class KaliCart_Bridge_ACP_Feed {
 			'parent_id'  => $parent ? (int) $parent->get_id() : 0,
 			'title'      => self::clip( $title, 150 ),
 		];
+	}
+
+	/** 1.0.146: apply the per-row counters of a row that was written to the file. */
+	private static function accept_row_flags( array &$stats, array $pending ): void {
+		foreach ( (array) ( $pending['flags'] ?? [] ) as $flag ) {
+			if ( 'brand_fallback' === $flag ) {
+				$stats['fallback_brand_rows']++;
+				self::note_sample( $stats, 'brand_fallback', $pending['p'], $pending['parent'] );
+			} elseif ( 'description_fallback' === $flag ) {
+				$stats['fallback_description_rows']++;
+				self::note_sample( $stats, 'description_fallback', $pending['p'], $pending['parent'] );
+			} elseif ( 'gtin_omitted' === $flag ) {
+				$stats['gtin_omitted']++;
+			}
+		}
 	}
 
 	private static function clip( string $s, int $max ): string {
