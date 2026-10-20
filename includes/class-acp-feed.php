@@ -42,6 +42,12 @@ class KaliCart_Bridge_ACP_Feed {
 	const CRON_HOOK = 'kalicart_bridge_acp_feed_generate';
 	const LOCK      = 'kalicart_bridge_acp_feed_lock';
 
+	/** 1.0.146: max rows kept per diagnostic reason in last_stats (totals stay complete). */
+	const SAMPLE_CAP = 100;
+
+	/** 1.0.146: diagnostic reasons sampled during generation (admin UI only, never in the file). */
+	const SAMPLE_REASONS = [ 'description_fallback', 'brand_fallback', 'brand_excluded', 'image_excluded', 'invalid' ];
+
 	/**
 	 * Single schema map (spec developers.openai.com/commerce/specs/file-upload/products,
 	 * read 2026-09-26). The validator enforces exactly this; the generator emits
@@ -162,6 +168,10 @@ class KaliCart_Bridge_ACP_Feed {
 			'rows' => 0, 'products' => 0, 'excluded_no_image' => 0, 'excluded_no_brand' => 0, 'fallback_brand_rows' => 0, 'gtin_omitted' => 0, 'fallback_description_rows' => 0,
 			'excluded_invalid' => 0, 'invalid_examples' => [], 'generated_at' => gmdate( 'c' ),
 		];
+		// 1.0.146: bounded per-reason samples of the rows behind each counter,
+		// recorded at the same increment points, so the panel can name and link
+		// the products of THIS generation. Admin diagnostics only.
+		$stats['samples'] = array_fill_keys( self::SAMPLE_REASONS, [] );
 
 		// Config gate (1.0.138): return policy, store country and target countries
 		// are OPTIONAL in the spec ("requires market setup"): their absence never
@@ -218,6 +228,16 @@ class KaliCart_Bridge_ACP_Feed {
 						$stats['excluded_invalid']++;
 						if ( count( $stats['invalid_examples'] ) < 5 ) {
 							$stats['invalid_examples'][] = $row['item_id'] . ': ' . implode( '; ', $errors );
+						}
+						if ( count( $stats['samples']['invalid'] ) < self::SAMPLE_CAP ) {
+							$kb_item_pid = (int) substr( (string) $row['item_id'], 3 );
+							$stats['samples']['invalid'][] = [
+								'item_id'    => (string) $row['item_id'],
+								'product_id' => $kb_item_pid,
+								'parent_id'  => $kb_item_pid !== (int) $product->get_id() ? (int) $product->get_id() : 0,
+								'title'      => self::clip( (string) ( $row['title'] ?? '' ), 150 ),
+								'errors'     => self::clip( implode( '; ', $errors ), 300 ),
+							];
 						}
 						continue; // every emitted row must be conformant
 					}
@@ -311,6 +331,7 @@ class KaliCart_Bridge_ACP_Feed {
 		$image = wp_get_attachment_image_url( $p->get_image_id() ?: $display->get_image_id(), 'full' );
 		if ( ! $image ) {
 			$stats['excluded_no_image']++;
+			self::note_sample( $stats, 'image_excluded', $p, $parent );
 			return null; // required by spec: exclude + count
 		}
 		$brand = self::resolve_brand( $display );
@@ -322,9 +343,11 @@ class KaliCart_Bridge_ACP_Feed {
 				// the panel. Supersedes the 2026-07-02 choice (row submitted
 				// without brand). Never fabricated.
 				$stats['excluded_no_brand']++;
+				self::note_sample( $stats, 'brand_excluded', $p, $parent );
 				return null;
 			} else {
 				$stats['fallback_brand_rows']++;
+				self::note_sample( $stats, 'brand_fallback', $p, $parent );
 			}
 		}
 		$currency = get_woocommerce_currency();
@@ -349,6 +372,7 @@ class KaliCart_Bridge_ACP_Feed {
 			// how many feed rows carry the name in place of a real description.
 			if ( '' !== $desc ) {
 				$stats['fallback_description_rows']++;
+				self::note_sample( $stats, 'description_fallback', $p, $parent );
 			}
 		}
 
@@ -449,6 +473,25 @@ class KaliCart_Bridge_ACP_Feed {
 		$text = wp_strip_all_tags( $text );
 		$text = preg_replace( '/[\s\p{Z}\p{Cf}]+/u', ' ', $text );
 		return trim( $text );
+	}
+
+	/**
+	 * 1.0.146: record one bounded diagnostic sample for $reason. Called exactly
+	 * where the matching counter is incremented, so samples are a prefix of the
+	 * rows behind that counter. Never touches the row or the file.
+	 */
+	private static function note_sample( array &$stats, string $reason, WC_Product $p, ?WC_Product $parent = null ): void {
+		if ( ! isset( $stats['samples'][ $reason ] ) || count( $stats['samples'][ $reason ] ) >= self::SAMPLE_CAP ) {
+			return;
+		}
+		$display = $parent ?: $p;
+		$title   = $display->get_name() . ( $parent ? ' - ' . wc_get_formatted_variation( $p, true, false, false ) : '' );
+		$stats['samples'][ $reason ][] = [
+			'item_id'    => 'wc-' . $p->get_id(),
+			'product_id' => (int) $p->get_id(),
+			'parent_id'  => $parent ? (int) $parent->get_id() : 0,
+			'title'      => self::clip( $title, 150 ),
+		];
 	}
 
 	private static function clip( string $s, int $max ): string {
@@ -605,8 +648,91 @@ class KaliCart_Bridge_ACP_Feed {
 			: '<span class="kali-pill kali-pill--warn">' . esc_html( $action ) . '</span>';
 	}
 
-	private static function readiness_row( string $label, string $status, string $detail ): void {
-		echo '<div class="kali-acp-row"><div class="kali-acp-row__info"><strong>' . esc_html( $label ) . '</strong><span>' . esc_html( $detail ) . '</span></div><div class="kali-acp-row__status">' . wp_kses_post( $status ) . '</div></div>';
+	/**
+	 * 1.0.146: $actions = HTML from action_link() only (built from escaped parts);
+	 * $source = plain text saying where the number comes from (last feed + date,
+	 * or configuration). Status and actions sit together on the right.
+	 */
+	private static function readiness_row( string $label, string $status, string $detail, array $actions = [], string $source = '' ): void {
+		echo '<div class="kali-acp-row"><div class="kali-acp-row__info"><strong>' . esc_html( $label ) . '</strong><span>' . esc_html( $detail ) . '</span>';
+		if ( '' !== $source ) {
+			echo '<small class="kali-acp-src">' . esc_html( $source ) . '</small>';
+		}
+		echo '</div><div class="kali-acp-row__status">' . wp_kses_post( $status ) . ( $actions ? ' ' . wp_kses_post( implode( ' ', $actions ) ) : '' ) . '</div></div>';
+	}
+
+	/** 1.0.146: keyboard-reachable row action. The icon is decorative; the text is always present. */
+	private static function action_link( string $text, string $url, string $icon = 'edit', bool $external = false ): string {
+		return '<a class="kali-acp-action" href="' . esc_url( $url ) . '"' . ( $external ? ' target="_blank" rel="noopener"' : '' ) . '><span class="dashicons dashicons-' . esc_attr( $icon ) . '" aria-hidden="true"></span>' . esc_html( $text ) . '</a>';
+	}
+
+	/** 1.0.146: edit screen for a feed row; a variation opens its parent's edit screen (variations panel). */
+	public static function sample_edit_url( array $sample ): string {
+		$parent = (int) ( $sample['parent_id'] ?? 0 );
+		$pid    = $parent > 0 ? $parent : (int) ( $sample['product_id'] ?? 0 );
+		return admin_url( 'post.php?post=' . $pid . '&action=edit' ) . ( $parent > 0 ? '#variable_product_options' : '' );
+	}
+
+	/** 1.0.146: human date of a generation, in the site timezone. */
+	private static function feed_date( array $stats ): string {
+		$ts = strtotime( (string) ( $stats['generated_at'] ?? '' ) );
+		return $ts ? wp_date( 'Y-m-d H:i', $ts ) : '';
+	}
+
+	/**
+	 * 1.0.146: rows of the LAST generation for one reason. Old stats (<=1.0.145)
+	 * have no samples: show the count and say the list appears after the next
+	 * generation - never rebuild it from the live catalog.
+	 */
+	private static function render_sample_section( array $stats, string $reason, string $heading, int $total, string $intro, string $extra_html = '' ): void {
+		if ( $total <= 0 ) {
+			return;
+		}
+		echo '<div class="kali-acp-samples-block" id="' . esc_attr( 'kb-acp-diag-' . $reason ) . '" tabindex="-1">';
+		echo '<h3>' . esc_html( $heading ) . ' <span class="kali-pill kali-pill--warn">' . (int) $total . '</span></h3>';
+		if ( '' !== $intro ) {
+			echo '<p>' . esc_html( $intro ) . '</p>';
+		}
+		$samples = isset( $stats['samples'][ $reason ] ) && is_array( $stats['samples'][ $reason ] ) ? $stats['samples'][ $reason ] : null;
+		if ( null === $samples && 'invalid' === $reason && ! empty( $stats['invalid_examples'] ) ) {
+			// Pre-1.0.146 stats: the five examples already stored by that generation, made clickable.
+			$samples = [];
+			foreach ( (array) $stats['invalid_examples'] as $kb_ex ) {
+				if ( preg_match( '/^wc-(\d+):\s*(.*)$/s', (string) $kb_ex, $kb_m ) ) {
+					$kb_parent = (int) wp_get_post_parent_id( (int) $kb_m[1] );
+					$samples[] = [ 'item_id' => 'wc-' . $kb_m[1], 'product_id' => (int) $kb_m[1], 'parent_id' => $kb_parent, 'title' => get_the_title( $kb_parent ?: (int) $kb_m[1] ), 'errors' => $kb_m[2] ];
+				}
+			}
+		}
+		if ( null === $samples ) {
+			echo '<p><em>' . esc_html__( 'This generation was made by an earlier plugin version and did not record which products are affected. The list will appear after the next feed generation.', 'kalicart-bridge' ) . '</em></p>';
+		} elseif ( $samples ) {
+			if ( $total > count( $samples ) ) {
+				/* translators: 1: rows listed, 2: total rows of the last generation */
+				echo '<p class="kali-q-sample-note">' . esc_html( sprintf( __( 'Showing the first %1$d of %2$d rows of this generation.', 'kalicart-bridge' ), count( $samples ), $total ) ) . '</p>';
+			}
+			echo '<ul class="kali-acp-samples">';
+			foreach ( $samples as $kb_s ) {
+				if ( ! is_array( $kb_s ) ) {
+					continue;
+				}
+				$kb_parent = (int) ( $kb_s['parent_id'] ?? 0 );
+				echo '<li><a href="' . esc_url( self::sample_edit_url( $kb_s ) ) . '">' . esc_html( '' !== (string) ( $kb_s['title'] ?? '' ) ? (string) $kb_s['title'] : (string) ( $kb_s['item_id'] ?? '' ) ) . '</a> <code>' . esc_html( (string) ( $kb_s['item_id'] ?? '' ) ) . '</code>';
+				if ( $kb_parent > 0 ) {
+					/* translators: 1: variation ID, 2: parent product ID */
+					echo ' <small>' . esc_html( sprintf( __( 'variation #%1$d of product #%2$d', 'kalicart-bridge' ), (int) ( $kb_s['product_id'] ?? 0 ), $kb_parent ) ) . '</small>';
+				}
+				if ( ! empty( $kb_s['errors'] ) ) {
+					echo ' <small class="kali-acp-err">' . esc_html( (string) $kb_s['errors'] ) . '</small>';
+				}
+				echo '</li>';
+			}
+			echo '</ul>';
+		}
+		if ( '' !== $extra_html ) {
+			echo '<p>' . wp_kses_post( $extra_html ) . '</p>';
+		}
+		echo '</div>';
 	}
 
 	/**
@@ -800,15 +926,55 @@ class KaliCart_Bridge_ACP_Feed {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Missing primary product image.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'A primary product image is required by OpenAI’s direct product feed specification. Affected feed rows remain available in the agent-readable catalog but are excluded from the ChatGPT product feed.', 'kalicart-bridge' ) . '</p></div>';
 		}
 
+		$live_counts = [];
+		foreach ( [ 'brand', 'image' ] as $kb_gap ) {
+			$kb_q = new WP_Query( array_merge(
+				[ 'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => 1, 'fields' => 'ids' ],
+				self::missing_data_query_args( $kb_gap )
+			) );
+			$live_counts[ $kb_gap ] = (int) $kb_q->found_posts;
+		}
+
+		// 1.0.146: one action per row, next to the status (decision 2026-10-20).
+		$kb_ok_stats  = $stats && empty( $stats['error'] );
+		$kb_feed_src  = $kb_ok_stats ? sprintf( /* translators: %s: date and time of the last feed generation */ __( 'Last feed generation: %s', 'kalicart-bridge' ), self::feed_date( $stats ) ) : '';
+		$kb_settings  = admin_url( 'admin.php?page=kalicart-bridge&tab=settings#returnPolicyBlock' );
+		$kb_fix       = __( 'Fix', 'kalicart-bridge' );
+		$kb_edit      = __( 'Edit', 'kalicart-bridge' );
+		$kb_target    = static function ( string $reason, int $total ) use ( $stats ): string {
+			$kb_list = $stats['samples'][ $reason ] ?? null;
+			if ( 1 === $total && is_array( $kb_list ) && 1 === count( $kb_list ) && is_array( $kb_list[0] ) ) {
+				return self::sample_edit_url( $kb_list[0] ); // a single product: open it directly
+			}
+			return '#kb-acp-diag-' . $reason;
+		};
+		$rp_actions = [ self::action_link( $kb_edit, $kb_settings ) ];
+		if ( $return_ready ) {
+			$rp_actions[] = self::action_link( __( 'Open page', 'kalicart-bridge' ), (string) $opts['return_policy_url'], 'external', true );
+		}
+		$brand_actions = [];
+		if ( $kb_ok_stats && (int) ( $stats['excluded_no_brand'] ?? 0 ) > 0 ) {
+			$brand_actions[] = self::action_link( $kb_fix, $kb_target( 'brand_excluded', (int) $stats['excluded_no_brand'] ) );
+		} elseif ( $kb_ok_stats && (int) ( $stats['fallback_brand_rows'] ?? 0 ) > 0 ) {
+			$brand_actions[] = self::action_link( __( 'Check brand', 'kalicart-bridge' ), '#kb-acp-diag-brand_fallback' );
+		}
+		$desc_actions = $kb_ok_stats && (int) ( $stats['fallback_description_rows'] ?? 0 ) > 0 ? [ self::action_link( $kb_fix, $kb_target( 'description_fallback', (int) $stats['fallback_description_rows'] ) ) ] : [];
+		$image_actions = [];
+		if ( false === $image_state ) {
+			$image_actions[] = self::action_link( $kb_fix, $kb_target( 'image_excluded', (int) $stats['excluded_no_image'] ) );
+		}
+		$schema_actions = false === $schema_state ? [ self::action_link( $kb_fix, $kb_target( 'invalid', (int) $stats['excluded_invalid'] ) ) ] : [];
+		$refresh_detail = $opts['enabled'] ? __( 'Regenerates the validated ChatGPT feed file once per day; delivery to OpenAI is a separate step.', 'kalicart-bridge' ) : __( 'The ChatGPT feed changes only when generated manually and may become outdated after catalog changes.', 'kalicart-bridge' );
+
 		echo '<div class="kali-acp-list">';
-		self::readiness_row( __( 'Return policy', 'kalicart-bridge' ), null === $return_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $return_ready ), $return_ready ? __( 'Configured in the Settings tab: ', 'kalicart-bridge' ) . (string) $opts['return_policy_url'] : ( null === $return_ready ? __( 'Optional in the OpenAI specification. Configure it in the Settings tab to include it in every row.', 'kalicart-bridge' ) : __( 'The configured URL is not an absolute http(s) URL; feed generation is blocked until it is fixed.', 'kalicart-bridge' ) ) );
-		self::readiness_row( __( 'Target countries', 'kalicart-bridge' ), null === $countries_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $countries_ready ), $countries ? implode( ', ', $countries ) : __( 'Optional in the OpenAI specification (depends on market setup). Use ISO 3166-1 alpha-2 country codes.', 'kalicart-bridge' ) );
-		self::readiness_row( __( 'Product brand', 'kalicart-bridge' ), $brand_status, $brand_detail );
-		self::readiness_row( __( 'Product description', 'kalicart-bridge' ), $desc_status, $desc_detail );
-		self::readiness_row( __( 'Primary image', 'kalicart-bridge' ), self::readiness_label( $image_state, __( 'Complete', 'kalicart-bridge' ), __( 'Missing rows', 'kalicart-bridge' ) ), null === $image_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: rows excluded for missing image */ __( '%d feed rows excluded in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_no_image'] ?? 0 ) ) );
-		self::readiness_row( __( 'Schema validation', 'kalicart-bridge' ), self::readiness_label( $schema_state, __( 'Passed', 'kalicart-bridge' ), __( 'Invalid rows', 'kalicart-bridge' ) ), null === $schema_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: invalid rows */ __( '%d invalid rows in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_invalid'] ?? 0 ) ) );
-		self::readiness_row( __( 'Daily ChatGPT feed refresh', 'kalicart-bridge' ), self::readiness_label( (bool) $opts['enabled'], __( 'Enabled', 'kalicart-bridge' ), __( 'Manual only', 'kalicart-bridge' ) ), $opts['enabled'] ? __( 'Regenerates the validated ChatGPT feed file once per day; delivery to OpenAI is a separate step.', 'kalicart-bridge' ) : __( 'The ChatGPT feed changes only when generated manually and may become outdated after catalog changes.', 'kalicart-bridge' ) );
-		self::readiness_row( __( 'OpenAI feed delivery', 'kalicart-bridge' ), self::readiness_label( false, __( 'Connected', 'kalicart-bridge' ), __( 'Application required', 'kalicart-bridge' ) ), __( 'This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials.', 'kalicart-bridge' ) );
+		self::readiness_row( __( 'Return policy', 'kalicart-bridge' ), null === $return_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $return_ready ), $return_ready ? __( 'Configured in the Settings tab: ', 'kalicart-bridge' ) . (string) $opts['return_policy_url'] : ( null === $return_ready ? __( 'Optional in the OpenAI specification. Configure it in the Settings tab to include it in every row.', 'kalicart-bridge' ) : __( 'The configured URL is not an absolute http(s) URL; feed generation is blocked until it is fixed.', 'kalicart-bridge' ) ), $rp_actions );
+		self::readiness_row( __( 'Target countries', 'kalicart-bridge' ), null === $countries_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $countries_ready ), $countries ? implode( ', ', $countries ) : __( 'Optional in the OpenAI specification (depends on market setup). Use ISO 3166-1 alpha-2 country codes.', 'kalicart-bridge' ), [ self::action_link( $kb_edit, '#kb-acp-settings' ) ] );
+		self::readiness_row( __( 'Product brand', 'kalicart-bridge' ), $brand_status, $brand_detail, $brand_actions, $kb_feed_src );
+		self::readiness_row( __( 'Product description', 'kalicart-bridge' ), $desc_status, $desc_detail, $desc_actions, $kb_feed_src );
+		self::readiness_row( __( 'Primary image', 'kalicart-bridge' ), self::readiness_label( $image_state, __( 'Complete', 'kalicart-bridge' ), __( 'Missing rows', 'kalicart-bridge' ) ), null === $image_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: rows excluded for missing image */ __( '%d feed rows excluded in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_no_image'] ?? 0 ) ), $image_actions, $kb_feed_src );
+		self::readiness_row( __( 'Schema validation', 'kalicart-bridge' ), self::readiness_label( $schema_state, __( 'Passed', 'kalicart-bridge' ), __( 'Invalid rows', 'kalicart-bridge' ) ), null === $schema_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: invalid rows */ __( '%d invalid rows in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_invalid'] ?? 0 ) ), $schema_actions, $kb_feed_src );
+		self::readiness_row( __( 'Daily ChatGPT feed refresh', 'kalicart-bridge' ), self::readiness_label( (bool) $opts['enabled'], __( 'Enabled', 'kalicart-bridge' ), __( 'Manual only', 'kalicart-bridge' ) ), $refresh_detail, [ self::action_link( $kb_edit, '#kb-acp-settings' ) ], $kb_feed_src );
+		self::readiness_row( __( 'OpenAI feed delivery', 'kalicart-bridge' ), self::readiness_label( false, __( 'Connected', 'kalicart-bridge' ), __( 'Application required', 'kalicart-bridge' ) ), __( 'This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials.', 'kalicart-bridge' ), [ self::action_link( __( 'How to activate', 'kalicart-bridge' ), '#kb-acp-guide', 'info-outline' ) ] );
 		echo '</div>';
 
 		if ( $generated ) {
@@ -820,23 +986,31 @@ class KaliCart_Bridge_ACP_Feed {
                     $excluded_invalid
                 )
             ) . '</p>';
-			if ( ! empty( $stats['invalid_examples'] ) ) {
-				echo '<p style="color:#b32d2e"><small>' . esc_html( implode( ' | ', $stats['invalid_examples'] ) ) . '</small></p>';
-			}
+			// 1.0.146: invalid rows are listed (named + linked) in the diagnostics card below.
 			echo '<p><a class="kali-btn kali-btn--secondary" href="' . esc_url( self::feed_url() ) . '" download>' . esc_html__( 'Download JSONL', 'kalicart-bridge' ) . '</a> <a class="kali-btn kali-btn--secondary" href="' . esc_url( self::feed_url() . '.gz' ) . '" download>' . esc_html__( 'Download JSONL.GZ', 'kalicart-bridge' ) . '</a></p>';
 		}
 		echo '</div>';
 
-		$live_counts = [];
-		foreach ( [ 'brand', 'image' ] as $kb_gap ) {
-			$kb_q = new WP_Query( array_merge(
-				[ 'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => 1, 'fields' => 'ids' ],
-				self::missing_data_query_args( $kb_gap )
-			) );
-			$live_counts[ $kb_gap ] = (int) $kb_q->found_posts;
+		if ( $generated ) {
+			$kb_diag_total = (int) ( $stats['fallback_description_rows'] ?? 0 ) + (int) ( $stats['fallback_brand_rows'] ?? 0 ) + (int) ( $stats['excluded_no_brand'] ?? 0 ) + (int) ( $stats['excluded_no_image'] ?? 0 ) + (int) ( $stats['excluded_invalid'] ?? 0 );
+			if ( $kb_diag_total > 0 ) {
+				$kb_live_label = __( 'current catalog data', 'kalicart-bridge' );
+				echo '<div class="kali-acp-card" id="kb-acp-diag"><h2>' . esc_html__( 'Products to check in the last feed generation', 'kalicart-bridge' ) . '</h2>';
+				/* translators: %s: date and time of the last feed generation */
+				echo '<p>' . esc_html( sprintf( __( 'Rows of the feed generated on %s, the same generation that produced the counts above. Product changes made afterwards appear after the next generation.', 'kalicart-bridge' ), self::feed_date( $stats ) ) ) . '</p>';
+				self::render_sample_section( $stats, 'description_fallback', __( 'Product name used as description', 'kalicart-bridge' ), (int) ( $stats['fallback_description_rows'] ?? 0 ), __( 'These rows have no product description in WooCommerce. Add a description in the product editor.', 'kalicart-bridge' ) );
+				self::render_sample_section( $stats, 'invalid', __( 'Rows excluded by the validator', 'kalicart-bridge' ), (int) ( $stats['excluded_invalid'] ?? 0 ), __( 'These rows did not pass the OpenAI specification checks and are not in the file. The reason is shown next to each product.', 'kalicart-bridge' ) );
+				self::render_sample_section( $stats, 'image_excluded', __( 'Rows excluded for missing primary image', 'kalicart-bridge' ), (int) ( $stats['excluded_no_image'] ?? 0 ), __( 'Set a featured image in the product editor.', 'kalicart-bridge' ),
+					$live_counts['image'] ? '<a href="' . esc_url( self::products_list_url( 'image' ) ) . '">' . esc_html__( 'Products without image in the Products list', 'kalicart-bridge' ) . '</a> (' . esc_html( $kb_live_label ) . ': ' . (int) $live_counts['image'] . ')' : '' );
+				self::render_sample_section( $stats, 'brand_excluded', __( 'Rows excluded for missing brand', 'kalicart-bridge' ), (int) ( $stats['excluded_no_brand'] ?? 0 ), __( 'Brand is required by the OpenAI specification. Assign a brand to include these rows.', 'kalicart-bridge' ) );
+				self::render_sample_section( $stats, 'brand_fallback', __( 'Rows completed with the brand fallback', 'kalicart-bridge' ), (int) ( $stats['fallback_brand_rows'] ?? 0 ), __( 'These feed rows have no product-level brand and carry the merchant-declared fallback. Check that the fallback is accurate for each of them, or assign the real brand in the product.', 'kalicart-bridge' ),
+					'<a href="#kb-acp-settings">' . esc_html__( 'Brand fallback setting', 'kalicart-bridge' ) . '</a>' . ( $live_counts['brand'] ? ' &middot; <a href="' . esc_url( self::products_list_url( 'brand' ) ) . '">' . esc_html__( 'Products without brand in the Products list', 'kalicart-bridge' ) . '</a> (' . esc_html( $kb_live_label ) . ': ' . (int) $live_counts['brand'] . ')' : '' ) );
+				echo '</div>';
+			}
 		}
+
 		if ( $live_counts['brand'] || $live_counts['image'] ) {
-			echo '<div class="kali-acp-card"><h2>' . esc_html__( 'ChatGPT feed data gaps', 'kalicart-bridge' ) . '</h2>';
+			echo '<div class="kali-acp-card" id="kb-acp-gaps"><h2>' . esc_html__( 'ChatGPT feed data gaps', 'kalicart-bridge' ) . '</h2>';
 			echo '<p>' . esc_html__( 'Live counts on your current catalog. Products without a primary image are excluded from the ChatGPT feed; products without a brand are excluded too, because brand is required. None of this affects the agent-readable catalog, search, REST API or MCP surfaces.', 'kalicart-bridge' ) . '</p>';
 			echo '<div class="kali-acp-list">';
 			$kb_rows = [
@@ -856,7 +1030,7 @@ class KaliCart_Bridge_ACP_Feed {
 			echo '</div></div>';
 		}
 
-		echo '<div class="kali-acp-card"><h2>' . esc_html__( 'ChatGPT feed generation settings', 'kalicart-bridge' ) . '</h2>';
+		echo '<div class="kali-acp-card" id="kb-acp-settings" tabindex="-1"><h2>' . esc_html__( 'ChatGPT feed generation settings', 'kalicart-bridge' ) . '</h2>';
 		echo '<form method="post" id="kb-acp-form" action="' . esc_url( admin_url( 'admin.php?page=kalicart-bridge&tab=agent-commerce' ) ) . '">';
 		wp_nonce_field( 'kb_acp_save', 'kb_acp_nonce' );
 		echo '<div class="kali-toggle-group" style="margin-bottom:14px"><label class="kali-toggle-row"><div class="kali-toggle-info"><strong>' . esc_html__( 'Generate the ChatGPT feed daily', 'kalicart-bridge' ) . '</strong><span>' . esc_html__( 'Refreshes the local validated file only. Automatic delivery can be configured after OpenAI approves the merchant and supplies credentials.', 'kalicart-bridge' ) . '</span></div><div class="kali-toggle"><input type="checkbox" name="enabled" ' . checked( $opts['enabled'], true, false ) . '><span class="kali-toggle__slider"></span></div></label></div>';
@@ -867,7 +1041,7 @@ class KaliCart_Bridge_ACP_Feed {
 		echo '<p style="margin-top:16px"><button type="submit" class="kali-btn kali-btn--primary" name="regenerate" value="1">' . esc_html__( 'Save and generate/validate now', 'kalicart-bridge' ) . '</button><span class="spinner" style="float:none;margin:0 0 0 10px"></span></p>';
 		echo '</form></div>';
 
-		echo '<div class="kali-acp-card"><h2>' . esc_html__( 'What to do with this file (OpenAI guidelines)', 'kalicart-bridge' ) . '</h2>';
+		echo '<div class="kali-acp-card" id="kb-acp-guide" tabindex="-1"><h2>' . esc_html__( 'What to do with this file (OpenAI guidelines)', 'kalicart-bridge' ) . '</h2>';
 		echo '<p>' . esc_html__( 'The file is a complete snapshot of your feed-eligible products, regenerated in full every time: products removed from your catalog disappear from the next snapshot automatically. OpenAI recommends refreshing it at least daily and always keeping the same filename.', 'kalicart-bridge' ) . '</p>';
 		echo '<ol>';
 		echo '<li><strong>' . esc_html__( 'Generate and validate here.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'Every row is checked against the OpenAI Product Feed specification before it enters the file.', 'kalicart-bridge' ) . '</li>';

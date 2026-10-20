@@ -213,6 +213,7 @@
   const ISSUE_COUNT_KEY = {
     TITLE_TOO_SHORT: 'bad_title', NO_DESCRIPTION: 'no_description', NO_CATEGORY: 'no_category',
     ZERO_PRICE: 'zero_price', NO_IMAGE: 'no_image', NO_SKU: 'no_sku',
+    NO_BRAND: 'no_brand', // 1.0.146: totale vero della vista NO_BRAND ("primi 100 di N")
   };
 
   function qualityFilterBtn( label, count, url ) {
@@ -234,6 +235,7 @@
     const improvements = [
       qualityFilterBtn( STR.btn_image, i.no_image, base + '&kalicart_missing=image' ),
       qualityFilterBtn( STR.btn_sku,   i.no_sku,   base + '&kalicart_missing=sku' ),
+      qualityFilterBtn( STR.btn_brand, i.no_brand, base + '&kalicart_missing=brand' ),
       qualityFilterBtn( STR.btn_stock, data.out_of_stock_count, base + '&stock_status=outofstock' ),
     ].join( '' );
     if ( ! critical && ! improvements ) return '';
@@ -343,6 +345,10 @@
       NO_SKU: {
         title: STR.why_sku,
         detail: STR.why_sku_d
+      },
+      NO_BRAND: {
+        title: STR.why_brand,
+        detail: STR.why_brand_d
       },
       OUT_OF_STOCK: {
         title: STR.why_stock,

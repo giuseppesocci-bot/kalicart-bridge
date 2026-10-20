@@ -431,6 +431,7 @@
 .kali-flag--high   { background: #fde8e8; color: #9b1c1c; }
 .kali-flag--medium { background: #fef3e2; color: #7a4500; }
 .kali-flag--low    { background: var(--kb-acc-bg); color: var(--kb-acc-s); }
+.kali-flag--info   { background: var(--kb-surface2); color: var(--kb-muted); }
 
 /* ── Endpoints ────────────────────────────────────────────────────────────── */
 .kali-endpoint-head {
@@ -883,6 +884,19 @@
 .kali-acp-row__info strong { display: block; font-size: 14px; font-weight: 600; color: var(--kb-text); margin-bottom: 2px; }
 .kali-acp-row__info span { font-size: 13px; color: var(--kb-muted); }
 .kali-acp-row__status, .kali-acp-row__actions { flex-shrink: 0; display: flex; gap: 8px; align-items: center; }
+/* 1.0.146: azione nella riga del riepilogo (icona + testo, mai solo icona) */
+.kali-acp-row__status { flex-wrap: wrap; justify-content: flex-end; }
+.kali-acp-src { display: block; font-size: 12px; color: var(--kb-muted); margin-top: 2px; }
+.kali-acp-action { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 1px solid var(--kb-border); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--kb-acc-s); background: #fff; text-decoration: none; }
+.kali-acp-action:hover { background: var(--kb-acc-bg); color: var(--kb-acc-s); }
+.kali-acp-action:focus, .kali-acp-action:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; box-shadow: none; }
+.kali-acp-action .dashicons { font-size: 16px; width: 16px; height: 16px; }
+.kali-acp-samples-block { padding: 12px 0; border-top: 1px solid var(--kb-border); }
+.kali-acp-samples-block:focus { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
+.kali-acp-samples-block h3 { font-size: 14px; margin: 0 0 6px; }
+.kali-acp-samples { max-height: 320px; overflow: auto; margin: 0; padding-left: 18px; }
+.kali-acp-samples li { margin: 2px 0; font-size: 13px; }
+.kali-acp-err { color: #b32d2e; }
 .kali-pill {
   display: inline-flex;
   align-items: center;

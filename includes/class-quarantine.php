@@ -167,6 +167,10 @@ class KaliCart_Bridge_Quarantine {
         $issue_products = [
             'NO_IMAGE' => self::build_issue_list( array_slice( $issue_product_ids['NO_IMAGE'], 0, 100 ), 'NO_IMAGE', 'No image', 'image' ),
             'NO_SKU'   => self::build_issue_list( array_slice( $issue_product_ids['NO_SKU'], 0, 100 ), 'NO_SKU', 'No SKU', 'sku' ),
+            // 1.0.146: NO_BRAND aveva conteggio e suggestion ma nessuna lista
+            // (vista vuota con 113). Stesso predicato e ambito del conteggio;
+            // severity 'info' = nessuna deduzione: il brand non tocca lo score.
+            'NO_BRAND' => self::build_issue_list( array_slice( $issue_product_ids['NO_BRAND'], 0, 100 ), 'NO_BRAND', __( 'No brand (ChatGPT feed only)', 'kalicart-bridge' ), 'info' ),
         ];
 
         // ── Suggestions ───────────────────────────────────────────────────────
@@ -187,6 +191,7 @@ class KaliCart_Bridge_Quarantine {
                 'no_category' => $no_cat,
                 'zero_price'  => $no_price,
                 'no_sku'      => $no_sku,
+                'no_brand'    => $no_brand, // 1.0.146: totale vero della vista NO_BRAND (non entra nello score)
             ],
             'suggestions'          => $suggestions,
             'quarantined_products' => $quarantined_products,
@@ -255,6 +260,18 @@ class KaliCart_Bridge_Quarantine {
              AND (pm.meta_value IS NULL OR pm.meta_value='')"
         );
 
+        // Senza brand: STESSO predicato e ambito del conteggio $no_brand in build_report().
+        $no_brand = $wpdb->get_col(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
+            "SELECT p.ID FROM {$wpdb->posts} p
+             WHERE p.post_type='product' AND p.post_status='publish'
+             AND NOT EXISTS (
+               SELECT 1 FROM {$wpdb->term_relationships} tr
+               JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+               WHERE tr.object_id = p.ID
+               AND tt.taxonomy IN ('product_brand','pwb-brand','pa_brand','pa_marca')
+             )"
+        );
+
         $lists = [
             'TITLE_TOO_SHORT' => array_map( 'intval', $bad_title ),
             'NO_IMAGE'       => array_map( 'intval', $no_image ),
@@ -262,6 +279,7 @@ class KaliCart_Bridge_Quarantine {
             'NO_CATEGORY'    => array_map( 'intval', $no_cat ),
             'ZERO_PRICE'     => array_map( 'intval', $no_price ),
             'NO_SKU'         => array_map( 'intval', $no_sku ),
+            'NO_BRAND'       => array_map( 'intval', $no_brand ),
         ];
         // Recenti prima: il campione mostrato in tab deve pescare i prodotti
         // su cui il merchant sta lavorando ora, non i piu' vecchi per ID.
