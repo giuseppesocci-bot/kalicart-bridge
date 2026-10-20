@@ -178,7 +178,19 @@
     if ( container ) {
       container.innerHTML = sug.length === 0
         ? `<div class="kali-empty">&#x1F389; ${ STR.no_issues }</div>`
-        : sug.map( s => `
+        : sug.map( s => ( s.affected != null && Number( s.affected ) > 0 )
+          // 1.0.146: the WHOLE card is the control (one real <button>, no nested
+          // interactive element); same destination the "N prodotti" pill had.
+          ? `
+          <button type="button" class="kali-suggestion kali-suggestion--link" data-issue-code="${ esc( s.code ) }" data-view-issue="${ esc( s.code ) }">
+            <span class="kali-suggestion__dot kali-suggestion__dot--${ esc( s.priority ) }" aria-hidden="true"></span>
+            <span class="kali-suggestion__content">
+              <span class="kali-suggestion__label">${ esc( s.label ) }</span>
+              <span class="kali-suggestion__detail">${ esc( s.detail ) }</span>
+            </span>
+            <span class="kali-suggestion__affected">${ Number( s.affected ) } ${ STR.products }</span>
+          </button>`
+          : `
           <div class="kali-suggestion" data-issue-code="${ esc( s.code ) }">
             <div class="kali-suggestion__dot kali-suggestion__dot--${ s.priority }"></div>
             <div class="kali-suggestion__content">

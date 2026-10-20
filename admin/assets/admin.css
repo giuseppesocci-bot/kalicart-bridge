@@ -353,7 +353,16 @@
   color: var(--kb-text);
   margin-bottom: 2px;
 }
-.kali-suggestion__detail { font-size: 13px; color: var(--kb-muted); }
+.kali-suggestion__detail { font-size: 13px; color: var(--kb-text); }
+/* 1.0.146: card suggerimento cliccabile per intero (button). Solo affordance, nessun testo nuovo. */
+.kali-suggestion--link { width: 100%; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.kali-suggestion--link .kali-suggestion__content,
+.kali-suggestion--link .kali-suggestion__label,
+.kali-suggestion--link .kali-suggestion__detail { display: block; }
+.kali-suggestion--link:hover, .kali-suggestion--link:focus-visible { background: var(--kb-surface2); border-color: var(--kb-acc); }
+.kali-suggestion--link:hover .kali-suggestion__label, .kali-suggestion--link:focus-visible .kali-suggestion__label { color: var(--kb-acc-s); text-decoration: underline; text-underline-offset: 2px; }
+.kali-suggestion--link:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
+.kali-suggestion--link::after { content: "\203A"; content: "\203A" / ""; align-self: center; font-size: 20px; line-height: 1; color: var(--kb-acc-s); }
 .kali-suggestion__affected {
   font-size: 13px;
   font-family: var(--kb-font-mono);
