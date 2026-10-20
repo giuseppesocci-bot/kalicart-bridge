@@ -1933,3 +1933,6 @@ msgstr ""
 
 msgid "Products without brand in the Products list"
 msgstr ""
+
+msgid "Open"
+msgstr ""

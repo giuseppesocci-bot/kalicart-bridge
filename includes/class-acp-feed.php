@@ -653,8 +653,10 @@ class KaliCart_Bridge_ACP_Feed {
 	 * $source = plain text saying where the number comes from (last feed + date,
 	 * or configuration). Status and actions sit together on the right.
 	 */
-	private static function readiness_row( string $label, string $status, string $detail, array $actions = [], string $source = '' ): void {
-		echo '<div class="kali-acp-row"><div class="kali-acp-row__info"><strong>' . esc_html( $label ) . '</strong><span>' . esc_html( $detail ) . '</span>';
+	private static function readiness_row( string $label, string $status, string $detail, array $actions = [], string $source = '', string $state = 'info' ): void {
+		// 1.0.146: $state colours the row - ok (ready), info (informative), check (verify), action (intervention required).
+		$state = in_array( $state, [ 'ok', 'info', 'check', 'action' ], true ) ? $state : 'info';
+		echo '<div class="kali-acp-row kali-acp-row--' . esc_attr( $state ) . '"><div class="kali-acp-row__info"><strong>' . esc_html( $label ) . '</strong><span>' . esc_html( $detail ) . '</span>';
 		if ( '' !== $source ) {
 			echo '<small class="kali-acp-src">' . esc_html( $source ) . '</small>';
 		}
@@ -964,17 +966,25 @@ class KaliCart_Bridge_ACP_Feed {
 			$image_actions[] = self::action_link( $kb_fix, $kb_target( 'image_excluded', (int) $stats['excluded_no_image'] ) );
 		}
 		$schema_actions = false === $schema_state ? [ self::action_link( $kb_fix, $kb_target( 'invalid', (int) $stats['excluded_invalid'] ) ) ] : [];
+		$kb_state = static function ( ?bool $ready, string $not_ready = 'action' ): string {
+			return null === $ready ? 'info' : ( $ready ? 'ok' : $not_ready );
+		};
+		$brand_state = 'info';
+		if ( $kb_ok_stats && array_key_exists( 'excluded_no_brand', $stats ) ) {
+			$brand_state = (int) $stats['excluded_no_brand'] > 0 ? 'action' : ( (int) ( $stats['fallback_brand_rows'] ?? 0 ) > 0 ? 'check' : 'ok' );
+		}
+		$desc_state = ( $kb_ok_stats && array_key_exists( 'fallback_description_rows', $stats ) ) ? ( (int) $stats['fallback_description_rows'] > 0 ? 'action' : 'ok' ) : 'info';
 		$refresh_detail = $opts['enabled'] ? __( 'Regenerates the validated ChatGPT feed file once per day; delivery to OpenAI is a separate step.', 'kalicart-bridge' ) : __( 'The ChatGPT feed changes only when generated manually and may become outdated after catalog changes.', 'kalicart-bridge' );
 
 		echo '<div class="kali-acp-list">';
-		self::readiness_row( __( 'Return policy', 'kalicart-bridge' ), null === $return_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $return_ready ), $return_ready ? __( 'Configured in the Settings tab: ', 'kalicart-bridge' ) . (string) $opts['return_policy_url'] : ( null === $return_ready ? __( 'Optional in the OpenAI specification. Configure it in the Settings tab to include it in every row.', 'kalicart-bridge' ) : __( 'The configured URL is not an absolute http(s) URL; feed generation is blocked until it is fixed.', 'kalicart-bridge' ) ), $rp_actions );
-		self::readiness_row( __( 'Target countries', 'kalicart-bridge' ), null === $countries_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $countries_ready ), $countries ? implode( ', ', $countries ) : __( 'Optional in the OpenAI specification (depends on market setup). Use ISO 3166-1 alpha-2 country codes.', 'kalicart-bridge' ), [ self::action_link( $kb_edit, '#kb-acp-settings' ) ] );
-		self::readiness_row( __( 'Product brand', 'kalicart-bridge' ), $brand_status, $brand_detail, $brand_actions, $kb_feed_src );
-		self::readiness_row( __( 'Product description', 'kalicart-bridge' ), $desc_status, $desc_detail, $desc_actions, $kb_feed_src );
-		self::readiness_row( __( 'Primary image', 'kalicart-bridge' ), self::readiness_label( $image_state, __( 'Complete', 'kalicart-bridge' ), __( 'Missing rows', 'kalicart-bridge' ) ), null === $image_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: rows excluded for missing image */ __( '%d feed rows excluded in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_no_image'] ?? 0 ) ), $image_actions, $kb_feed_src );
-		self::readiness_row( __( 'Schema validation', 'kalicart-bridge' ), self::readiness_label( $schema_state, __( 'Passed', 'kalicart-bridge' ), __( 'Invalid rows', 'kalicart-bridge' ) ), null === $schema_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: invalid rows */ __( '%d invalid rows in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_invalid'] ?? 0 ) ), $schema_actions, $kb_feed_src );
-		self::readiness_row( __( 'Daily ChatGPT feed refresh', 'kalicart-bridge' ), self::readiness_label( (bool) $opts['enabled'], __( 'Enabled', 'kalicart-bridge' ), __( 'Manual only', 'kalicart-bridge' ) ), $refresh_detail, [ self::action_link( $kb_edit, '#kb-acp-settings' ) ], $kb_feed_src );
-		self::readiness_row( __( 'OpenAI feed delivery', 'kalicart-bridge' ), self::readiness_label( false, __( 'Connected', 'kalicart-bridge' ), __( 'Application required', 'kalicart-bridge' ) ), __( 'This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials.', 'kalicart-bridge' ), [ self::action_link( __( 'How to activate', 'kalicart-bridge' ), '#kb-acp-guide', 'info-outline' ) ] );
+		self::readiness_row( __( 'Return policy', 'kalicart-bridge' ), null === $return_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $return_ready ), $return_ready ? __( 'Configured in the Settings tab: ', 'kalicart-bridge' ) . (string) $opts['return_policy_url'] : ( null === $return_ready ? __( 'Optional in the OpenAI specification. Configure it in the Settings tab to include it in every row.', 'kalicart-bridge' ) : __( 'The configured URL is not an absolute http(s) URL; feed generation is blocked until it is fixed.', 'kalicart-bridge' ) ), $rp_actions, '', $kb_state( $return_ready ) );
+		self::readiness_row( __( 'Target countries', 'kalicart-bridge' ), null === $countries_ready ? '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Optional', 'kalicart-bridge' ) . '</span>' : self::readiness_label( $countries_ready ), $countries ? implode( ', ', $countries ) : __( 'Optional in the OpenAI specification (depends on market setup). Use ISO 3166-1 alpha-2 country codes.', 'kalicart-bridge' ), [ self::action_link( $kb_edit, '#kb-acp-settings' ) ], '', $kb_state( $countries_ready ) );
+		self::readiness_row( __( 'Product brand', 'kalicart-bridge' ), $brand_status, $brand_detail, $brand_actions, $kb_feed_src, $brand_state );
+		self::readiness_row( __( 'Product description', 'kalicart-bridge' ), $desc_status, $desc_detail, $desc_actions, $kb_feed_src, $desc_state );
+		self::readiness_row( __( 'Primary image', 'kalicart-bridge' ), self::readiness_label( $image_state, __( 'Complete', 'kalicart-bridge' ), __( 'Missing rows', 'kalicart-bridge' ) ), null === $image_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: rows excluded for missing image */ __( '%d feed rows excluded in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_no_image'] ?? 0 ) ), $image_actions, $kb_feed_src, $kb_state( $image_state ) );
+		self::readiness_row( __( 'Schema validation', 'kalicart-bridge' ), self::readiness_label( $schema_state, __( 'Passed', 'kalicart-bridge' ), __( 'Invalid rows', 'kalicart-bridge' ) ), null === $schema_state ? __( 'Run feed generation to check.', 'kalicart-bridge' ) : sprintf( /* translators: %d: invalid rows */ __( '%d invalid rows in the last run.', 'kalicart-bridge' ), (int) ( $stats['excluded_invalid'] ?? 0 ) ), $schema_actions, $kb_feed_src, $kb_state( $schema_state ) );
+		self::readiness_row( __( 'Daily ChatGPT feed refresh', 'kalicart-bridge' ), self::readiness_label( (bool) $opts['enabled'], __( 'Enabled', 'kalicart-bridge' ), __( 'Manual only', 'kalicart-bridge' ) ), $refresh_detail, [ self::action_link( $kb_edit, '#kb-acp-settings' ) ], $kb_feed_src, $opts['enabled'] ? 'ok' : 'info' );
+		self::readiness_row( __( 'OpenAI feed delivery', 'kalicart-bridge' ), '<span class="kali-pill kali-pill--muted">' . esc_html__( 'Application required', 'kalicart-bridge' ) . '</span>', __( 'This plugin currently prepares the file. OpenAI approves the merchant and assigns SFTP or API delivery credentials.', 'kalicart-bridge' ), [ self::action_link( __( 'How to activate', 'kalicart-bridge' ), '#kb-acp-guide', 'info-outline' ) ], '', 'info' ); // a pending application is not a product defect
 		echo '</div>';
 
 		if ( $generated ) {

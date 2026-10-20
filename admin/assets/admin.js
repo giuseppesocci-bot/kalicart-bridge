@@ -163,6 +163,9 @@
     setText( 'statInStock',    data.in_stock_count ?? 0 );
     setText( 'statOutStock',   data.out_of_stock_count ?? 0 );
     setText( 'statNoSku',      data.issues?.no_sku ?? 0 );
+    setCta( $( 'stat-card-quarantine' ), ( data.quarantine_count ?? 0 ) > 0, STR.cta_open, 'visibility' );
+    setCta( $( 'stat-card-out_stock' ), ( data.out_of_stock_count ?? 0 ) > 0, STR.cta_open, 'visibility' );
+    setCta( $( 'stat-card-no_sku' ), ( data.issues?.no_sku ?? 0 ) > 0, STR.cta_fix );
 
     // Issues breakdown — colora in rosso se > 0
     const issues = data.issues ?? {};
@@ -186,7 +189,7 @@
               <div class="kali-suggestion__detail">${ esc( s.detail ) }</div>
             </div>
             ${ s.affected != null
-              ? `<button class="kali-suggestion__affected" type="button" data-view-issue="${ esc( s.code ) }">${ s.affected } ${ STR.products }</button>`
+              ? `<button class="kali-suggestion__affected" type="button" data-view-issue="${ esc( s.code ) }"><span class="dashicons dashicons-edit" aria-hidden="true"></span>${ esc( s.code === 'NO_BRAND' ? STR.cta_check_brand : STR.cta_fix ) } &middot; ${ Number( s.affected ) || 0 } ${ STR.products }</button>`
               : ( s.admin_url ? `<button class="kali-suggestion__affected" type="button" data-switch-tab="settings">${ STR.configure } →</button>` : '' )
             }
           </div>` ).join( '' );
@@ -206,7 +209,23 @@
     const el = $( id );
     if ( ! el ) return;
     el.textContent = count ?? 0;
-    el.style.color = count > 0 ? '#ef4444' : '#22c55e';
+    el.style.color = count > 0 ? '#9b1c1c' : '#0f6f3c'; // 1.0.146: AA contrast (was #ef4444 / #22c55e)
+    setCta( el.closest( '.kali-issue' ), count > 0, STR.cta_fix );
+  }
+
+  // 1.0.146: explicit visible control (pencil icon + text) inside a clickable card.
+  // The card itself stays the keyboard target (role=button, tabindex=0).
+  function setCta( card, show, label, icon = 'edit' ) {
+    if ( ! card ) return;
+    card.querySelector( '.kali-cta' )?.remove();
+    const base = card.classList.contains( 'kali-issue' ) ? 'kali-issue' : 'kali-stat';
+    card.classList.toggle( base + '--action', !! show );
+    card.classList.toggle( base + '--ok', ! show );
+    if ( ! show ) return;
+    const cta = document.createElement( 'span' );
+    cta.className = 'kali-cta';
+    cta.innerHTML = `<span class="dashicons dashicons-${ esc( icon ) }" aria-hidden="true"></span>${ esc( label ) }`;
+    ( card.querySelector( ':scope > div' ) || card ).appendChild( cta );
   }
 
   // ── Quarantine ────────────────────────────────────────────────────────────

@@ -190,7 +190,7 @@ $render = static function ( array $stats ) use ( $F ): string {
 	remove_filter( 'option_' . $F::OPTION, $inject, 999 );
 	return $h;
 };
-$row_html = static function ( string $h, string $label ): string { $p = strpos( $h, '<strong>' . $label . '</strong>' ); if ( false === $p ) { return ''; } $e = strpos( $h, '<div class="kali-acp-row">', $p ); return substr( $h, $p, false === $e ? 2000 : $e - $p ); };
+$row_html = static function ( string $h, string $label ): string { $p = strpos( $h, '<strong>' . $label . '</strong>' ); if ( false === $p ) { return ''; } $st = strpos( $h, 'kali-acp-row__status', $p ); $e = false === $st ? false : strpos( $h, '</div></div>', $st ); return substr( $h, $p, false === $e ? 2000 : $e - $p ); }; // one row: label .. end of its status cell
 $h2 = $render( $s2 );
 $ok( false !== strpos( $h2, 'id="kb-acp-diag-invalid"' ) && false !== strpos( $h2, 'post=486&#038;action=edit' ), 'panel: invalid section links wc-486 to its edit screen' );
 $sv = $row_html( $h2, 'Schema validation' );
@@ -206,6 +206,11 @@ $ir = $row_html( $h1, 'Primary image' );
 $ok( (int) $s1['excluded_no_image'] === 0 || ( false !== strpos( $ir, 'Fix' ) && false !== strpos( $ir, 'Last feed generation:' ) ), 'panel: image row has Fix and declares the last-feed source' );
 $ok( false !== strpos( $h1, 'current catalog data' ) && false !== strpos( $h1, 'kalicart_missing=image' ), 'panel: live filter linked separately and labelled "current catalog data"' );
 $ok( false !== strpos( $row_html( $h1, 'OpenAI feed delivery' ), 'How to activate' ) && false !== strpos( $h1, 'id="kb-acp-guide"' ), 'panel: delivery row -> "How to activate" to the instructions' );
+// Row colour states (1.0.146 UI decision): intervention vs ready/informative.
+$row_open = static function ( string $h, string $label ): string { $p = strpos( $h, '<strong>' . $label . '</strong>' ); if ( false === $p ) { return ''; } $q = strrpos( substr( $h, 0, $p ), '<div class="kali-acp-row ' ); return false === $q ? '' : substr( $h, $q, 60 ); };
+$ok( false !== strpos( $row_open( $h2, 'Schema validation' ), 'kali-acp-row--action' ) && false !== strpos( $row_open( $h1, 'Schema validation' ), 'kali-acp-row--ok' ), 'row state: schema invalid = action, passed = ok' );
+$ok( 0 === (int) $s1['fallback_brand_rows'] || false !== strpos( $row_open( $h1, 'Product brand' ), 'kali-acp-row--check' ), 'row state: brand fallback = check (not an error)' );
+$ok( false !== strpos( $row_open( $h1, 'OpenAI feed delivery' ), 'kali-acp-row--info' ) && false === strpos( $row_html( $h1, 'OpenAI feed delivery' ), 'kali-pill--warn' ), 'row state: OpenAI delivery is informative, not a defect' );
 $old_stats = $s1; unset( $old_stats['samples'] );
 $h0 = $render( $old_stats );
 $ok( false !== strpos( $h0, 'The list will appear after the next feed generation.' ) && false === strpos( $h0, '<ul class="kali-acp-samples">' ), 'panel: pre-1.0.146 stats show counts and "list after next generation", never a live rebuild' );

@@ -886,6 +886,25 @@
 .kali-acp-row__status, .kali-acp-row__actions { flex-shrink: 0; display: flex; gap: 8px; align-items: center; }
 /* 1.0.146: azione nella riga del riepilogo (icona + testo, mai solo icona) */
 .kali-acp-row__status { flex-wrap: wrap; justify-content: flex-end; }
+/* 1.0.146: stato della riga leggibile anche senza pill (contrasto AA >= 4.5:1 su #fff e su hover #f3f3f5) */
+.kali-acp-row--ok     .kali-acp-row__info strong { color: #0f6f3c; }   /* 6.3:1 */
+.kali-acp-row--info   .kali-acp-row__info strong { color: var(--kb-text); }
+.kali-acp-row--check  { box-shadow: inset 3px 0 0 #b07a00; }
+.kali-acp-row--check  .kali-acp-row__info strong { color: #7a4500; }   /* 7.8:1 */
+.kali-acp-row--action { box-shadow: inset 3px 0 0 var(--kb-red); background: #fffafa; }
+.kali-acp-row--action .kali-acp-row__info strong { color: #9b1c1c; }   /* 8.1:1 */
+.kali-acp-row--action .kali-acp-action { border-color: var(--kb-acc); background: var(--kb-acc-bg); }
+.kali-pill--fallback { color: #7a4500; }
+/* 1.0.146: Overview - controllo esplicito nelle card cliccabili */
+.kali-cta { display: flex; width: fit-content; align-items: center; gap: 4px; margin-top: 6px; padding: 2px 8px; border: 1px solid var(--kb-border2); border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--kb-acc-s); background: var(--kb-surface); }
+.kali-cta .dashicons { font-size: 14px; width: 14px; height: 14px; }
+.kali-issue--action, .kali-stat--action { box-shadow: inset 3px 0 0 var(--kb-red); }
+.kali-issue--ok .kali-issue__label { color: #0f6f3c; }
+.kali-issue[role="button"]:focus-visible, .kali-stat--clickable:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
+.kali-src-note { font-size: 12px; font-weight: 400; color: var(--kb-muted); margin-left: 8px; text-transform: none; letter-spacing: 0; }
+.kali-suggestion__affected .dashicons { font-size: 14px; width: 14px; height: 14px; vertical-align: -2px; margin-right: 2px; }
+.kali-suggestion__affected { color: var(--kb-acc-s); font-weight: 600; }
+.kali-suggestion__affected:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
 .kali-acp-src { display: block; font-size: 12px; color: var(--kb-muted); margin-top: 2px; }
 .kali-acp-action { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 1px solid var(--kb-border); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--kb-acc-s); background: #fff; text-decoration: none; }
 .kali-acp-action:hover { background: var(--kb-acc-bg); color: var(--kb-acc-s); }

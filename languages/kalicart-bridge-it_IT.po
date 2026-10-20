@@ -2652,3 +2652,6 @@ msgstr "Impostazione del brand di riserva"
 
 msgid "Products without brand in the Products list"
 msgstr "Prodotti senza brand nella lista Prodotti"
+
+msgid "Open"
+msgstr "Apri"
