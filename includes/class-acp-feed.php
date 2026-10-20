@@ -484,8 +484,9 @@ class KaliCart_Bridge_ACP_Feed {
 		if ( ! isset( $stats['samples'][ $reason ] ) || count( $stats['samples'][ $reason ] ) >= self::SAMPLE_CAP ) {
 			return;
 		}
-		$display = $parent ?: $p;
-		$title   = $display->get_name() . ( $parent ? ' - ' . wc_get_formatted_variation( $p, true, false, false ) : '' );
+		// Zero extra queries: names already loaded on the objects (a variation's
+		// stored name is "Parent - attributes"); no attribute/term lookups here.
+		$title = $p->get_name();
 		$stats['samples'][ $reason ][] = [
 			'item_id'    => 'wc-' . $p->get_id(),
 			'product_id' => (int) $p->get_id(),
@@ -778,7 +779,7 @@ class KaliCart_Bridge_ACP_Feed {
 			// 1.0.146: NO_SKU ids in the report are capped at 100; the list must
 			// show ALL of them, so it runs the same SQL unbounded.
 			$ids = 'sku' === $what
-				? KaliCart_Bridge_Quarantine::issue_ids( 'NO_SKU' )
+				? KaliCart_Bridge_Quarantine::cached_issue_ids( 'NO_SKU' )
 				: ( KaliCart_Bridge_Quarantine::get_report()['issue_product_ids'][ $report_map[ $what ] ] ?? [] );
 			$query->set( 'post__in', $ids ? array_map( 'intval', $ids ) : [ 0 ] );
 			$query->set( 'orderby', 'post__in' ); // recenti prima, come in tab
@@ -932,13 +933,20 @@ class KaliCart_Bridge_ACP_Feed {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Missing primary product image.', 'kalicart-bridge' ) . '</strong> ' . esc_html__( 'A primary product image is required by OpenAI’s direct product feed specification. Affected feed rows remain available in the agent-readable catalog but are excluded from the ChatGPT product feed.', 'kalicart-bridge' ) . '</p></div>';
 		}
 
-		$live_counts = [];
-		foreach ( [ 'brand', 'image' ] as $kb_gap ) {
-			$kb_q = new WP_Query( array_merge(
-				[ 'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => 1, 'fields' => 'ids' ],
-				self::missing_data_query_args( $kb_gap )
-			) );
-			$live_counts[ $kb_gap ] = (int) $kb_q->found_posts;
+		// 1.0.146: the two live counts ran uncached on every render of the plugin
+		// page (all tabs render together). Cached 5 min and busted with the
+		// health report on every product save/status change.
+		$live_counts = get_transient( KaliCart_Bridge_Quarantine::LIVE_GAPS_CACHE );
+		if ( ! is_array( $live_counts ) || ! isset( $live_counts['brand'], $live_counts['image'] ) ) {
+			$live_counts = [];
+			foreach ( [ 'brand', 'image' ] as $kb_gap ) {
+				$kb_q = new WP_Query( array_merge(
+					[ 'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => 1, 'fields' => 'ids', 'no_found_rows' => false, 'update_post_meta_cache' => false, 'update_post_term_cache' => false ],
+					self::missing_data_query_args( $kb_gap )
+				) );
+				$live_counts[ $kb_gap ] = (int) $kb_q->found_posts;
+			}
+			set_transient( KaliCart_Bridge_Quarantine::LIVE_GAPS_CACHE, $live_counts, 5 * MINUTE_IN_SECONDS );
 		}
 
 		// 1.0.146: one action per row, next to the status (decision 2026-10-20).

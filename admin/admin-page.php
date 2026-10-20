@@ -155,6 +155,8 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       </div>
       <div class="kali-provider-consent__revoke">
         <button type="button" class="kali-btn kali-btn--secondary" id="providerConsentRevokeBtn"><?php esc_html_e( 'Revoke channel authorization', 'kalicart-bridge' ); ?></button>
+        <?php // 1.0.146: details control on the same row, same button style; the panel opens below the row at full width. ?>
+        <button type="button" class="kali-btn kali-btn--secondary kali-consent-details__toggle" id="providerConsentDetailsBtn" aria-expanded="false" aria-controls="providerConsentDetails"><span class="dashicons dashicons-editor-alignleft" aria-hidden="true"></span><?php esc_html_e( 'Authorization details and proof', 'kalicart-bridge' ); ?></button>
       </div>
       <?php
       // AVVISO-DOPO-LA-RICHIESTA-v1 (1.0.136): il consenso non basta a entrare
@@ -166,14 +168,13 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       // il ..."): li' la nota sarebbe falsa, quindi admin.js la mostra solo se il
       // canale e' autorizzato adesso.
       ?>
-      <details class="kali-consent-details">
-        <summary><span class="dashicons dashicons-editor-alignleft" aria-hidden="true"></span><?php esc_html_e( 'Authorization details and proof', 'kalicart-bridge' ); ?></summary>
+      <div id="providerConsentDetails" class="kali-consent-details">
         <p id="providerConsentPilotNotice" class="kali-provider-consent__notice"><?php esc_html_e( 'Your request has been recorded. Inclusion in the index built for OpenAI is not automatic: products or categories that OpenAI\'s commerce policies do not allow may keep your store out of that index. Your participation in the Federated Catalog does not change.', 'kalicart-bridge' ); ?></p>
         <div class="kali-provider-consent__actions">
           <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'json' ) ); ?>"><?php esc_html_e( 'Export proof (JSON)', 'kalicart-bridge' ); ?></a>
           <a class="kali-btn kali-btn--secondary" href="<?php echo esc_url( KaliCart_Bridge_Commerce_Consent::export_url( 'csv' ) ); ?>"><?php esc_html_e( 'Export proof (CSV)', 'kalicart-bridge' ); ?></a>
         </div>
-      </details>
+      </div>
     </div>
 
     <div id="providerConsentRevokeConfirm" class="kali-warn-alert" style="display:none">

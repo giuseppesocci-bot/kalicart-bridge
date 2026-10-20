@@ -664,6 +664,19 @@
   }
 
   function initProviderConsent() {
+    // 1.0.146: details toggle (native <button>: Enter/Space for free). Without
+    // JS the whole section stays hidden anyway, so the panel starts open in the
+    // markup and is collapsed here.
+    const detailsBtn   = $( 'providerConsentDetailsBtn' );
+    const detailsPanel = $( 'providerConsentDetails' );
+    if ( detailsBtn && detailsPanel ) {
+      detailsPanel.hidden = true;
+      detailsBtn.addEventListener( 'click', () => {
+        const open = detailsBtn.getAttribute( 'aria-expanded' ) !== 'true';
+        detailsBtn.setAttribute( 'aria-expanded', String( open ) );
+        detailsPanel.hidden = ! open;
+      } );
+    }
     const checkbox  = $( 'providerConsentCheckbox' );
     const grantBtn  = $( 'providerConsentGrantBtn' );
     const revokeBtn = $( 'providerConsentRevokeBtn' );

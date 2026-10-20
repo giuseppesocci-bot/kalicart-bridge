@@ -1223,7 +1223,11 @@
 .kali-consent-details summary::-webkit-details-marker { display: none; }
 .kali-consent-details summary .dashicons { color: var(--kb-text, #111116); font-size: 18px; width: 18px; height: 18px; }
 .kali-provider-consent__current .kali-consent-summary { margin-top: 10px; }
-.kali-provider-consent__revoke { margin: 14px 0 4px; }
+.kali-provider-consent__revoke { margin: 14px 0 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* 1.0.146: "Dettagli e prova" = stesso stile del bottone Revoca; il pannello si apre sotto la riga a tutta larghezza. */
+.kali-consent-details__toggle .dashicons { font-size: 16px; width: 16px; height: 16px; }
+.kali-consent-details__toggle:focus-visible, #providerConsentRevokeBtn:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
+.kali-consent-details[hidden] { display: none; }
 
 /* Le tab restavano in orizzontale e sforavano su schermi stretti: .kali-tabs
    era flex con width:fit-content e nessuna media query in tutto il file. */

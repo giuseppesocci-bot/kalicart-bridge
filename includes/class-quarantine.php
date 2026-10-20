@@ -25,8 +25,27 @@ class KaliCart_Bridge_Quarantine {
         return $report;
     }
 
+    /** 1.0.146: transients that follow the health report's lifecycle (5 min TTL, busted on product changes). */
+    public const SKU_IDS_CACHE   = 'kalicart_bridge_no_sku_ids';
+    public const LIVE_GAPS_CACHE = 'kalicart_bridge_acp_live_gaps';
+
+    /** Unbounded NO_SKU ids for the native Products filter, cached like the report (1.0.145 served them from it). */
+    public static function cached_issue_ids( string $code ): array {
+        if ( 'NO_SKU' !== $code ) {
+            return self::issue_ids( $code );
+        }
+        $ids = get_transient( self::SKU_IDS_CACHE );
+        if ( ! is_array( $ids ) ) {
+            $ids = self::issue_ids( 'NO_SKU' );
+            set_transient( self::SKU_IDS_CACHE, $ids, 5 * MINUTE_IN_SECONDS );
+        }
+        return $ids;
+    }
+
     public static function bust_cache(): void {
         delete_transient( 'kalicart_bridge_health_v2' );
+        delete_transient( self::SKU_IDS_CACHE );
+        delete_transient( self::LIVE_GAPS_CACHE );
         delete_transient( 'kalicart_bridge_meta' );
     }
 
