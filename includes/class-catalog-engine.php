@@ -1421,16 +1421,45 @@ class KaliCart_Bridge_Catalog_Engine {
 
 
 
+    /** @var array<string,string> request-local cache of term names, keyed taxonomy|slug */
+    private static $term_label_cache = [];
+
+    private static function variation_value_label( string $attribute, string $value ): string {
+        if ( ! taxonomy_exists( $attribute ) ) {
+            return $value;
+        }
+        $ck = $attribute . '|' . $value;
+        if ( ! array_key_exists( $ck, self::$term_label_cache ) ) {
+            $term = get_term_by( 'slug', $value, $attribute );
+            self::$term_label_cache[ $ck ] = ( $term && ! is_wp_error( $term ) )
+                ? html_entity_decode( $term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8' )
+                : $value;
+        }
+        return self::$term_label_cache[ $ck ];
+    }
+
+    private static function variation_attribute_name( string $attribute, WC_Product $p ): string {
+        return html_entity_decode( wc_attribute_label( $attribute, $p ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+    }
+
     private static function get_variations( WC_Product $p ): array {
         if ( ! $p->is_type( 'variable' ) ) return [];
         $out = [];
         foreach ( $p->get_children() as $variation_id ) {
             $variation = wc_get_product( $variation_id );
             if ( ! $variation || ! $variation->exists() ) continue;
-            $attrs = [];
+            $attrs  = [];
+            $labels = [];
+            $names  = [];
             foreach ( $variation->get_variation_attributes() as $key => $value ) {
                 $clean_key = str_replace( 'attribute_', '', $key );
                 $attrs[ $clean_key ] = $value ?: null; // null = any value
+                // 1.0.147: the merchant's own wording next to the stored value. For a
+                // taxonomy attribute the stored value is the term slug ("15-lt"); the
+                // label is the term name ("1,5 lt"). For a custom attribute the stored
+                // value is already the merchant's text. Exposed, never interpreted.
+                $labels[ $clean_key ] = $value ? self::variation_value_label( $clean_key, (string) $value ) : null;
+                $names[ $clean_key ]  = self::variation_attribute_name( $clean_key, $p );
             }
             $price_data   = self::compute_price( $variation );
             $var_in_stock = $variation->is_in_stock();
@@ -1439,6 +1468,8 @@ class KaliCart_Bridge_Catalog_Engine {
             $out[] = [
                 'variation_id'        => $variation_id,
                 'attributes'          => $attrs,
+                'attribute_labels'    => $labels,
+                'attribute_names'     => $names,
                 'price'               => $price_data,
                 'in_stock'            => $var_in_stock,
                 'availability_status' => $var_in_stock ? 'in_stock' : ( $variation->get_stock_status() === 'onbackorder' ? 'backorder' : 'out_of_stock' ),

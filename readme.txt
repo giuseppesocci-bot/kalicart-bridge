@@ -170,6 +170,12 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.147 =
+**Variant options carry the store's own wording, so agents can match them in any language.**
+
+* Product detail and snapshot: each variant adds `attribute_labels` (the term name as written in the store, e.g. "1,5 lt" for the stored value `15-lt`) and `attribute_names` (the option label, e.g. "Size"), next to the unchanged `attributes`.
+* Nothing is translated or inferred: custom attribute values are passed as written.
+
 = 1.0.146 =
 **Clearer catalog diagnostics in the admin, with lighter queries on large catalogs.**
 
