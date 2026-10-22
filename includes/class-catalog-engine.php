@@ -1444,6 +1444,17 @@ class KaliCart_Bridge_Catalog_Engine {
 
     private static function get_variations( WC_Product $p ): array {
         if ( ! $p->is_type( 'variable' ) ) return [];
+        // A non-variation color with exactly one merchant value applies to every
+        // variant. A multi-value or selectable parent color never does.
+        $fixed_color_attrs = array_values( array_filter(
+            self::get_normalized_attributes( $p ),
+            static fn( $a ) => empty( $a['variation'] ) && count( $a['values'] ?? [] ) === 1
+                && self::is_color_attribute( $a['key'] ?? '', $a['name'] ?? '' )
+        ) );
+        $fixed_colors = array_map(
+            static fn( $c ) => $c + [ 'scope' => 'product_fixed_attribute' ],
+            self::extract_colors( $fixed_color_attrs, '', [] )
+        );
         $out = [];
         foreach ( $p->get_children() as $variation_id ) {
             $variation = wc_get_product( $variation_id );
@@ -1451,6 +1462,8 @@ class KaliCart_Bridge_Catalog_Engine {
             $attrs  = [];
             $labels = [];
             $names  = [];
+            $variant_color_attrs = [];
+            $has_color_choice = false;
             foreach ( $variation->get_variation_attributes() as $key => $value ) {
                 $clean_key = str_replace( 'attribute_', '', $key );
                 $attrs[ $clean_key ] = $value ?: null; // null = any value
@@ -1460,7 +1473,27 @@ class KaliCart_Bridge_Catalog_Engine {
                 // value is already the merchant's text. Exposed, never interpreted.
                 $labels[ $clean_key ] = $value ? self::variation_value_label( $clean_key, (string) $value ) : null;
                 $names[ $clean_key ]  = self::variation_attribute_name( $clean_key, $p );
+                if ( self::is_color_attribute( $clean_key, $names[ $clean_key ] ) ) {
+                    $has_color_choice = true;
+                    if ( $value !== '' ) {
+                        $variant_color_attrs[] = [
+                            'key' => $clean_key,
+                            'name' => $names[ $clean_key ],
+                            // The merchant term label is preferred; the stored slug
+                            // remains available if the label is not a known family.
+                            'values' => array_values( array_unique( array_filter( [
+                                $labels[ $clean_key ], (string) $value,
+                            ], static fn( $v ) => $v !== null && $v !== '' ) ) ),
+                        ];
+                    }
+                }
             }
+            $variant_colors = $has_color_choice
+                ? array_map(
+                    static fn( $c ) => $c + [ 'scope' => 'variation_attribute' ],
+                    self::extract_colors( $variant_color_attrs, '', [] )
+                )
+                : $fixed_colors;
             $price_data   = self::compute_price( $variation );
             $var_in_stock = $variation->is_in_stock();
             $var_manage   = $variation->managing_stock();
@@ -1470,6 +1503,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 'attributes'          => $attrs,
                 'attribute_labels'    => $labels,
                 'attribute_names'     => $names,
+                'colors'              => $variant_colors,
                 'price'               => $price_data,
                 'in_stock'            => $var_in_stock,
                 'availability_status' => $var_in_stock ? 'in_stock' : ( $variation->get_stock_status() === 'onbackorder' ? 'backorder' : 'out_of_stock' ),
@@ -2530,14 +2564,16 @@ class KaliCart_Bridge_Catalog_Engine {
 
     // ── Colors ───────────────────────────────────────────────────────────────
 
+    private static function is_color_attribute( string $key, string $name ): bool {
+        return in_array( strtolower( $key ), [ 'pa_color', 'pa_colore', 'pa_colour', 'pa_farbe', 'pa_couleur' ], true )
+            || in_array( strtolower( trim( $name ) ), [ 'color', 'colore', 'colour', 'farbe', 'couleur' ], true );
+    }
+
     public static function extract_colors( array $attributes, string $name, array $tags ): array {
-        $color_attr_keys = [ 'pa_color', 'pa_colore', 'pa_colour', 'pa_farbe', 'pa_couleur' ];
-        $color_attr_names = [ 'color', 'colore', 'colour', 'farbe', 'couleur' ];
-        $raw_values      = [];
+        $raw_values = [];
 
         foreach ( $attributes as $attr ) {
-            if ( in_array( $attr['key'] ?? '', $color_attr_keys, true ) ||
-                 in_array( strtolower( trim( $attr['name'] ?? '' ) ), $color_attr_names, true ) ) {
+            if ( self::is_color_attribute( $attr['key'] ?? '', $attr['name'] ?? '' ) ) {
                 $raw_values = array_merge( $raw_values, $attr['values'] ?? [] );
             }
         }

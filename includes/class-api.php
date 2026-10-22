@@ -1882,6 +1882,7 @@ class KaliCart_Bridge_API {
             return [
                 'variation_id' => $variant['variation_id'] ?? null,
                 'attributes'   => $variant['attributes'] ?? [],
+                'colors'       => $variant['colors'] ?? [],
                 'price'        => $compact_price( $variant['price'] ?? [] ),
                 'stock'        => $compact_stock( $variant_stock ),
                 'sku'          => $variant['sku'] ?? null,
