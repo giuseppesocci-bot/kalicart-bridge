@@ -2532,36 +2532,42 @@ class KaliCart_Bridge_Catalog_Engine {
 
     public static function extract_colors( array $attributes, string $name, array $tags ): array {
         $color_attr_keys = [ 'pa_color', 'pa_colore', 'pa_colour', 'pa_farbe', 'pa_couleur' ];
+        $color_attr_names = [ 'color', 'colore', 'colour', 'farbe', 'couleur' ];
         $raw_values      = [];
 
         foreach ( $attributes as $attr ) {
-            if ( in_array( $attr['key'], $color_attr_keys, true ) ) {
-                $raw_values = array_merge( $raw_values, $attr['values'] );
+            if ( in_array( $attr['key'] ?? '', $color_attr_keys, true ) ||
+                 in_array( strtolower( trim( $attr['name'] ?? '' ) ), $color_attr_names, true ) ) {
+                $raw_values = array_merge( $raw_values, $attr['values'] ?? [] );
             }
-        }
-
-        // Fallback: scan product name and tags
-        if ( empty( $raw_values ) ) {
-            $haystack = strtolower( $name );
-            foreach ( $tags as $tag ) {
-                $haystack .= ' ' . strtolower( $tag['name'] );
-            }
-            $raw_values[] = $haystack; // will be matched below
         }
 
         $found = [];
-        foreach ( $raw_values as $val ) {
+        $scan = static function ( $val, string $source ) use ( &$found ): void {
             $val_lower = strtolower( trim( $val ) );
             foreach ( self::COLOR_FAMILIES as $family => $keywords ) {
                 foreach ( $keywords as $kw ) {
-                    if ( strpos( $val_lower, $kw ) !== false ) {
+                    if ( strpos( $val_lower, $kw ) !== false && ! isset( $found[ $family ] ) ) {
                         $found[ $family ] = [
                             'family' => $family,
                             'raw'    => $val,
+                            'source' => $source,
                         ];
                         break;
                     }
                 }
+            }
+        };
+        if ( ! empty( $raw_values ) ) {
+            foreach ( $raw_values as $val ) {
+                $scan( $val, 'merchant_attribute' );
+            }
+        } else {
+            // Il titolo e i tag sono indizi esplorativi, non varianti o attributi
+            // dichiarati dal merchant. La fonte viaggia con ogni famiglia.
+            $scan( $name, 'inferred_from_title' );
+            foreach ( $tags as $tag ) {
+                if ( isset( $tag['name'] ) ) $scan( $tag['name'], 'inferred_from_tag' );
             }
         }
 
