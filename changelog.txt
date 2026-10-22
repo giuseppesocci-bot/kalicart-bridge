@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-22 - version 1.0.148
+
+* Product color metadata names its source: a merchant attribute, the product title, or a product tag.
+* Product detail and verification expose each variant's declared color with its source and scope. A single fixed merchant color may apply to every variant; otherwise an undeclared variant color stays empty.
+* Product title and tag guesses are never assigned to individual variants. Price, stock, and checkout behavior are unchanged.
+
+
 2026-10-22 - version 1.0.147
 
 * Product detail and snapshot: each variant adds `attribute_labels` (the term name as written in the store, e.g. "1,5 lt" for the stored value `15-lt`) and `attribute_names` (the option label, e.g. "Size"), next to the unchanged `attributes`.

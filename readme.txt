@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.147
+Stable tag: 1.0.148
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,13 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.148 =
+**Variant colors now carry their merchant evidence.**
+
+* Product color metadata names its source: a merchant attribute, the product title, or a product tag.
+* Product detail and verification expose each variant's declared color with its source and scope. A single fixed merchant color may apply to every variant; otherwise an undeclared variant color stays empty.
+* Product title and tag guesses are never assigned to individual variants. Price, stock, and checkout behavior are unchanged.
 
 = 1.0.147 =
 **Variant options carry the store's own wording, so agents can match them in any language.**
