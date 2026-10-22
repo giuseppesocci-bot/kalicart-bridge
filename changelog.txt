@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-22 - version 1.0.147
+
+* Product detail and snapshot: each variant adds `attribute_labels` (the term name as written in the store, e.g. "1,5 lt" for the stored value `15-lt`) and `attribute_names` (the option label, e.g. "Size"), next to the unchanged `attributes`.
+* Nothing is translated or inferred: custom attribute values are passed as written.
+
+
 2026-10-20 - version 1.0.146
 
 * Catalog issues: the list of products without a brand shows the first 100 of the total, with a link to the native WooCommerce product filter for the full list.
