@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.148
+Stable tag: 1.0.149
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,12 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.149 =
+**Existing products receive the variant color evidence from 1.0.148.**
+
+* The catalog data version increases from 2 to 3. KaliCart Global re-reads an opted-in store at its normal synchronization turn, including products unchanged since the previous ingest.
+* This release does not infer missing variant colors or change merchant catalog data, prices, stock, or checkout.
 
 = 1.0.148 =
 **Variant colors now carry their merchant evidence.**

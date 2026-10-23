@@ -57,7 +57,7 @@ $main = (string) file_get_contents( $root . '/kalicart-bridge.php' );
 $ok( false !== strpos( $src, "foreach ( self::stable_category_terms( \$terms ) as \$term ) {" ), 'get_product_categories uses stable order' );
 $ok( false !== strpos( $src, "wp_list_pluck( self::stable_category_terms( \$cat_terms ), 'slug' )" ), 'gender-filtered summary slugs use stable order' );
 $ok( 2 === substr_count( $src, "get_the_terms( \$p->get_id(), 'product_cat' )" ), 'no other direct product_cat reads in the engine' );
-$ok( (bool) preg_match( "/define\\( 'KALICART_BRIDGE_CATALOG_DATA_VERSION', (\\d+) \\);/", $main, $m ) && 2 === (int) $m[1], 'catalog_data_version bumped to 2 (output changes for same-name categories)' );
+$ok( (bool) preg_match( "/define\\( 'KALICART_BRIDGE_CATALOG_DATA_VERSION', (\\d+) \\);/", $main, $m ) && 2 <= (int) $m[1], 'catalog_data_version is at least 2 (category order contract)' );
 $readme = (string) file_get_contents( $root . '/readme.txt' );
 $r0 = strpos( $readme, '= 1.0.145 =' ); $r1 = strpos( $readme, '= 1.0.144 =' );
 $ok( false !== $r0 && false !== $r1 && false !== strpos( substr( $readme, $r0, $r1 - $r0 ), 'from 1 to 2' ), 'readme 1.0.145 declares the data version change' );

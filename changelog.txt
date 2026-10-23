@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-23 - version 1.0.149
+
+* The catalog data version increases from 2 to 3. KaliCart Global re-reads an opted-in store at its normal synchronization turn, including products unchanged since the previous ingest.
+* This release does not infer missing variant colors or change merchant catalog data, prices, stock, or checkout.
+
+
 2026-10-22 - version 1.0.148
 
 * Product color metadata names its source: a merchant attribute, the product title, or a product tag.
