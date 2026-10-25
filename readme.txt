@@ -170,6 +170,13 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.150 =
+**Shipping zones and declared rates retain their WooCommerce meaning.**
+
+* Export every WooCommerce shipping zone in priority order, including zones with no recognized methods and the rest-of-world zone; identify enabled methods the Bridge cannot describe.
+* Preserve flat-rate formulas, shipping-class costs, and calculation type instead of truncating a formula to a number. Checkout remains authoritative for cart shipping and totals.
+* Catalog data version 4 refreshes shipping data on the normal Global synchronization turn. No change to checkout, prices, stock, or AI behavior.
+
 = 1.0.149 =
 **Existing products receive the variant color evidence from 1.0.148.**
 
