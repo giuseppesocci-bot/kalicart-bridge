@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-25 - version 1.0.150
+
+* Export every WooCommerce shipping zone in priority order, including zones with no recognized methods and the rest-of-world zone; identify enabled methods the Bridge cannot describe.
+* Preserve flat-rate formulas, shipping-class costs, and calculation type instead of truncating a formula to a number. Checkout remains authoritative for cart shipping and totals.
+* Catalog data version 4 refreshes shipping data on the normal Global synchronization turn. No change to checkout, prices, stock, or AI behavior.
+
+
 2026-10-23 - version 1.0.149
 
 * The catalog data version increases from 2 to 3. KaliCart Global re-reads an opted-in store at its normal synchronization turn, including products unchanged since the previous ingest.
