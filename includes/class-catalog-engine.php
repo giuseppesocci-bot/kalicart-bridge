@@ -1026,6 +1026,8 @@ class KaliCart_Bridge_Catalog_Engine {
     // ── Shipping / coupons ─────────────────────────────────────────────────
 
     public static function merchant_shipping_policy(): array {
+        static $cached = null;
+        if ( $cached !== null ) return $cached;
         if ( ! class_exists( 'WC_Shipping_Zones' ) ) {
             return [
                 'available' => false,
@@ -1051,11 +1053,21 @@ class KaliCart_Bridge_Catalog_Engine {
         $free_shipping_coupon_only   = false;
         foreach ( $zones as $zone ) {
             $methods = [];
+            $zone_id = (int) ( $zone['zone_id'] ?? 0 );
+            // Woo filters methods whose plugin is not loaded. Count the enabled raw
+            // rows too, so an omitted shipping method cannot look like no shipping.
+            $zone_object = new WC_Shipping_Zone( $zone_id );
+            $raw_methods = $zone_object->get_data_store()->get_methods( $zone_id, true );
+            $represented_ids = [];
             foreach ( (array) ( $zone['shipping_methods'] ?? [] ) as $method ) {
                 if ( ! is_object( $method ) || isset( $method->enabled ) && $method->enabled !== 'yes' ) {
                     continue;
                 }
                 $method_id = (string) ( $method->id ?? '' );
+                if ( ! in_array( $method_id, [ 'free_shipping', 'flat_rate', 'local_pickup' ], true ) ) {
+                    continue;
+                }
+                $represented_ids[] = (int) ( $method->instance_id ?? 0 );
                 $settings = is_callable( [ $method, 'get_instance_form_fields' ] ) ? (array) $method->instance_settings : [];
                 $row = [
                     'method_id' => $method_id,
@@ -1101,6 +1113,14 @@ class KaliCart_Bridge_Catalog_Engine {
                     }
                 } elseif ( $method_id === 'flat_rate' ) {
                     $row['cost'] = isset( $method->cost ) && $method->cost !== '' ? self::normalize_cost( $method->cost ) : null;
+                    $row['calculation_type'] = (string) ( $method->type ?? 'class' );
+                    $class_costs = [];
+                    foreach ( $settings as $key => $value ) {
+                        if ( ( $key === 'no_class_cost' || preg_match( '/^class_cost_[A-Za-z0-9_-]+$/', (string) $key ) ) && $value !== '' && $value !== null ) {
+                            $class_costs[ $key ] = self::normalize_cost( $value );
+                        }
+                    }
+                    $row['class_costs'] = $class_costs;
                 } elseif ( isset( $method->cost ) && $method->cost !== '' ) {
                     $row['cost'] = self::normalize_cost( $method->cost );
                 }
@@ -1109,15 +1129,22 @@ class KaliCart_Bridge_Catalog_Engine {
                 }
                 $methods[] = $row;
             }
-            if ( empty( $methods ) ) {
-                continue;
+            $unexported_methods = 0;
+            foreach ( (array) $raw_methods as $raw_method ) {
+                if ( ! in_array( (int) ( $raw_method->instance_id ?? 0 ), $represented_ids, true ) ) {
+                    ++$unexported_methods;
+                }
             }
             $zone_row = [
-                'id' => (int) ( $zone['zone_id'] ?? 0 ),
+                'id' => $zone_id,
                 'name' => (string) ( $zone['zone_name'] ?? 'Rest of the world' ),
+                'order' => $zone_id === 0 ? null : (int) ( $zone['zone_order'] ?? 0 ),
+                'rest_of_world' => $zone_id === 0,
+                'zones_complete' => true,
                 'locations' => self::normalize_shipping_zone_locations( (array) ( $zone['zone_locations'] ?? [] ) ),
+                'unexported_methods' => $unexported_methods,
             ];
-            if ( empty( $zone['zone_locations'] ) ) {
+            if ( $zone_id !== 0 && empty( $zone['zone_locations'] ) ) {
                 $zone_row['locations_note'] = 'Zone has no explicit regions configured in WooCommerce. Coverage cannot be inferred from this document — WooCommerce checkout determines applicability.';
             }
             $zone_row['methods'] = $methods;
@@ -1127,7 +1154,7 @@ class KaliCart_Bridge_Catalog_Engine {
         $free_thresholds = array_values( array_unique( array_filter( $free_thresholds, fn( $v ) => $v !== null ) ) );
         sort( $free_thresholds, SORT_NUMERIC );
 
-        return [
+        $cached = [
             'available' => true,
             'currency' => get_woocommerce_currency(),
             'authority' => 'woocommerce_checkout',
@@ -1136,9 +1163,11 @@ class KaliCart_Bridge_Catalog_Engine {
             'free_shipping_thresholds' => $free_thresholds,
             'free_shipping_unconditional' => $free_shipping_unconditional,
             'free_shipping_requires_coupon' => $free_shipping_coupon_only,
+            'zones_complete' => true,
             'zones' => $out_zones,
             'note' => 'Use this policy for agent reasoning. Exact shipping cost depends on destination, cart contents, coupons and WooCommerce checkout rules; checkout remains final authority.',
         ];
+        return $cached;
     }
 
     private static function normalize_shipping_zone_locations( array $locations ): array {
@@ -1155,60 +1184,46 @@ class KaliCart_Bridge_Catalog_Engine {
         static $cached = null;
         if ( $cached !== null ) return $cached;
 
-        $out   = [];
-        $zones = WC_Shipping_Zones::get_zones( array(), 'json' );
-        if ( empty( $zones ) ) $zones = WC_Shipping_Zones::get_zones();
-
-        // Zona 0 = "Rest of World"
-        $zone0 = new WC_Shipping_Zone( 0 );
-        $zones_all = array_merge( [ [ 'zone_id' => 0, 'zone_name' => 'Rest of World', 'zone_locations' => [], 'shipping_methods' => $zone0->get_shipping_methods( true ) ] ], $zones );
-
-        foreach ( $zones_all as $zone_data ) {
-            $zone_name      = $zone_data['zone_name'];
-            $locations      = array_map( fn( $l ) => $l->code, $zone_data['zone_locations'] ?? [] );
-            $methods_raw    = $zone_data['shipping_methods'] ?? [];
-            $methods        = [];
+        // Product and merchant views must come from the same ordered Woo zones.
+        $policy = self::merchant_shipping_policy();
+        $out = [];
+        foreach ( (array) ( $policy['zones'] ?? [] ) as $zone ) {
+            $methods = [];
             $free_threshold = null;
-
-            foreach ( $methods_raw as $method ) {
-                // Skip disabled methods — check enabled option directly
-                if ( $method->enabled !== 'yes' && ! $method->is_enabled() ) continue;
-
-                if ( $method->id === 'free_shipping' ) {
-                    $min = (float) ( $method->min_amount ?? 0 );
-                    if ( $min > 0 ) $free_threshold = $min;
-                    $methods[] = [
-                        'id'          => 'free_shipping',
-                        'title'       => $method->get_title(),
-                        'cost'        => 0,
-                        'currency'    => get_woocommerce_currency(),
-                        'min_amount'  => $min ?: null,
-                        'requires'    => $method->requires ?: null,
-                    ];
-                } elseif ( $method->id === 'flat_rate' ) {
-                    $cost = isset( $method->cost ) ? (float) $method->cost : null;
-                    $methods[] = [
-                        'id'       => 'flat_rate',
-                        'title'    => $method->get_title(),
-                        'cost'     => $cost,
-                        'currency' => get_woocommerce_currency(),
-                    ];
-                } elseif ( $method->id === 'local_pickup' ) {
-                    $methods[] = [
-                        'id'    => 'local_pickup',
-                        'title' => $method->get_title(),
-                        'cost'  => 0,
-                    ];
+            foreach ( (array) ( $zone['methods'] ?? [] ) as $method ) {
+                $id = (string) ( $method['method_id'] ?? '' );
+                $row = [
+                    'id' => $id,
+                    'title' => $method['title'] ?? null,
+                    'currency' => $policy['currency'] ?? null,
+                ];
+                if ( $id === 'free_shipping' ) {
+                    $row['cost'] = 0;
+                    $row['min_amount'] = $method['min_amount'] ?? null;
+                    $row['requires'] = $method['requires'] ?? null;
+                    if ( in_array( (string) $row['requires'], [ '', 'min_amount', 'either' ], true ) && (float) $row['min_amount'] > 0 ) {
+                        $free_threshold = $free_threshold === null ? (float) $row['min_amount'] : min( $free_threshold, (float) $row['min_amount'] );
+                    }
+                } elseif ( $id === 'flat_rate' ) {
+                    $row['cost'] = $method['cost'] ?? null;
+                    $row['calculation_type'] = $method['calculation_type'] ?? null;
+                    $row['class_costs'] = $method['class_costs'] ?? [];
+                } elseif ( $id === 'local_pickup' ) {
+                    $row['cost'] = $method['cost'] ?? 0;
                 }
+                $methods[] = $row;
             }
-
-            if ( empty( $methods ) ) continue;
-
             $out[] = [
-                'zone'            => $zone_name,
-                'locations'       => $locations,
-                'methods'         => $methods,
-                'free_threshold'  => $free_threshold,
+                'id' => $zone['id'],
+                'zone' => $zone['name'],
+                'order' => $zone['order'],
+                'rest_of_world' => $zone['rest_of_world'],
+                'zones_complete' => true,
+                'locations' => array_values( array_map( fn( $loc ) => $loc['code'], $zone['locations'] ) ),
+                'locations_typed' => $zone['locations'],
+                'methods' => $methods,
+                'unexported_methods' => $zone['unexported_methods'],
+                'free_threshold' => $free_threshold,
             ];
         }
 
@@ -1403,6 +1418,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 ? 'The store also offers free shipping that requires a coupon. That path is not reachable by cart value alone and is not reflected in the thresholds above.'
                 : null,
             'zones'     => self::get_shipping_zones(),
+            'zones_complete' => true,
             'authority' => 'woocommerce_checkout',
             'note' => 'Product-level shipping policy only. Exact shipping is computed by WooCommerce checkout for the destination and full cart.',
         ];
