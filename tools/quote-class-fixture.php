@@ -8,6 +8,15 @@ $product->set_status( 'publish' );
 $product->set_regular_price( '20' );
 $product->set_virtual( false );
 $product_id = $product->save();
+$parent = new WC_Product_Variable();
+$parent->set_name( 'KaliCart variable quote fixture' );
+$parent->set_status( 'publish' );
+$parent_id = $parent->save();
+$variation = new WC_Product_Variation();
+$variation->set_parent_id( $parent_id );
+$variation->set_status( 'publish' );
+$variation->set_regular_price( '30' );
+$variation_id = $variation->save();
 $zone = new WC_Shipping_Zone();
 $zone->set_zone_name( 'KaliCart quote FR fixture' );
 $zone->set_zone_order( 0 );
@@ -74,10 +83,41 @@ try {
 	remove_filter( 'woocommerce_package_rates', $external );
 	$checks['external_hook_unknown'] = 'unknown' === ( $unsupported['status'] ?? null )
 		&& 'external_calculation_hook' === ( $unsupported['reason'] ?? null );
+	$writes = [];
+	add_filter( 'query', $watch );
+	try {
+		$variant_quote = KaliCart_Bridge_Quote::calculate(
+			[ [ 'product_id' => $parent_id, 'variation_id' => $variation_id, 'quantity' => 1 ] ],
+			[ 'country' => 'FR', 'postcode' => '75001' ]
+		);
+	} finally {
+		remove_filter( 'query', $watch );
+	}
+	$checks['selected_variation'] = 'quoted' === ( $variant_quote['status'] ?? null )
+		&& '42.00' === ( $variant_quote['total'] ?? null ) && [] === $writes;
+	global $wpdb;
+	$table = $wpdb->prefix . 'woocommerce_shipping_zone_methods';
+	$wpdb->insert( $table, [
+		'zone_id' => $zone->get_id(), 'method_id' => 'kali_fixture_unknown',
+		'method_order' => 10, 'is_enabled' => 1,
+	] );
+	$unknown_method_row = (int) $wpdb->insert_id;
+	try {
+		$unknown_method = KaliCart_Bridge_Quote::calculate(
+			[ [ 'product_id' => $product_id, 'quantity' => 2 ] ],
+			[ 'country' => 'FR', 'postcode' => '75001' ]
+		);
+		$checks['unknown_method_rejected'] = 'unknown' === ( $unknown_method['status'] ?? null )
+			&& 'shipping_method_not_verifiable' === ( $unknown_method['reason'] ?? null );
+	} finally {
+		$wpdb->delete( $table, [ 'instance_id' => $unknown_method_row ] );
+	}
 	echo wp_json_encode( [ 'result' => $result, 'checks' => $checks, 'writes' => $writes ] ) . "\n";
 	if ( in_array( false, $checks, true ) ) { throw new RuntimeException( 'Quote fixture failed.' ); }
 } finally {
 	wp_delete_post( $product_id, true );
+	wp_delete_post( $variation_id, true );
+	wp_delete_post( $parent_id, true );
 	$zone->delete();
 	delete_option( $settings_option );
 }

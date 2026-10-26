@@ -13,9 +13,10 @@ Quando manca una condizione verificabile restituisce `unknown`.
 
 Nel WordPress isolato con WooCommerce 11.1.2, prodotto da 20,00, quantita' 2,
 tariffa fissa `10 + [qty]*2`, il totale WooCommerce e' 54,00. Il fixture
-`tools/quote-class-fixture.php` ha confermato 9 condizioni: totale, ripristino
+`tools/quote-class-fixture.php` ha confermato 11 condizioni: totale, ripristino
 di carrello/sessione/cliente/pacchetti/cookie, nessuna scrittura SQL durante il
-calcolo, rifiuto della cache spedizione fredda e di un hook esterno. Il fixture
+calcolo, variante selezionata senza scritture SQL, rifiuto della cache
+spedizione fredda, di un hook esterno e di un metodo di spedizione non core. Il fixture
 crea e rimuove i suoi prodotti e la sua zona nello schema di prova.
 
 La prima prova ha riprodotto due scritture a transient di WooCommerce quando
@@ -25,8 +26,6 @@ risponde `unknown: shipping_cache_not_ready`.
 
 ## Limiti prima della superficie pubblica
 
-- Dimostrare il caso variante e il caso di metodo di spedizione non core nel
-  fixture, oltre alla tariffa semplice gia' coperta.
 - Definire una protezione delle richieste pubbliche che non crei sessioni o
   transient del preventivo e abbia un limite effettivo tra processi.
 - Verificare imposte e completezza della destinazione: dove serve indirizzo di
