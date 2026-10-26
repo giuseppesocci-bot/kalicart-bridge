@@ -1,6 +1,8 @@
 <?php
 if ( ! defined( 'ABSPATH' ) || ! class_exists( 'WC_Cart' ) ) { throw new RuntimeException( 'Isolated WooCommerce fixture required.' ); }
-require_once '/root/worktrees/bridge-151-quote/includes/class-checkout-quote.php';
+if ( ! class_exists( 'KaliCart_Bridge_Quote' ) ) {
+	require_once '/root/worktrees/bridge-151-quote/includes/class-checkout-quote.php';
+}
 
 $product = new WC_Product_Simple();
 $product->set_name( 'KaliCart quote fixture' );

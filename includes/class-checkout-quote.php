@@ -56,7 +56,7 @@ final class KaliCart_Bridge_Quote {
 	/** Local operational counter: no WordPress transient, session or funnel write. */
 	private static function rate_limit() {
 		$path = trailingslashit( get_temp_dir() ) . 'kalicart-quote-' . sha1( home_url( '/' ) . ':' . get_current_blog_id() ) . '.json';
-		$handle = @fopen( $path, 'c+' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$handle = @fopen( $path, 'c+' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen, WordPress.PHP.NoSilencedErrors.Discouraged -- native flock provides an atomic cross-process limit.
 		if ( false === $handle ) {
 			return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'rate_limit_unavailable' ], 503 );
 		}
@@ -76,13 +76,13 @@ final class KaliCart_Bridge_Quote {
 			}
 			$state['count'] = (int) $state['count'] + 1;
 			rewind( $handle );
-			if ( ! ftruncate( $handle, 0 ) || false === fwrite( $handle, wp_json_encode( $state ) ) || ! fflush( $handle ) ) {
+			if ( ! ftruncate( $handle, 0 ) || false === fwrite( $handle, wp_json_encode( $state ) ) || ! fflush( $handle ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- write under native flock.
 				return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'rate_limit_unavailable' ], 503 );
 			}
 			return true;
 		} finally {
 			flock( $handle, LOCK_UN );
-			fclose( $handle );
+			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- release native flock handle.
 		}
 	}
 
