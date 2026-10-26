@@ -237,6 +237,7 @@ final class KaliCart_Bridge_Quote {
 			return self::unknown( 'billing_address_required_for_tax' );
 		}
 		$contents = [];
+		$stock_requested = [];
 		$requires_shipping = false;
 		foreach ( $items as $index => $line ) {
 			if ( ! is_array( $line ) || ! isset( $line['product_id'], $line['quantity'] )
@@ -253,6 +254,12 @@ final class KaliCart_Bridge_Quote {
 				|| ( $product->is_sold_individually() && $line['quantity'] > 1 )
 				|| '' === $product->get_price() ) {
 				return self::unknown( 'item_not_quotable' );
+			}
+			$stock_owner_id = (int) $product->get_stock_managed_by_id();
+			$stock_requested[ $stock_owner_id ] = ( $stock_requested[ $stock_owner_id ] ?? 0 ) + $line['quantity'];
+			$stock_owner = $stock_owner_id === $product->get_id() ? $product : wc_get_product( $stock_owner_id );
+			if ( ! $stock_owner || ! $stock_owner->has_enough_stock( $stock_requested[ $stock_owner_id ] ) ) {
+				return self::unknown( 'basket_stock_insufficient' );
 			}
 			$variation_id = 0;
 			$product_id = $line['product_id'];

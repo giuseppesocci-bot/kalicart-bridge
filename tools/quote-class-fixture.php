@@ -70,6 +70,16 @@ try {
 		'cookies_unchanged' => $old_cookies === $_COOKIE && $old_headers === headers_list(),
 		'no_db_writes' => [] === $writes,
 	];
+	$product->set_manage_stock( true );
+	$product->set_stock_quantity( 2 );
+	$product->save();
+	$overstocked = KaliCart_Bridge_Quote::calculate(
+		[ [ 'product_id' => $product_id, 'quantity' => 2 ], [ 'product_id' => $product_id, 'quantity' => 2 ] ],
+		[ 'country' => 'FR', 'postcode' => '75001' ]
+	);
+	$checks['aggregate_stock_guard'] = 'basket_stock_insufficient' === ( $overstocked['reason'] ?? null );
+	$product->set_manage_stock( false );
+	$product->save();
 	delete_transient( 'wc_shipping_method_count' );
 	$cold = KaliCart_Bridge_Quote::calculate(
 		[ [ 'product_id' => $product_id, 'quantity' => 2 ] ], [ 'country' => 'FR', 'postcode' => '75001' ]
