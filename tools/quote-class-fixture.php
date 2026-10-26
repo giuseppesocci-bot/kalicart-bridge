@@ -112,7 +112,38 @@ try {
 	} finally {
 		$wpdb->delete( $table, [ 'instance_id' => $unknown_method_row ] );
 	}
-	echo wp_json_encode( [ 'result' => $result, 'checks' => $checks, 'writes' => $writes ] ) . "\n";
+	update_option( 'kalicart_bridge_quote_enabled', true );
+	KaliCart_Bridge_Quote::init();
+	rest_get_server(); // WP-CLI may have initialized rest_api_init before eval-file.
+	KaliCart_Bridge_Quote::register_routes();
+	$http = new WP_REST_Request( 'POST', '/kalicart/v1/checkout/quote' );
+	$http->set_header( 'Content-Type', 'application/json' );
+	$http->set_body( wp_json_encode( [
+		'items' => [ [ 'product_id' => $product_id, 'quantity' => 2 ] ],
+		'destination' => [ 'country' => 'FR', 'postcode' => '75001' ],
+	] ) );
+	$writes = [];
+	add_filter( 'query', $watch );
+	try {
+		$http_result = rest_do_request( $http );
+	} finally {
+		remove_filter( 'query', $watch );
+	}
+	$http_body = $http_result->get_data();
+	$checks['http_opt_in_quote'] = 200 === $http_result->get_status()
+		&& 'quoted' === ( $http_body['status'] ?? null )
+		&& '54.00' === ( $http_body['total'] ?? null ) && [] === $writes;
+	$rate_file = trailingslashit( get_temp_dir() ) . 'kalicart-quote-' . sha1( home_url( '/' ) . ':' . get_current_blog_id() ) . '.json';
+	file_put_contents( $rate_file, wp_json_encode( [ 'start' => time(), 'count' => 30 ] ) );
+	try {
+		$limited = rest_do_request( $http );
+		$checks['rate_limited'] = 429 === $limited->get_status()
+			&& 'quote_rate_limited' === ( $limited->get_data()['reason'] ?? null );
+	} finally {
+		unlink( $rate_file );
+		update_option( 'kalicart_bridge_quote_enabled', false );
+	}
+	echo wp_json_encode( [ 'result' => $result, 'checks' => $checks, 'http_status' => $http_result->get_status(), 'http_body' => $http_body, 'limited_status' => $limited->get_status(), 'limited_body' => $limited->get_data(), 'writes' => $writes ] ) . "\n";
 	if ( in_array( false, $checks, true ) ) { throw new RuntimeException( 'Quote fixture failed.' ); }
 } finally {
 	wp_delete_post( $product_id, true );

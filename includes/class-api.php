@@ -307,6 +307,7 @@ class KaliCart_Bridge_API {
                 'payments'     => false,
                 'mutations'    => false,
                 'checkout_sessions' => (bool) get_option( 'kalicart_bridge_checkout_enabled', false ),
+                'checkout_quote' => (bool) get_option( 'kalicart_bridge_quote_enabled', false ),
                 'read_only'    => true,
                 'llm'          => false,
                 'external_service' => false,
@@ -434,6 +435,21 @@ class KaliCart_Bridge_API {
                 'authority_note' => 'No payment is processed. No order is created. Checkout remains WooCommerce authority. Final total (with shipping, coupons, taxes) is confirmed only at checkout.',
             ],
 
+            'checkout_quote' => [
+                'enabled' => (bool) get_option( 'kalicart_bridge_quote_enabled', false ),
+                'endpoint' => get_option( 'kalicart_bridge_quote_enabled', false )
+                    ? rest_url( KALICART_BRIDGE_API_NS . '/checkout/quote' ) : null,
+                'method' => 'POST',
+                'auth' => 'none',
+                'description' => 'Calculates one temporary WooCommerce basket for a destination. No order, checkout session or funnel event is created. Unsupported configurations return unknown.',
+                'payload' => [
+                    'items' => 'array of 1-20 {product_id:int, variation_id?:int, quantity:int}',
+                    'destination' => '{country:ISO-2, state?:string, postcode?:string, city?:string}',
+                ],
+                'response' => 'status quoted | unknown; currency, destination, lines, subtotal, shipping, tax, total, rates, selected_rate_ids, calculated_at or reason',
+                'authority_note' => 'A quote reflects the selected WooCommerce cart and shipping method at calculation time. Checkout can change after coupons, address changes or other buyer actions.',
+            ],
+
             'price_format' => [
                 'encoding'              => 'decimal_major_units',
                 'current_format'        => 'major_units_decimal',
@@ -531,6 +547,9 @@ class KaliCart_Bridge_API {
                 'health'           => rest_url( KALICART_BRIDGE_API_NS . '/catalog/health' ),
                 'checkout_session'  => get_option( 'kalicart_bridge_checkout_enabled', false )
                     ? rest_url( KALICART_BRIDGE_API_NS . '/checkout/session' )
+                    : null,
+                'checkout_quote' => get_option( 'kalicart_bridge_quote_enabled', false )
+                    ? rest_url( KALICART_BRIDGE_API_NS . '/checkout/quote' )
                     : null,
             ],
             'well_known' => [

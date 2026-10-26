@@ -77,6 +77,7 @@ require_once KALICART_BRIDGE_DIR . 'includes/class-snapshot-profile.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-snapshot.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-admin.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-checkout.php';
+require_once KALICART_BRIDGE_DIR . 'includes/class-checkout-quote.php';
 require_once KALICART_BRIDGE_DIR . 'includes/class-shortcodes.php';
 
 add_action( 'before_woocommerce_init', function () {
@@ -147,6 +148,7 @@ add_action( 'plugins_loaded', function () {
     if ( get_option( 'kalicart_bridge_checkout_enabled', false ) ) {
         KaliCart_Bridge_Checkout::init();
     }
+    KaliCart_Bridge_Quote::init();
 
     if ( is_admin() ) {
         KaliCart_Bridge_Admin::init();
@@ -201,6 +203,7 @@ function kalicart_bridge_ensure_default_options(): void {
     add_option( 'kalicart_bridge_robots_enabled',      true );
     add_option( 'kalicart_bridge_sitemap_enabled',     true );
     add_option( 'kalicart_bridge_checkout_enabled',    false );
+    add_option( 'kalicart_bridge_quote_enabled',       false );
     add_option( 'kalicart_bridge_well_known_enabled',  true );
     // Agent hints (DOM signals): opt-in, default OFF.
     add_option( 'kalicart_bridge_agent_hints_enabled', false );

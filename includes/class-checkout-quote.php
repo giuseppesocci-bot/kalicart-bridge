@@ -8,6 +8,102 @@ defined( 'ABSPATH' ) || exit;
 final class KaliCart_Bridge_Quote {
 	private const MAX_ITEMS = 20;
 	private const CORE_SHIPPING_METHODS = [ 'flat_rate', 'free_shipping', 'local_pickup' ];
+	private const MAX_BODY_BYTES = 8192;
+	private const REQUESTS_PER_MINUTE = 30;
+
+	public static function init(): void {
+		add_action( 'rest_api_init', [ __CLASS__, 'register_routes' ] );
+		add_filter( 'rest_pre_dispatch', [ __CLASS__, 'pre_dispatch' ], 1, 3 );
+		add_filter( 'rest_post_dispatch', [ __CLASS__, 'no_store' ], 20, 3 );
+	}
+
+	public static function register_routes(): void {
+		// The quote is a separate merchant choice; an update never enables it.
+		if ( ! get_option( 'kalicart_bridge_quote_enabled', false ) ) { return; }
+		register_rest_route( KALICART_BRIDGE_API_NS, '/checkout/quote', [
+			'methods' => 'POST',
+			'callback' => [ __CLASS__, 'request' ],
+			'permission_callback' => '__return_true',
+		] );
+	}
+
+	public static function no_store( $result, $server, $request ) {
+		if ( ! $request instanceof WP_REST_Request
+			|| '/' . KALICART_BRIDGE_API_NS . '/checkout/quote' !== $request->get_route()
+			|| ! $result instanceof WP_REST_Response ) { return $result; }
+		$result->header( 'Cache-Control', 'private, no-store, max-age=0' );
+		$result->header( 'Pragma', 'no-cache' );
+		return $result;
+	}
+
+	public static function pre_dispatch( $result, $server, $request ) {
+		if ( null !== $result || ! $request instanceof WP_REST_Request
+			|| 'POST' !== $request->get_method()
+			|| '/' . KALICART_BRIDGE_API_NS . '/checkout/quote' !== $request->get_route()
+			|| ! get_option( 'kalicart_bridge_quote_enabled', false ) ) { return $result; }
+		$content_type = strtolower( trim( explode( ';', (string) $request->get_header( 'content-type' ), 2 )[0] ) );
+		if ( 'application/json' !== $content_type ) {
+			return new WP_REST_Response( [ 'error' => 'Content-Type must be application/json.' ], 415 );
+		}
+		if ( strlen( (string) $request->get_body() ) > self::MAX_BODY_BYTES ) {
+			return new WP_REST_Response( [ 'error' => 'Quote request exceeds size limit.' ], 413 );
+		}
+		$limit = self::rate_limit();
+		if ( true !== $limit ) { return $limit; }
+		return $result;
+	}
+
+	/** Local operational counter: no WordPress transient, session or funnel write. */
+	private static function rate_limit() {
+		$path = trailingslashit( get_temp_dir() ) . 'kalicart-quote-' . sha1( home_url( '/' ) . ':' . get_current_blog_id() ) . '.json';
+		$handle = @fopen( $path, 'c+' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( false === $handle ) {
+			return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'rate_limit_unavailable' ], 503 );
+		}
+		try {
+			if ( ! flock( $handle, LOCK_EX | LOCK_NB ) ) {
+				return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'quote_busy' ], 429 );
+			}
+			$state = json_decode( stream_get_contents( $handle ), true );
+			$now = time();
+			if ( ! is_array( $state ) || ! isset( $state['start'], $state['count'] ) || $now - (int) $state['start'] >= 60 ) {
+				$state = [ 'start' => $now, 'count' => 0 ];
+			}
+			if ( (int) $state['count'] >= self::REQUESTS_PER_MINUTE ) {
+				$response = new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'quote_rate_limited' ], 429 );
+				$response->header( 'Retry-After', (string) max( 1, 60 - ( $now - (int) $state['start'] ) ) );
+				return $response;
+			}
+			$state['count'] = (int) $state['count'] + 1;
+			rewind( $handle );
+			if ( ! ftruncate( $handle, 0 ) || false === fwrite( $handle, wp_json_encode( $state ) ) || ! fflush( $handle ) ) {
+				return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'rate_limit_unavailable' ], 503 );
+			}
+			return true;
+		} finally {
+			flock( $handle, LOCK_UN );
+			fclose( $handle );
+		}
+	}
+
+	public static function request( WP_REST_Request $request ): WP_REST_Response {
+		$body = $request->get_json_params();
+		if ( ! is_array( $body )
+			|| array_diff( array_keys( $body ), [ 'items', 'destination' ] )
+			|| ! isset( $body['items'], $body['destination'] )
+			|| ! is_array( $body['items'] ) || ! is_array( $body['destination'] ) ) {
+			return new WP_REST_Response( [ 'error' => 'Expected items and destination objects.' ], 400 );
+		}
+		foreach ( $body['items'] as $line ) {
+			if ( ! is_array( $line ) || array_diff( array_keys( $line ), [ 'product_id', 'variation_id', 'quantity' ] ) ) {
+				return new WP_REST_Response( [ 'error' => 'Invalid item fields.' ], 400 );
+			}
+		}
+		if ( array_diff( array_keys( $body['destination'] ), [ 'country', 'state', 'postcode', 'city' ] ) ) {
+			return new WP_REST_Response( [ 'error' => 'Invalid destination fields.' ], 400 );
+		}
+		return new WP_REST_Response( self::calculate( $body['items'], $body['destination'] ), 200 );
+	}
 
 	private static function unknown( string $reason ): array {
 		return [ 'status' => 'unknown', 'reason' => $reason ];
@@ -32,6 +128,9 @@ final class KaliCart_Bridge_Quote {
 			'woocommerce_cart_calculate_fees', 'woocommerce_package_rates',
 			'woocommerce_cart_shipping_packages', 'woocommerce_shipping_packages',
 			'woocommerce_before_get_rates_for_package', 'woocommerce_after_get_rates_for_package',
+			'woocommerce_is_purchasable', 'woocommerce_variation_is_purchasable',
+			'woocommerce_product_is_in_stock', 'woocommerce_product_get_price',
+			'woocommerce_product_variation_get_price',
 		];
 		$core = wp_normalize_path( WC_ABSPATH );
 		foreach ( $hooks as $hook ) {
@@ -120,7 +219,10 @@ final class KaliCart_Bridge_Quote {
 			$product = wc_get_product( $line['variation_id'] ?? $line['product_id'] );
 			if ( ! $product || ! $product->is_type( [ 'simple', 'variation' ] )
 				|| 'publish' !== get_post_status( $product->get_id() )
-				|| ! $product->is_purchasable() || ! $product->is_in_stock() || '' === $product->get_price() ) {
+				|| ! $product->is_purchasable() || ! $product->is_in_stock()
+				|| ! $product->has_enough_stock( $line['quantity'] )
+				|| ( $product->is_sold_individually() && $line['quantity'] > 1 )
+				|| '' === $product->get_price() ) {
 				return self::unknown( 'item_not_quotable' );
 			}
 			$variation_id = 0;
@@ -143,6 +245,13 @@ final class KaliCart_Bridge_Quote {
 		}
 		if ( $requires_shipping && ! self::shipping_cache_ready() ) {
 			return self::unknown( 'shipping_cache_not_ready' );
+		}
+		if ( $requires_shipping && '' === $postcode ) {
+			return self::unknown( 'postcode_required_for_shipping' );
+		}
+		$shipping_counts = $requires_shipping ? get_transient( 'wc_shipping_method_count' ) : null;
+		if ( $requires_shipping && is_array( $shipping_counts ) && (int) $shipping_counts['legacy'] > 0 ) {
+			return self::unknown( 'shipping_method_not_verifiable' );
 		}
 
 		$previous_cart = WC()->cart;
@@ -180,18 +289,39 @@ final class KaliCart_Bridge_Quote {
 				return self::unknown( 'shipping_rate_unavailable' );
 			}
 			$rates = [];
+			$selected_rate_ids = [];
 			foreach ( $packages as $package ) {
 				foreach ( $package['rates'] ?? [] as $rate ) {
+					if ( ! in_array( $rate->get_method_id(), self::CORE_SHIPPING_METHODS, true ) ) {
+						return self::unknown( 'shipping_method_not_verifiable' );
+					}
 					$rates[] = [ 'id' => $rate->get_id(), 'label' => $rate->get_label(), 'cost' => wc_format_decimal( $rate->get_cost(), wc_get_price_decimals() ) ];
 				}
 			}
+			foreach ( $temp_cart->get_shipping_methods() as $selected_rate ) {
+				if ( $selected_rate instanceof WC_Shipping_Rate ) { $selected_rate_ids[] = $selected_rate->get_id(); }
+			}
+			$quoted_lines = [];
+			foreach ( $temp_cart->get_cart() as $item ) {
+				$quoted_lines[] = [
+					'product_id' => (int) $item['product_id'],
+					'variation_id' => (int) $item['variation_id'],
+					'quantity' => (int) $item['quantity'],
+					'line_subtotal' => wc_format_decimal( $item['line_subtotal'], wc_get_price_decimals() ),
+					'line_total' => wc_format_decimal( $item['line_total'], wc_get_price_decimals() ),
+					'line_tax' => wc_format_decimal( $item['line_tax'], wc_get_price_decimals() ),
+				];
+			}
 			return [
 				'status' => 'quoted', 'currency' => get_woocommerce_currency(),
+				'destination' => [ 'country' => $country, 'state' => $state, 'postcode' => $postcode, 'city' => $city ],
+				'lines' => $quoted_lines,
 				'subtotal' => wc_format_decimal( $temp_cart->get_subtotal(), wc_get_price_decimals() ),
 				'shipping' => wc_format_decimal( $temp_cart->get_shipping_total(), wc_get_price_decimals() ),
 				'tax' => wc_format_decimal( $temp_cart->get_total_tax(), wc_get_price_decimals() ),
 				'total' => wc_format_decimal( $temp_cart->get_total( 'edit' ), wc_get_price_decimals() ),
-				'rates' => $rates, 'calculated_at' => gmdate( 'c' ),
+				'rates' => $rates, 'selected_rate_ids' => $selected_rate_ids,
+				'calculated_at' => gmdate( 'c' ), 'checkout_may_change' => true,
 			];
 		} catch ( Throwable $error ) {
 			return self::unknown( 'calculation_failed' );
