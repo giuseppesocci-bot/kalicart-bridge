@@ -37,6 +37,7 @@ $kalicart_bridge_options = [
     'kalicart_bridge_robots_enabled',
     'kalicart_bridge_sitemap_enabled',
     'kalicart_bridge_checkout_enabled',
+    'kalicart_bridge_quote_enabled',
     'kalicart_bridge_well_known_enabled',
     'kalicart_bridge_agent_hints_enabled',
     'kalicart_bridge_hint_search',
