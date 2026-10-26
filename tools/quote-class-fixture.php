@@ -19,6 +19,11 @@ $variation->set_parent_id( $parent_id );
 $variation->set_status( 'publish' );
 $variation->set_regular_price( '30' );
 $variation_id = $variation->save();
+$variation_two = new WC_Product_Variation();
+$variation_two->set_parent_id( $parent_id );
+$variation_two->set_status( 'publish' );
+$variation_two->set_regular_price( '35' );
+$variation_two_id = $variation_two->save();
 $zone = new WC_Shipping_Zone();
 $zone->set_zone_name( 'KaliCart quote FR fixture' );
 $zone->set_zone_order( 0 );
@@ -80,6 +85,17 @@ try {
 	$checks['aggregate_stock_guard'] = 'basket_stock_insufficient' === ( $overstocked['reason'] ?? null );
 	$product->set_manage_stock( false );
 	$product->save();
+	$parent->set_manage_stock( true );
+	$parent->set_stock_quantity( 2 );
+	$parent->save();
+	$shared_stock = KaliCart_Bridge_Quote::calculate(
+		[ [ 'product_id' => $parent_id, 'variation_id' => $variation_id, 'quantity' => 2 ],
+		  [ 'product_id' => $parent_id, 'variation_id' => $variation_two_id, 'quantity' => 2 ] ],
+		[ 'country' => 'FR', 'postcode' => '75001' ]
+	);
+	$checks['parent_stock_guard'] = 'basket_stock_insufficient' === ( $shared_stock['reason'] ?? null );
+	$parent->set_manage_stock( false );
+	$parent->save();
 	delete_transient( 'wc_shipping_method_count' );
 	$cold = KaliCart_Bridge_Quote::calculate(
 		[ [ 'product_id' => $product_id, 'quantity' => 2 ] ], [ 'country' => 'FR', 'postcode' => '75001' ]
@@ -209,6 +225,7 @@ try {
 } finally {
 	wp_delete_post( $product_id, true );
 	wp_delete_post( $variation_id, true );
+	wp_delete_post( $variation_two_id, true );
 	wp_delete_post( $parent_id, true );
 	$zone->delete();
 	delete_option( $settings_option );
