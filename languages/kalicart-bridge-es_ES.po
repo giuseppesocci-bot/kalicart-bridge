@@ -2667,3 +2667,11 @@ msgstr "Ajuste de la marca de respaldo"
 
 msgid "Products without brand in the Products list"
 msgstr "Productos sin marca en la lista de productos"
+
+#: admin/admin-page.php
+msgid "WooCommerce cart quote"
+msgstr "Presupuesto del carrito de WooCommerce"
+
+#: admin/admin-page.php
+msgid "Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown."
+msgstr "Permite a los agentes solicitar un presupuesto de envío e impuestos para un carrito seleccionado y un destino. Utiliza un carrito temporal de WooCommerce; no crea pedidos ni sesiones de pago. Si el cálculo no está disponible, el resultado es desconocido."

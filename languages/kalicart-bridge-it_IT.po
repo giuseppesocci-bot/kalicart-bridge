@@ -2648,3 +2648,11 @@ msgstr "Impostazione del brand di riserva"
 
 msgid "Products without brand in the Products list"
 msgstr "Prodotti senza brand nella lista Prodotti"
+
+#: admin/admin-page.php
+msgid "WooCommerce cart quote"
+msgstr "Preventivo del carrello WooCommerce"
+
+#: admin/admin-page.php
+msgid "Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown."
+msgstr "Consente agli agenti di richiedere un preventivo di spedizione e imposte per un carrello selezionato e una destinazione. Usa un carrello WooCommerce temporaneo; non crea ordini né sessioni di checkout. Se il calcolo non è disponibile, il risultato è sconosciuto."

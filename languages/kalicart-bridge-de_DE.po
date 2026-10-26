@@ -2668,3 +2668,11 @@ msgstr "Einstellung für den Marken-Fallback"
 
 msgid "Products without brand in the Products list"
 msgstr "Produkte ohne Marke in der Produktliste"
+
+#: admin/admin-page.php
+msgid "WooCommerce cart quote"
+msgstr "WooCommerce-Warenkorbangebot"
+
+#: admin/admin-page.php
+msgid "Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown."
+msgstr "Ermöglicht Agenten, ein Angebot für Versand und Steuern für einen ausgewählten Warenkorb und ein Lieferziel anzufordern. Verwendet einen temporären WooCommerce-Warenkorb; es werden weder eine Bestellung noch eine Checkout-Sitzung erstellt. Wenn die Berechnung nicht möglich ist, lautet das Ergebnis unbekannt."

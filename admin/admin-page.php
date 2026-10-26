@@ -424,6 +424,14 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
 
       <label class="kali-toggle-row">
         <div class="kali-toggle-info">
+          <strong><?php esc_html_e( 'WooCommerce cart quote', 'kalicart-bridge' ); ?></strong>
+          <span><?php esc_html_e( 'Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown.', 'kalicart-bridge' ); ?></span>
+        </div>
+        <div class="kali-toggle"><input type="checkbox" id="toggleQuote"><span class="kali-toggle__slider"></span></div>
+      </label>
+
+      <label class="kali-toggle-row">
+        <div class="kali-toggle-info">
           <strong><?php esc_html_e( 'Agentic sitemap', 'kalicart-bridge' ); ?></strong>
           <span><?php echo wp_kses_post( sprintf( /* translators: %s: a link to the agentic sitemap file */ __( 'Serves %s with annotated catalog endpoints.', 'kalicart-bridge' ), '<a href="' . esc_url( home_url( '/sitemap-agentic-bridge.xml' ) ) . '" target="_blank">sitemap-agentic-bridge.xml</a>' ) ); ?></span>
         </div>

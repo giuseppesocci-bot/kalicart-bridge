@@ -2673,3 +2673,11 @@ msgstr "Réglage de la marque de repli"
 
 msgid "Products without brand in the Products list"
 msgstr "Produits sans marque dans la liste des produits"
+
+#: admin/admin-page.php
+msgid "WooCommerce cart quote"
+msgstr "Devis du panier WooCommerce"
+
+#: admin/admin-page.php
+msgid "Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown."
+msgstr "Permet aux agents de demander un devis des frais de livraison et des taxes pour un panier et une destination choisis. Utilise un panier WooCommerce temporaire ; aucune commande ni session de paiement n’est créée. Si le calcul est indisponible, le résultat est inconnu."

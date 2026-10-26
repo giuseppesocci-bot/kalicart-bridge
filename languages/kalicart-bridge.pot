@@ -1933,3 +1933,11 @@ msgstr ""
 
 msgid "Products without brand in the Products list"
 msgstr ""
+
+#: admin/admin-page.php
+msgid "WooCommerce cart quote"
+msgstr ""
+
+#: admin/admin-page.php
+msgid "Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown."
+msgstr ""
