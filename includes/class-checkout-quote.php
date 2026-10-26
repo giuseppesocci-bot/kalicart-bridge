@@ -117,44 +117,6 @@ final class KaliCart_Bridge_Quote {
 			&& $counts['version'] === $version;
 	}
 
-	/**
-	 * The quote must never execute a third-party totals/rates callback whose
-	 * side effects are unknown. WooCommerce core callbacks remain in place.
-	 */
-	private static function has_external_calculation_hooks(): bool {
-		global $wp_filter;
-		$hooks = [
-			'woocommerce_before_calculate_totals', 'woocommerce_after_calculate_totals',
-			'woocommerce_cart_calculate_fees', 'woocommerce_package_rates',
-			'woocommerce_cart_shipping_packages', 'woocommerce_shipping_packages',
-			'woocommerce_before_get_rates_for_package', 'woocommerce_after_get_rates_for_package',
-			'woocommerce_is_purchasable', 'woocommerce_variation_is_purchasable',
-			'woocommerce_product_is_in_stock', 'woocommerce_product_get_price',
-			'woocommerce_product_variation_get_price',
-		];
-		$core = wp_normalize_path( WC_ABSPATH );
-		foreach ( $hooks as $hook ) {
-			if ( ! isset( $wp_filter[ $hook ] ) ) { continue; }
-			foreach ( $wp_filter[ $hook ]->callbacks as $priority => $callbacks ) {
-				foreach ( $callbacks as $entry ) {
-					$callback = $entry['function'];
-					try {
-						$ref = is_array( $callback )
-							? new ReflectionMethod( $callback[0], $callback[1] )
-							: new ReflectionFunction( $callback );
-						$file = $ref->getFileName();
-					} catch ( ReflectionException | TypeError $error ) {
-						return true;
-					}
-					if ( ! is_string( $file ) || 0 !== strpos( wp_normalize_path( $file ), $core ) ) {
-						return true;
-					}
-				}
-			}
-		}
-		return false;
-	}
-
 	private static function core_shipping_only( array $package ): bool {
 		global $wpdb;
 		$zone = WC_Shipping_Zones::get_zone_matching_package( $package );
@@ -214,8 +176,39 @@ final class KaliCart_Bridge_Quote {
 	/**
 	 * @param array $items Each line: product_id, optional variation_id, quantity.
 	 * @param array $destination country, optional state, postcode and city.
+	 * Third-party hooks run in the temporary cart. WordPress SQL writes and HTTP
+	 * requests are blocked for this calculation; arbitrary PHP I/O is outside
+	 * this guard and must not be described as sandboxed.
 	 */
 	public static function calculate( array $items, array $destination ): array {
+		$side_effects = [];
+		$read_only_sql = static function( $sql ) use ( &$side_effects ) {
+			// WordPress and WooCommerce use these database reads during a quote.
+			if ( ! preg_match( '/^\s*(?:\/\*.*?\*\/\s*)*(?:SELECT|SHOW|DESCRIBE|EXPLAIN)\b/is', $sql )
+				|| preg_match( '/\b(?:INTO\s+OUTFILE|FOR\s+UPDATE|LOCK\s+IN\s+SHARE\s+MODE)\b/i', $sql ) ) {
+				$side_effects[] = 'database_write';
+				throw new RuntimeException( 'Quote database write blocked.' );
+			}
+			return $sql;
+		};
+		$no_http = static function( $result, $args, $url ) use ( &$side_effects ) {
+			$side_effects[] = 'http_request';
+			return new WP_Error( 'kalicart_quote_http_blocked', 'Quote outbound HTTP blocked.' );
+		};
+		add_filter( 'query', $read_only_sql, PHP_INT_MIN );
+		add_filter( 'pre_http_request', $no_http, PHP_INT_MIN, 3 );
+		try {
+			$result = self::calculate_guarded( $items, $destination );
+			return $side_effects ? self::unknown( 'side_effect_blocked' ) : $result;
+		} catch ( Throwable $error ) {
+			return self::unknown( $side_effects ? 'side_effect_blocked' : 'calculation_failed' );
+		} finally {
+			remove_filter( 'query', $read_only_sql, PHP_INT_MIN );
+			remove_filter( 'pre_http_request', $no_http, PHP_INT_MIN );
+		}
+	}
+
+	private static function calculate_guarded( array $items, array $destination ): array {
 		if ( ! function_exists( 'WC' ) || ! class_exists( 'WC_Cart' ) ) {
 			return self::unknown( 'woocommerce_unavailable' );
 		}
@@ -231,9 +224,6 @@ final class KaliCart_Bridge_Quote {
 			|| ! is_string( $postcode ) || strlen( $postcode ) > 20
 			|| ! is_string( $city ) || strlen( $city ) > 100 ) {
 			return self::unknown( 'invalid_destination' );
-		}
-		if ( self::has_external_calculation_hooks() ) {
-			return self::unknown( 'external_calculation_hook' );
 		}
 		if ( wc_tax_enabled() && 'billing' === get_option( 'woocommerce_tax_based_on' ) ) {
 			return self::unknown( 'billing_address_required_for_tax' );
@@ -314,6 +304,19 @@ final class KaliCart_Bridge_Quote {
 				}
 			}
 			$temp_cart->calculate_totals();
+			$calculated_contents = $temp_cart->get_cart();
+			if ( count( $calculated_contents ) !== count( $contents ) || $temp_cart->get_applied_coupons() ) {
+				return self::unknown( 'cart_lines_changed' );
+			}
+			foreach ( $contents as $key => $expected ) {
+				$actual = $calculated_contents[ $key ] ?? null;
+				if ( ! is_array( $actual )
+					|| (int) ( $actual['product_id'] ?? 0 ) !== $expected['product_id']
+					|| (int) ( $actual['variation_id'] ?? 0 ) !== $expected['variation_id']
+					|| (int) ( $actual['quantity'] ?? 0 ) !== $expected['quantity'] ) {
+					return self::unknown( 'cart_lines_changed' );
+				}
+			}
 			$packages = $shipping->get_packages();
 			if ( $requires_shipping && ( 1 !== count( $packages ) || empty( $packages[0]['rates'] ) ) ) {
 				return self::unknown( 'shipping_rate_unavailable' );
@@ -342,10 +345,18 @@ final class KaliCart_Bridge_Quote {
 					'line_tax' => wc_format_decimal( $item['line_tax'], wc_get_price_decimals() ),
 				];
 			}
+			$fees = [];
+			foreach ( $temp_cart->get_fees() as $fee ) {
+				$fees[] = [
+					'name' => (string) $fee->name,
+					'total' => wc_format_decimal( $fee->total, wc_get_price_decimals() ),
+					'tax' => wc_format_decimal( $fee->tax ?? 0, wc_get_price_decimals() ),
+				];
+			}
 			return [
 				'status' => 'quoted', 'currency' => get_woocommerce_currency(),
 				'destination' => [ 'country' => $country, 'state' => $state, 'postcode' => $postcode, 'city' => $city ],
-				'lines' => $quoted_lines,
+				'lines' => $quoted_lines, 'fees' => $fees,
 				'subtotal' => wc_format_decimal( $temp_cart->get_subtotal(), wc_get_price_decimals() ),
 				'shipping' => wc_format_decimal( $temp_cart->get_shipping_total(), wc_get_price_decimals() ),
 				'tax' => wc_format_decimal( $temp_cart->get_total_tax(), wc_get_price_decimals() ),

@@ -77,12 +77,58 @@ try {
 	wc_get_shipping_method_count();
 	$external = static function( $rates ) { return $rates; };
 	add_filter( 'woocommerce_package_rates', $external );
-	$unsupported = KaliCart_Bridge_Quote::calculate(
+	$with_external = KaliCart_Bridge_Quote::calculate(
 		[ [ 'product_id' => $product_id, 'quantity' => 2 ] ], [ 'country' => 'FR', 'postcode' => '75001' ]
 	);
 	remove_filter( 'woocommerce_package_rates', $external );
-	$checks['external_hook_unknown'] = 'unknown' === ( $unsupported['status'] ?? null )
-		&& 'external_calculation_hook' === ( $unsupported['reason'] ?? null );
+	$checks['benign_external_hook_quoted'] = 'quoted' === ( $with_external['status'] ?? null )
+		&& '54.00' === ( $with_external['total'] ?? null );
+	$price_hook = static function( $cart ) {
+		foreach ( $cart->get_cart() as $item ) { $item['data']->set_price( '18' ); }
+	};
+	add_action( 'woocommerce_before_calculate_totals', $price_hook );
+	$repriced = KaliCart_Bridge_Quote::calculate(
+		[ [ 'product_id' => $product_id, 'quantity' => 2 ] ], [ 'country' => 'FR', 'postcode' => '75001' ]
+	);
+	remove_action( 'woocommerce_before_calculate_totals', $price_hook );
+	$checks['external_price_hook_honored'] = 'quoted' === ( $repriced['status'] ?? null )
+		&& '50.00' === ( $repriced['total'] ?? null );
+	$fee_hook = static function( $cart ) { $cart->add_fee( 'Handling', 2, false ); };
+	add_action( 'woocommerce_cart_calculate_fees', $fee_hook );
+	$with_fee = KaliCart_Bridge_Quote::calculate(
+		[ [ 'product_id' => $product_id, 'quantity' => 2 ] ], [ 'country' => 'FR', 'postcode' => '75001' ]
+	);
+	remove_action( 'woocommerce_cart_calculate_fees', $fee_hook );
+	$checks['external_fee_itemized'] = 'quoted' === ( $with_fee['status'] ?? null )
+		&& '56.00' === ( $with_fee['total'] ?? null )
+		&& '2.00' === ( $with_fee['fees'][0]['total'] ?? null );
+	$mutate_hook = static function( $cart ) { $cart->cart_contents['kali_quote_0']['quantity'] = 3; };
+	add_action( 'woocommerce_before_calculate_totals', $mutate_hook );
+	$mutated = KaliCart_Bridge_Quote::calculate(
+		[ [ 'product_id' => $product_id, 'quantity' => 2 ] ], [ 'country' => 'FR', 'postcode' => '75001' ]
+	);
+	remove_action( 'woocommerce_before_calculate_totals', $mutate_hook );
+	$checks['cart_mutation_unknown'] = 'cart_lines_changed' === ( $mutated['reason'] ?? null );
+	global $wpdb;
+	$write_hook = static function() use ( $wpdb ) {
+		$wpdb->query( "UPDATE {$wpdb->options} SET option_value = option_value WHERE option_name = 'kalicart_quote_fixture'" );
+	};
+	add_action( 'woocommerce_before_calculate_totals', $write_hook );
+	$write_attempt = KaliCart_Bridge_Quote::calculate(
+		[ [ 'product_id' => $product_id, 'quantity' => 2 ] ], [ 'country' => 'FR', 'postcode' => '75001' ]
+	);
+	remove_action( 'woocommerce_before_calculate_totals', $write_hook );
+	$checks['write_hook_blocked'] = 'side_effect_blocked' === ( $write_attempt['reason'] ?? null );
+	$http_hook = static function( $rates ) {
+		wp_remote_get( 'https://quote-fixture.invalid/probe' );
+		return $rates;
+	};
+	add_filter( 'woocommerce_package_rates', $http_hook );
+	$http_attempt = KaliCart_Bridge_Quote::calculate(
+		[ [ 'product_id' => $product_id, 'quantity' => 2 ] ], [ 'country' => 'FR', 'postcode' => '75001' ]
+	);
+	remove_filter( 'woocommerce_package_rates', $http_hook );
+	$checks['http_hook_blocked'] = 'side_effect_blocked' === ( $http_attempt['reason'] ?? null );
 	$writes = [];
 	add_filter( 'query', $watch );
 	try {
