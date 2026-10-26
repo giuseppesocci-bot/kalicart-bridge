@@ -37,6 +37,12 @@ attive intercettano il calcolo del carrello: Woo Product Bundle e Carthub.
 Il guardrail non esegue questi hook nel preventivo. L'opzione resta spenta su
 project2209; la route non va attivata qui finche' non esiste una verifica
 generale, riutilizzabile anche per altri merchant, delle estensioni del carrello.
+Un diagnostico separato ha eseguito gli hook per il solo prodotto semplice 1568
+in un carrello temporaneo, intercettando e bloccando SQL e HTTP: totale 57,80
+EUR (48,80 prodotto + 9,00 spedizione), stato ripristinato, zero tentativi di
+scrittura e zero chiamate HTTP. Questa singola prova non certifica tutti i
+carrelli o gli aggiornamenti futuri delle estensioni; il guardrail del
+prodotto rimane invariato.
 
 La prima prova ha riprodotto due scritture a transient di WooCommerce quando
 la cache `wc_shipping_method_count` era fredda. Il calcolatore ora controlla
