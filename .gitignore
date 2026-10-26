@@ -12,3 +12,6 @@
 __pycache__/
 node_modules/
 *.zip
+
+# Maintainer notes stay in the internal project
+/docs/
