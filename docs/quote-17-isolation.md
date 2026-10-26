@@ -2,8 +2,8 @@
 
 26 ottobre 2026. Branch isolato `chatgpt/bridge-151-quote`. La route e'
 registrata solo se il merchant attiva esplicitamente l'opzione, che resta
-spenta per impostazione predefinita. Nessun merchant contattato e nessuna
-modifica al plugin pubblicato.
+spenta per impostazione predefinita. Nessuna chiamata HTTP al merchant e
+nessuna modifica al plugin pubblicato.
 
 ## Prova concreta
 
@@ -23,6 +23,21 @@ inoltre il POST HTTP opt-in non scrive nel database e il limite locale respinge
 la trentunesima richiesta nel minuto. Il fixture
 crea e rimuove i suoi prodotti e la sua zona nello schema di prova.
 
+`tools/quote-tax-fixture.php` ha confermato 5 condizioni: totale con imposta,
+nessuna scrittura SQL durante il preventivo, destinazione incompleta per
+imposta/citta' o zona/stato respinta, base imponibile di fatturazione respinta.
+`tools/run-quote-rate-probe.sh` ha lanciato 100 richieste su 20 processi
+concorrenti: 30 accettate, le altre respinte come occupate o oltre soglia,
+contatore finale 30. Il limite e' per host, non condiviso fra server.
+
+Una lettura controllata su project2209.com, con prodotto 1568 e destinazione
+Campobasso, ha restituito `unknown: external_calculation_hook`; il carrello e'
+stato ripristinato e sono state osservate zero scritture SQL. Due estensioni
+attive intercettano il calcolo del carrello: Woo Product Bundle e Carthub.
+Il guardrail non esegue questi hook nel preventivo. L'opzione resta spenta su
+project2209; la route non va attivata qui finche' non esiste una verifica
+generale, riutilizzabile anche per altri merchant, delle estensioni del carrello.
+
 La prima prova ha riprodotto due scritture a transient di WooCommerce quando
 la cache `wc_shipping_method_count` era fredda. Il calcolatore ora controlla
 la presenza e la versione della cache **prima** del calcolo e in quel caso
@@ -30,13 +45,12 @@ risponde `unknown: shipping_cache_not_ready`.
 
 ## Limiti prima della superficie pubblica
 
-- Verificare su un server con piu' processi la protezione delle richieste
-  pubbliche: il contatore usa `flock` su un file temporaneo locale e non crea
-  transient, sessioni o scritture di funnel. In una installazione multi-host il
-  limite e' per host; serve un contatore condiviso prima di attivarla li'.
-- Verificare imposte e completezza della destinazione: dove serve indirizzo di
-  fatturazione o un'estensione WooCommerce non verificabile, rispondere
-  `unknown` anziche' presentare un totale come definitivo.
+- Il contatore usa `flock` su un file temporaneo locale e non crea transient,
+  sessioni o scritture di funnel. In una installazione multi-host il limite e'
+  per host; serve un contatore condiviso prima di attivarla li'.
+- Dove serve indirizzo di fatturazione o un'estensione WooCommerce non
+  verificabile, rispondere `unknown` anziche' presentare un totale come
+  definitivo. Project2209 ricade in questo secondo caso.
 - La route `POST /checkout/quote` e' ora registrata **solo** con l'opzione
   `kalicart_bridge_quote_enabled`, che resta falsa per impostazione predefinita.
   Global potra' invocarla una sola volta per

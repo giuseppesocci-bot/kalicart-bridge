@@ -3,7 +3,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * A bounded WooCommerce quote calculation with no checkout session or order.
- * This calculator has no public route until the isolation gate is complete.
+ * The public route is available only when the merchant enables the quote option.
  */
 final class KaliCart_Bridge_Quote {
 	private const MAX_ITEMS = 20;
@@ -171,6 +171,37 @@ final class KaliCart_Bridge_Quote {
 		return true;
 	}
 
+	/** Missing address fields must not silently select a broader zone or tax. */
+	private static function incomplete_destination_reason( string $country, string $state, string $postcode, string $city, bool $requires_shipping ): ?string {
+		global $wpdb;
+		if ( $requires_shipping ) {
+			if ( '' === $postcode ) { return 'postcode_required_for_shipping'; }
+			if ( '' === $state ) {
+				$table = $wpdb->prefix . 'woocommerce_shipping_zone_locations';
+				$has_states = $wpdb->get_var( $wpdb->prepare(
+					"SELECT 1 FROM {$table} WHERE location_type = 'state' AND location_code LIKE %s LIMIT 1",
+					$wpdb->esc_like( $country . ':' ) . '%'
+				) );
+				if ( $has_states ) { return 'state_required_for_shipping'; }
+			}
+		}
+		if ( ! wc_tax_enabled() || 'shipping' !== get_option( 'woocommerce_tax_based_on' ) ) { return null; }
+		$rates = $wpdb->prefix . 'woocommerce_tax_rates';
+		if ( '' === $state && $wpdb->get_var( $wpdb->prepare(
+			"SELECT 1 FROM {$rates} WHERE tax_rate_state <> '' AND tax_rate_country IN ('', %s) LIMIT 1", $country
+		) ) ) { return 'state_required_for_tax'; }
+		$locations = $wpdb->prefix . 'woocommerce_tax_rate_locations';
+		foreach ( [ 'postcode' => $postcode, 'city' => $city ] as $type => $value ) {
+			if ( '' !== $value ) { continue; }
+			$has_specific = $wpdb->get_var( $wpdb->prepare(
+				"SELECT 1 FROM {$locations} l JOIN {$rates} r ON r.tax_rate_id = l.tax_rate_id WHERE l.location_type = %s AND r.tax_rate_country IN ('', %s) LIMIT 1",
+				$type, $country
+			) );
+			if ( $has_specific ) { return $type . '_required_for_tax'; }
+		}
+		return null;
+	}
+
 	private static function remove_cart_hooks( WC_Cart $cart ): void {
 		foreach ( [ 'woocommerce_add_to_cart', 'woocommerce_applied_coupon', 'woocommerce_removed_coupon', 'woocommerce_cart_item_removed', 'woocommerce_cart_item_restored' ] as $hook ) {
 			remove_action( $hook, [ $cart, 'calculate_totals' ], 20 );
@@ -246,9 +277,8 @@ final class KaliCart_Bridge_Quote {
 		if ( $requires_shipping && ! self::shipping_cache_ready() ) {
 			return self::unknown( 'shipping_cache_not_ready' );
 		}
-		if ( $requires_shipping && '' === $postcode ) {
-			return self::unknown( 'postcode_required_for_shipping' );
-		}
+		$incomplete = self::incomplete_destination_reason( $country, $state, $postcode, $city, $requires_shipping );
+		if ( null !== $incomplete ) { return self::unknown( $incomplete ); }
 		$shipping_counts = $requires_shipping ? get_transient( 'wc_shipping_method_count' ) : null;
 		if ( $requires_shipping && is_array( $shipping_counts ) && (int) $shipping_counts['legacy'] > 0 ) {
 			return self::unknown( 'shipping_method_not_verifiable' );
