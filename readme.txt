@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.150
+Stable tag: 1.0.151
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,13 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.151 =
+**Optional WooCommerce basket quotes, calculated on the merchant's store.**
+
+* A separate merchant setting enables a public, rate-limited cart quote for selected products and a delivery address. It is off after installation and update.
+* The quote uses a temporary WooCommerce cart to calculate shipping, taxes and fees without creating an order or checkout session. If the store cannot calculate a trustworthy quote, it responds with `unknown`.
+* Existing catalog, checkout sessions and Global synchronization are unchanged. Catalog data version remains 4.
 
 = 1.0.150 =
 **Shipping zones and declared rates retain their WooCommerce meaning.**

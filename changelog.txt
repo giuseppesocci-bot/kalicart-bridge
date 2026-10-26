@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-26 - version 1.0.151
+
+* Add an optional, disabled-by-default WooCommerce basket quote for a selected cart and delivery destination; no order or checkout session is created.
+* Calculate with active WooCommerce hooks in a temporary cart. Block WordPress database writes and outbound HTTP during calculation; return unknown when the quote cannot be verified.
+* Bound public requests by body size and a local per-site rate limit. No catalog data version change and no automatic merchant activation.
+
 2026-10-25 - version 1.0.150
 
 * Export every WooCommerce shipping zone in priority order, including zones with no recognized methods and the rest-of-world zone; identify enabled methods the Bridge cannot describe.
