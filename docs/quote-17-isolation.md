@@ -15,13 +15,14 @@ Quando manca una condizione verificabile restituisce `unknown`.
 
 Nel WordPress isolato con WooCommerce 11.1.2, prodotto da 20,00, quantita' 2,
 tariffa fissa `10 + [qty]*2`, il totale WooCommerce e' 54,00. Il fixture
-`tools/quote-class-fixture.php` ha confermato 20 condizioni: totale, ripristino
+`tools/quote-class-fixture.php` ha confermato 21 condizioni: totale, ripristino
 di carrello/sessione/cliente/pacchetti/cookie, nessuna scrittura SQL durante il
 calcolo, variante selezionata senza scritture SQL, rifiuto della cache
 spedizione fredda e di un metodo di spedizione non core. Gli hook esterni
 innocui sono eseguiti, compresi hook che modificano prezzo o aggiungono una
 fee riportata nella risposta; mutazioni degli articoli e quantita' aggregate
-oltre lo stock condiviso fra righe o varianti producono `unknown`.
+oltre lo stock condiviso fra righe o varianti e prodotti venduti singolarmente
+richiesti in righe duplicate producono `unknown`.
 Tentativi di scrittura SQL o HTTP producono `unknown: side_effect_blocked`;
 inoltre il POST HTTP opt-in non scrive nel database e il limite locale respinge
 la trentunesima richiesta nel minuto. Il fixture
