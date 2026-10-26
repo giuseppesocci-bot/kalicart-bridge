@@ -85,6 +85,15 @@ try {
 	$checks['aggregate_stock_guard'] = 'basket_stock_insufficient' === ( $overstocked['reason'] ?? null );
 	$product->set_manage_stock( false );
 	$product->save();
+	$product->set_sold_individually( true );
+	$product->save();
+	$sold_twice = KaliCart_Bridge_Quote::calculate(
+		[ [ 'product_id' => $product_id, 'quantity' => 1 ], [ 'product_id' => $product_id, 'quantity' => 1 ] ],
+		[ 'country' => 'FR', 'postcode' => '75001' ]
+	);
+	$checks['sold_individually_guard'] = 'item_not_quotable' === ( $sold_twice['reason'] ?? null );
+	$product->set_sold_individually( false );
+	$product->save();
 	$parent->set_manage_stock( true );
 	$parent->set_stock_quantity( 2 );
 	$parent->save();

@@ -238,6 +238,7 @@ final class KaliCart_Bridge_Quote {
 		}
 		$contents = [];
 		$stock_requested = [];
+		$sold_individually_requested = [];
 		$requires_shipping = false;
 		foreach ( $items as $index => $line ) {
 			if ( ! is_array( $line ) || ! isset( $line['product_id'], $line['quantity'] )
@@ -257,6 +258,12 @@ final class KaliCart_Bridge_Quote {
 			}
 			$stock_owner_id = (int) $product->get_stock_managed_by_id();
 			$stock_requested[ $stock_owner_id ] = ( $stock_requested[ $stock_owner_id ] ?? 0 ) + $line['quantity'];
+			if ( $product->is_sold_individually() ) {
+				$sold_individually_requested[ $product->get_id() ] = ( $sold_individually_requested[ $product->get_id() ] ?? 0 ) + $line['quantity'];
+				if ( $sold_individually_requested[ $product->get_id() ] > 1 ) {
+					return self::unknown( 'item_not_quotable' );
+				}
+			}
 			$stock_owner = $stock_owner_id === $product->get_id() ? $product : wc_get_product( $stock_owner_id );
 			if ( ! $stock_owner || ! $stock_owner->has_enough_stock( $stock_requested[ $stock_owner_id ] ) ) {
 				return self::unknown( 'basket_stock_insufficient' );
