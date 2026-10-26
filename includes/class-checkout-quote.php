@@ -60,7 +60,7 @@ final class KaliCart_Bridge_Quote {
 			return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'rate_limit_unavailable' ], 503 );
 		}
 		clearstatcache( true, $dir );
-		if ( is_link( $dir ) || ( fileperms( $dir ) & 0077 ) !== 0 || ! is_writable( $dir ) ) {
+		if ( is_link( $dir ) || ( fileperms( $dir ) & 0077 ) !== 0 || ! is_writable( $dir ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- require a writable private lock directory.
 			return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'rate_limit_unavailable' ], 503 );
 		}
 		$path = trailingslashit( $dir ) . 'rate.json';
