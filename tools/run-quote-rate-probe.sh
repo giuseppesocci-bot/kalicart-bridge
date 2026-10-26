@@ -3,9 +3,10 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 hash="$(printf '%s' 'https://quote-rate-fixture.invalid/:1' | sha1sum | cut -d ' ' -f 1)"
-rate_file="$(php -r 'echo sys_get_temp_dir();')/kalicart-quote-${hash}.json"
+rate_dir="$(php -r 'echo sys_get_temp_dir();')/kalicart-quote-${hash}"
+rate_file="$rate_dir/rate.json"
 results="$(mktemp)"
-trap 'rm -f -- "$rate_file" "$results"' EXIT
+trap 'rm -f -- "$rate_file" "$results"; rmdir -- "$rate_dir" 2>/dev/null || true' EXIT
 rm -f -- "$rate_file"
 seq 1 100 | xargs -P 20 -I '{}' php "$script_dir/quote-rate-worker.php" > "$results"
 accepted="$(grep -c '^accepted$' "$results" || true)"

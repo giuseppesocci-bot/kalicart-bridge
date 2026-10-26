@@ -55,7 +55,15 @@ final class KaliCart_Bridge_Quote {
 
 	/** Local operational counter: no WordPress transient, session or funnel write. */
 	private static function rate_limit() {
-		$path = trailingslashit( get_temp_dir() ) . 'kalicart-quote-' . sha1( home_url( '/' ) . ':' . get_current_blog_id() ) . '.json';
+		$dir = trailingslashit( get_temp_dir() ) . 'kalicart-quote-' . sha1( home_url( '/' ) . ':' . get_current_blog_id() );
+		if ( ! is_dir( $dir ) && ! @mkdir( $dir, 0700 ) && ! is_dir( $dir ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir, WordPress.PHP.NoSilencedErrors.Discouraged -- private directory for the native atomic lock.
+			return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'rate_limit_unavailable' ], 503 );
+		}
+		clearstatcache( true, $dir );
+		if ( is_link( $dir ) || ( fileperms( $dir ) & 0077 ) !== 0 || ! is_writable( $dir ) ) {
+			return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'rate_limit_unavailable' ], 503 );
+		}
+		$path = trailingslashit( $dir ) . 'rate.json';
 		$handle = @fopen( $path, 'c+' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen, WordPress.PHP.NoSilencedErrors.Discouraged -- native flock provides an atomic cross-process limit.
 		if ( false === $handle ) {
 			return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'rate_limit_unavailable' ], 503 );

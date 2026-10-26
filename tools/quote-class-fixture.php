@@ -181,7 +181,9 @@ try {
 	$checks['http_opt_in_quote'] = 200 === $http_result->get_status()
 		&& 'quoted' === ( $http_body['status'] ?? null )
 		&& '54.00' === ( $http_body['total'] ?? null ) && [] === $writes;
-	$rate_file = trailingslashit( get_temp_dir() ) . 'kalicart-quote-' . sha1( home_url( '/' ) . ':' . get_current_blog_id() ) . '.json';
+	$rate_dir = trailingslashit( get_temp_dir() ) . 'kalicart-quote-' . sha1( home_url( '/' ) . ':' . get_current_blog_id() );
+	$rate_file = trailingslashit( $rate_dir ) . 'rate.json';
+	if ( ! is_dir( $rate_dir ) ) { mkdir( $rate_dir, 0700 ); }
 	file_put_contents( $rate_file, wp_json_encode( [ 'start' => time(), 'count' => 30 ] ) );
 	try {
 		$limited = rest_do_request( $http );
@@ -189,6 +191,7 @@ try {
 			&& 'quote_rate_limited' === ( $limited->get_data()['reason'] ?? null );
 	} finally {
 		unlink( $rate_file );
+		@rmdir( $rate_dir ); // Fixture cleanup; the directory is private to this isolated WordPress site.
 		update_option( 'kalicart_bridge_quote_enabled', false );
 	}
 	echo wp_json_encode( [ 'result' => $result, 'checks' => $checks, 'http_status' => $http_result->get_status(), 'http_body' => $http_body, 'limited_status' => $limited->get_status(), 'limited_body' => $limited->get_data(), 'writes' => $writes ] ) . "\n";
