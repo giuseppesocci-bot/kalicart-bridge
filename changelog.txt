@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-27 - version 1.0.152
+
+* Simple products, variations and grouped components expose the price shoppers see in the WooCommerce catalog, including or excluding tax according to the shop display setting. The price fields declare that tax basis in both compact search results and product detail.
+* Price filters and ordering use the displayed price when WooCommerce stores prices in a different tax basis. An overly broad price-ordered request returns an explicit narrowing instruction rather than a misleading order.
+* Catalog data version 5 asks KaliCart Global to re-read unchanged products at its normal synchronization turn after the merchant updates. Checkout remains authoritative for taxes that depend on the destination.
+
+
 2026-10-26 - version 1.0.151
 
 * Add an optional, disabled-by-default WooCommerce basket quote for a selected cart and delivery destination; no order or checkout session is created.
