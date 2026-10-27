@@ -139,6 +139,17 @@ class KaliCart_Bridge_Catalog_Engine {
         ];
         $args = wp_parse_args( $args, $defaults );
 
+        // Woo's lookup table stores entered prices. If shop display uses the
+        // opposite tax basis, lookup bounds/order are not comparable with the
+        // prices returned by compute_price(). Keep the SQL prefilter only where
+        // its bound is conservative; verify and sort display prices in PHP.
+        $display_includes_tax = wc_tax_enabled() && 'incl' === get_option( 'woocommerce_tax_display_shop' );
+        $entered_includes_tax = wc_tax_enabled() && wc_prices_include_tax();
+        $tax_basis_differs = wc_tax_enabled() && $display_includes_tax !== $entered_includes_tax;
+        $display_price_sort = $tax_basis_differs && 'price' === $args['orderby'];
+        $sql_min_price = $tax_basis_differs && $display_includes_tax ? null : $args['min_price'];
+        $sql_max_price = $tax_basis_differs && ! $display_includes_tax ? null : $args['max_price'];
+
         $cached = self::query_cache_get( $args );
         if ( $cached !== null ) {
             return $cached;
@@ -150,9 +161,11 @@ class KaliCart_Bridge_Catalog_Engine {
         $has_php_postfilter = ! empty( $args['gender'] ) || ! empty( $args['color'] )
                               || $args['on_sale'] === true
                               || $args['physical_only'] === true
-                              || $args['min_price'] !== null || $args['max_price'] !== null;
+                              || $args['min_price'] !== null || $args['max_price'] !== null
+                              || $display_price_sort;
         $order = strtoupper( $args['order'] ) === 'ASC' ? 'ASC' : 'DESC';
-		$lookup_price = $args['min_price'] !== null || $args['max_price'] !== null || $args['orderby'] === 'price';
+		$lookup_price = $sql_min_price !== null || $sql_max_price !== null
+			|| ( $args['orderby'] === 'price' && ! $display_price_sort );
 
         $query_args = [
             'post_type'      => 'product',
@@ -193,9 +206,9 @@ class KaliCart_Bridge_Catalog_Engine {
 
 		if ( $lookup_price ) {
 			$query_args['kalicart_bridge_price_lookup'] = [
-				'min'     => $args['min_price'],
-				'max'     => $args['max_price'],
-				'orderby' => $args['orderby'] === 'price',
+				'min'     => $sql_min_price,
+				'max'     => $sql_max_price,
+				'orderby' => $args['orderby'] === 'price' && ! $display_price_sort,
 				'order'   => $order,
 			];
 		}
@@ -305,6 +318,7 @@ class KaliCart_Bridge_Catalog_Engine {
             $gender_unknown = 0;
             $gender_excluded = 0;
             $page_states    = [];
+            $display_sort_rows = [];
             $batch_page     = 1;
             $batch_pages    = (int) $query->max_num_pages;
 
@@ -351,6 +365,13 @@ class KaliCart_Bridge_Catalog_Engine {
 
                     $match_index = $filtered_total;
                     $filtered_total++;
+                    if ( $display_price_sort ) {
+                        $display_sort_rows[] = [
+                            'id' => (int) $product_id,
+                            'price' => self::compute_price( $wc_product )['current'] ?? null,
+                        ];
+                        continue;
+                    }
                     if ( $match_index < $result_start || $match_index >= $result_end ) {
                         continue;
                     }
@@ -369,6 +390,26 @@ class KaliCart_Bridge_Catalog_Engine {
 					$query = self::run_product_query( $query_args );
                 }
             } while ( $batch_page <= $batch_pages );
+
+            if ( $display_price_sort ) {
+                usort( $display_sort_rows, static function ( $a, $b ) use ( $order ) {
+                    $a_valid = $a['price'] !== null && (float) $a['price'] > 0;
+                    $b_valid = $b['price'] !== null && (float) $b['price'] > 0;
+                    if ( $a_valid !== $b_valid ) return $a_valid ? -1 : 1;
+                    $cmp = (float) ( $a['price'] ?? 0 ) <=> (float) ( $b['price'] ?? 0 );
+                    if ( $cmp === 0 ) $cmp = $a['id'] <=> $b['id'];
+                    return $order === 'DESC' ? -$cmp : $cmp;
+                } );
+                foreach ( array_slice( $display_sort_rows, $result_start, $per_page ) as $row ) {
+                    $wc_product = wc_get_product( $row['id'] );
+                    if ( ! $wc_product ) continue;
+                    $projection_context = ! empty( $args['gender'] )
+                        ? [ 'gender' => $page_states[ $row['id'] ]['detected'] ?? null ]
+                        : null;
+                    $products[] = self::normalize_product( $wc_product,
+                        $want_summary ? 'summary' : 'list', $projection_context );
+                }
+            }
 
             $result = [
                 'products'    => $products,
@@ -655,6 +696,9 @@ class KaliCart_Bridge_Catalog_Engine {
             'blog_id'         => get_current_blog_id(),
             'language'        => KaliCart_Bridge_API::default_language() ?? 'mono',
             'currency'        => get_woocommerce_currency(),
+            'tax_display_shop' => get_option( 'woocommerce_tax_display_shop' ),
+            'prices_include_tax' => wc_prices_include_tax(),
+            'tax_enabled' => wc_tax_enabled(),
             'candidate_limit' => self::postfilter_candidate_limit(),
             'args'            => $args,
         ];
@@ -784,6 +828,8 @@ class KaliCart_Bridge_Catalog_Engine {
                 'current' => $price['current'] ?? null,
                 'display' => $price['display'] ?? null,
                 'regular' => $price['regular'] ?? $price['min_regular'] ?? null,
+                'vat_included' => $price['vat_included'] ?? null,
+                'tax_enabled' => $price['tax_enabled'] ?? null,
             ];
             if ( 'range' === $price_type ) {
                 // `range_over` distingue i due intervalli che il summary puo'
