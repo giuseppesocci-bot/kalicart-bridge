@@ -2656,12 +2656,3 @@ msgstr "Preventivo del carrello WooCommerce"
 #: admin/admin-page.php
 msgid "Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown."
 msgstr "Consente agli agenti di richiedere un preventivo di spedizione e imposte per un carrello selezionato e una destinazione. Usa un carrello WooCommerce temporaneo; non crea ordini né sessioni di checkout. Se il calcolo non è disponibile, il risultato è sconosciuto."
-
-msgid "Delivered-total quotes and checkout handoff are now on, so AI agents can state your real price including shipping. The buyer still completes every order on your checkout."
-msgstr "Il preventivo con il totale consegnato e il passaggio al checkout sono ora attivi: gli agenti AI possono indicare il tuo prezzo reale, spedizione inclusa. L'acquirente completa sempre l'ordine nel tuo checkout."
-
-msgid "Review settings"
-msgstr "Rivedi le impostazioni"
-
-msgid "Dismiss"
-msgstr "Chiudi"

@@ -1941,12 +1941,3 @@ msgstr ""
 #: admin/admin-page.php
 msgid "Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown."
 msgstr ""
-
-msgid "Delivered-total quotes and checkout handoff are now on, so AI agents can state your real price including shipping. The buyer still completes every order on your checkout."
-msgstr ""
-
-msgid "Review settings"
-msgstr ""
-
-msgid "Dismiss"
-msgstr ""

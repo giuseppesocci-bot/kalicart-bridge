@@ -95,32 +95,13 @@ add_action( 'plugins_loaded', function () {
     }
 
     // 1.0.154 one-time migration: existing installs stored `false` at activation, so "never chosen" cannot be
-    // told apart from "turned off". Turn quote and checkout handoff on once, show a notice with the way back, and
-    // never run again: a merchant who turns them off afterwards stays off.
+    // told apart from "turned off". Turn quote and checkout handoff on once and never run again: a merchant who
+    // turns them off afterwards stays off.
     if ( 'done' !== get_option( 'kalicart_bridge_commerce_defaults_1_0_154', '' ) ) {
         update_option( 'kalicart_bridge_quote_enabled', true );
         update_option( 'kalicart_bridge_checkout_enabled', true );
         update_option( 'kalicart_bridge_commerce_defaults_1_0_154', 'done', false );
-        update_option( 'kalicart_bridge_commerce_defaults_notice', 1, false );
     }
-    if ( is_admin() && get_option( 'kalicart_bridge_commerce_defaults_notice', 0 ) ) {
-        add_action( 'admin_init', function () {
-            if ( isset( $_GET['kalicart_bridge_dismiss_defaults'], $_GET['_wpnonce'] ) && current_user_can( 'manage_woocommerce' )
-                && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'kalicart_bridge_dismiss_defaults' ) ) {
-                delete_option( 'kalicart_bridge_commerce_defaults_notice' );
-            }
-        } );
-        add_action( 'admin_notices', function () {
-            if ( ! current_user_can( 'manage_woocommerce' ) || ! get_option( 'kalicart_bridge_commerce_defaults_notice', 0 ) ) { return; }
-            $settings = admin_url( 'admin.php?page=kalicart-bridge&tab=settings#kali-commerce-checkout' );
-            $dismiss  = wp_nonce_url( add_query_arg( 'kalicart_bridge_dismiss_defaults', '1' ), 'kalicart_bridge_dismiss_defaults' );
-            echo '<div class="notice notice-info"><p><strong>KaliCart Bridge</strong> &mdash; '
-                . esc_html__( 'Delivered-total quotes and checkout handoff are now on, so AI agents can state your real price including shipping. The buyer still completes every order on your checkout.', 'kalicart-bridge' )
-                . ' <a href="' . esc_url( $settings ) . '">' . esc_html__( 'Review settings', 'kalicart-bridge' ) . '</a>'
-                . ' &middot; <a href="' . esc_url( $dismiss ) . '">' . esc_html__( 'Dismiss', 'kalicart-bridge' ) . '</a></p></div>';
-        } );
-    }
-
     KaliCart_Bridge_API::init();
     KaliCart_Bridge_MCP::init();
     KaliCart_Bridge_Signals::init();

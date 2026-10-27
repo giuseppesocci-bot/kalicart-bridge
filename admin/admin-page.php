@@ -414,7 +414,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
         <div class="kali-toggle"><input type="checkbox" id="toggleRobots"><span class="kali-toggle__slider"></span></div>
       </label>
 
-      <label class="kali-toggle-row" id="kali-commerce-checkout">
+      <label class="kali-toggle-row">
         <div class="kali-toggle-info">
           <strong><?php esc_html_e( 'Checkout sessions', 'kalicart-bridge' ); ?> <span style="font-size:11px;font-weight:500;background:var(--kb-acc-bg);color:var(--kb-acc);border:1px solid rgba(0,112,243,.2);border-radius:99px;padding:1px 8px;vertical-align:middle"><?php esc_html_e( 'optional', 'kalicart-bridge' ); ?></span></strong>
           <span><?php echo wp_kses_post( sprintf( /* translators: %s: the POST /checkout/session endpoint, shown as code */ __( 'Enables %s — agent creates a session, merchant gets a checkout URL, human completes payment on WooCommerce. No OAuth, no PII, no payment on the agent side.', 'kalicart-bridge' ), '<code>POST /checkout/session</code>' ) ); ?></span>
