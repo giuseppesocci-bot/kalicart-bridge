@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) || ! class_exists( 'WC_Product_Simple' ) ) {
 }
 require_once dirname( __DIR__ ) . '/includes/class-catalog-engine.php';
 require_once dirname( __DIR__ ) . '/includes/class-api.php';
+if ( ! defined( 'KALICART_BRIDGE_VERSION' ) ) { define( 'KALICART_BRIDGE_VERSION', '1.0.152-fixture' ); }
 
 $keys = [ 'woocommerce_calc_taxes', 'woocommerce_prices_include_tax', 'woocommerce_tax_display_shop', 'woocommerce_default_country', 'woocommerce_tax_based_on', 'woocommerce_currency' ];
 $previous = [];
@@ -36,6 +37,7 @@ try {
     $method = new ReflectionMethod( 'KaliCart_Bridge_Catalog_Engine', 'compute_price' );
     $price = $method->invoke( null, $p );
     $summary = KaliCart_Bridge_Catalog_Engine::normalize_product( $p, 'summary' );
+    $detail = KaliCart_Bridge_Catalog_Engine::normalize_product( $p, 'detail' );
     $checks = [
         'shop_price_71_50' => abs( (float) $price['current'] - 71.5 ) < 0.001,
         'shop_regular_77' => abs( (float) $price['regular'] - 77 ) < 0.001,
@@ -43,6 +45,8 @@ try {
         'tax_basis_included' => true === $price['vat_included'],
         'summary_price_71_50' => abs( (float) $summary['price']['current'] - 71.5 ) < 0.001,
         'summary_tax_basis_included' => true === $summary['price']['vat_included'],
+        'detail_price_71_50' => abs( (float) $detail['price']['current'] - 71.5 ) < 0.001,
+        'detail_tax_basis_included' => true === $detail['price']['vat_included'],
     ];
     $child = new WC_Product_Simple();
     $child->set_name( 'KaliCart grouped child' );
