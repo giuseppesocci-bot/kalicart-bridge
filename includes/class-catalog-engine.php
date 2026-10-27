@@ -2188,7 +2188,8 @@ class KaliCart_Bridge_Catalog_Engine {
                 : null;
             $display = $display !== null ? html_entity_decode( wp_strip_all_tags( $display ), ENT_QUOTES ) : null;
 
-            $vat_included = wc_prices_include_tax();
+            // get_variation_prices(true) is already adjusted to the shop display tax basis.
+            $vat_included = wc_tax_enabled() && 'incl' === get_option( 'woocommerce_tax_display_shop' );
             $tax_enabled  = wc_tax_enabled();
 
             // current: lowest active price — canonical readable field for all product types
@@ -2251,8 +2252,8 @@ class KaliCart_Bridge_Catalog_Engine {
             foreach ( array_keys( $grouped_raw['items'] ) as $cid ) {
                 $c = wc_get_product( $cid );
                 if ( ! $c ) { continue; }
-                $c_reg = $c->get_regular_price() !== '' ? (float) $c->get_regular_price() : null;
-                $c_cur = $c->get_price() !== '' ? (float) $c->get_price() : null;
+                $c_reg = $c->get_regular_price() !== '' ? (float) wc_get_price_to_display( $c, [ 'price' => $c->get_regular_price() ] ) : null;
+                $c_cur = $c->get_price() !== '' ? (float) wc_get_price_to_display( $c, [ 'price' => $c->get_price() ] ) : null;
                 if ( $c_reg !== null ) { $regulars[] = $c_reg; }
                 if ( $c_cur === null ) { continue; }
                 $currents[] = $c_cur;
@@ -2278,7 +2279,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 'currency'        => $currency,
                 'encoding'        => 'decimal_major_units',
                 'price_type'      => 'STATIC',
-                'vat_included'    => wc_prices_include_tax(),
+                'vat_included'    => wc_tax_enabled() && 'incl' === get_option( 'woocommerce_tax_display_shop' ),
                 'tax_enabled'     => wc_tax_enabled(),
                 'current'         => $min_current,
                 'max_current'     => $max_current,
@@ -2302,9 +2303,11 @@ class KaliCart_Bridge_Catalog_Engine {
             ];
         }
 
-        $regular = $p->get_regular_price() !== '' ? (float) $p->get_regular_price() : null;
-        $sale    = $p->get_sale_price() !== '' ? (float) $p->get_sale_price() : null;
-        $current = $p->get_price() !== '' ? (float) $p->get_price() : null;
+        // Product getters return entered prices; the catalog must expose the same
+        // tax basis that WooCommerce shows in its shop, including for a variation.
+        $regular = $p->get_regular_price() !== '' ? (float) wc_get_price_to_display( $p, [ 'price' => $p->get_regular_price() ] ) : null;
+        $sale    = $p->get_sale_price() !== '' ? (float) wc_get_price_to_display( $p, [ 'price' => $p->get_sale_price() ] ) : null;
+        $current = $p->get_price() !== '' ? (float) wc_get_price_to_display( $p, [ 'price' => $p->get_price() ] ) : null;
         $on_sale = $p->is_on_sale();
 
         $discount_pct = null;
@@ -2358,7 +2361,7 @@ class KaliCart_Bridge_Catalog_Engine {
                                     // cioe' la contraddizione che stiamo togliendo.
         }
 
-        $vat_included = wc_prices_include_tax();
+        $vat_included = wc_tax_enabled() && 'incl' === get_option( 'woocommerce_tax_display_shop' );
         $tax_enabled  = wc_tax_enabled();
 
         $discount_amount_fixed = ( $on_sale && $regular !== null && $sale !== null )
