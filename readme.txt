@@ -170,6 +170,13 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.154 =
+**Delivered-total quotes and checkout handoff are on by default, calculated by WooCommerce.**
+
+* The basket quote returns WooCommerce's own calculation for every shipping method WooCommerce applies, including legacy and third-party methods. Each rate declares its method, whether it is pickup, and whether it comes from a third-party plugin. Database writes and outbound HTTP remain blocked during the calculation.
+* When WooCommerce preselects local pickup and a delivery rate exists, the quoted total uses the cheapest delivery rate, so a delivered total never shows the pickup price. The buyer can still choose pickup at checkout.
+* Quotes and checkout sessions are enabled by default. Existing installations are switched on once by this update; a merchant who turns either off afterwards stays off. Catalog and Global synchronization are unchanged.
+
 = 1.0.153 =
 **Compact product verification declares the same tax basis as the catalog.**
 
