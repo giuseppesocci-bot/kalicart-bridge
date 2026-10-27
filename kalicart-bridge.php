@@ -112,7 +112,7 @@ add_action( 'plugins_loaded', function () {
         } );
         add_action( 'admin_notices', function () {
             if ( ! current_user_can( 'manage_woocommerce' ) || ! get_option( 'kalicart_bridge_commerce_defaults_notice', 0 ) ) { return; }
-            $settings = admin_url( 'admin.php?page=kalicart-bridge' );
+            $settings = admin_url( 'admin.php?page=kalicart-bridge&tab=settings#kali-commerce-checkout' );
             $dismiss  = wp_nonce_url( add_query_arg( 'kalicart_bridge_dismiss_defaults', '1' ), 'kalicart_bridge_dismiss_defaults' );
             echo '<div class="notice notice-info"><p><strong>KaliCart Bridge</strong> &mdash; '
                 . esc_html__( 'Delivered-total quotes and checkout handoff are now on, so AI agents can state your real price including shipping. The buyer still completes every order on your checkout.', 'kalicart-bridge' )
