@@ -170,6 +170,13 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.152 =
+**Catalog prices now match the WooCommerce shop display tax basis.**
+
+* Simple products, variations and grouped components expose the price shoppers see in the WooCommerce catalog, including or excluding tax according to the shop display setting. The price fields declare that tax basis in both compact search results and product detail.
+* Price filters and ordering use the displayed price when WooCommerce stores prices in a different tax basis. An overly broad price-ordered request returns an explicit narrowing instruction rather than a misleading order.
+* Catalog data version 5 asks KaliCart Global to re-read unchanged products at its normal synchronization turn after the merchant updates. Checkout remains authoritative for taxes that depend on the destination.
+
 = 1.0.151 =
 **Optional WooCommerce basket quotes, calculated on the merchant's store.**
 
