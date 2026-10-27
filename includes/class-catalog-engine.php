@@ -295,13 +295,18 @@ class KaliCart_Bridge_Catalog_Engine {
             $candidate_total = (int) $query->found_posts;
             $candidate_limit = self::postfilter_candidate_limit();
             if ( $candidate_limit > 0 && $candidate_total > $candidate_limit ) {
+                $price_sort_broad = $display_price_sort;
                 $result = [ '_error' => [
                     'code'            => 'KALICART_CATALOG_QUERY_TOO_BROAD',
                     'status'          => 422,
-                    'message'         => 'This derived-filter query is too broad to evaluate safely. Add q or category and retry.',
+                    'message'         => $price_sort_broad
+                        ? 'Price ordering needs a narrower result set to calculate shopper display prices safely. Add q or category and retry.'
+                        : 'This derived-filter query is too broad to evaluate safely. Add q or category and retry.',
                     'candidate_count' => $candidate_total,
                     'candidate_limit' => $candidate_limit,
-                    'guidance'        => 'Narrow the candidate set with a bare product noun (q) or a WooCommerce category slug before applying gender, color or on_sale. Verify size only in the selected product variations.',
+                    'guidance'        => $price_sort_broad
+                        ? 'Narrow the candidate set with a product noun (q) or a WooCommerce category slug, then retry price ordering.'
+                        : 'Narrow the candidate set with a bare product noun (q) or a WooCommerce category slug before applying gender, color or on_sale. Verify size only in the selected product variations.',
                 ] ];
                 self::query_cache_put( $args, $result );
                 return $result;

@@ -112,6 +112,15 @@ try {
         'per_page' => 1, 'page' => 1, 'fields' => 'summary',
     ] );
     $checks['sorts_display_price_desc_page'] = [ $product_id ] === array_column( $sorted_desc['products'] ?? [], 'id' );
+    $small_limit = static fn(): int => 1;
+    add_filter( 'kalicart_bridge_catalog_postfilter_candidate_limit', $small_limit );
+    $broad_sort = KaliCart_Bridge_Catalog_Engine::query_products( [
+        'search' => 'KaliCart price fixture', 'orderby' => 'price',
+        'per_page' => 1, 'fields' => 'summary',
+    ] );
+    remove_filter( 'kalicart_bridge_catalog_postfilter_candidate_limit', $small_limit );
+    $checks['broad_price_sort_fails_explicitly'] = 422 === ( $broad_sort['_error']['status'] ?? null )
+        && str_contains( $broad_sort['_error']['guidance'] ?? '', 'price ordering' );
     $minimum = KaliCart_Bridge_Catalog_Engine::query_products( [
         'search' => 'KaliCart price fixture', 'min_price' => 71,
         'per_page' => 10, 'fields' => 'summary',
