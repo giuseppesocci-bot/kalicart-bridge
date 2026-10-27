@@ -1,5 +1,10 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-27 - version 1.0.153
+
+* The default product detail and MCP get_product now retain `vat_included` and `tax_enabled` in product and variant prices. Full detail, compact search, shopper prices, catalog data version and checkout behavior are unchanged from 1.0.152.
+
+
 2026-10-27 - version 1.0.152
 
 * Simple products, variations and grouped components expose the price shoppers see in the WooCommerce catalog, including or excluding tax according to the shop display setting. The price fields declare that tax basis in both compact search results and product detail.
