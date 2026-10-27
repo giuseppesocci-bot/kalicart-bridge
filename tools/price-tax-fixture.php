@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) || ! class_exists( 'WC_Product_Simple' ) ) {
 require_once dirname( __DIR__ ) . '/includes/class-catalog-engine.php';
 require_once dirname( __DIR__ ) . '/includes/class-api.php';
 if ( ! defined( 'KALICART_BRIDGE_VERSION' ) ) { define( 'KALICART_BRIDGE_VERSION', '1.0.152-fixture' ); }
+if ( ! defined( 'KALICART_BRIDGE_API_NS' ) ) { define( 'KALICART_BRIDGE_API_NS', 'kalicart/v1' ); }
 
 $keys = [ 'woocommerce_calc_taxes', 'woocommerce_prices_include_tax', 'woocommerce_tax_display_shop', 'woocommerce_default_country', 'woocommerce_tax_based_on', 'woocommerce_currency' ];
 $previous = [];
@@ -38,6 +39,8 @@ try {
     $price = $method->invoke( null, $p );
     $summary = KaliCart_Bridge_Catalog_Engine::normalize_product( $p, 'summary' );
     $detail = KaliCart_Bridge_Catalog_Engine::normalize_product( $p, 'detail' );
+    $compact_method = new ReflectionMethod( 'KaliCart_Bridge_API', 'verification_product_projection' );
+    $compact = $compact_method->invoke( null, $detail );
     $checks = [
         'shop_price_71_50' => abs( (float) $price['current'] - 71.5 ) < 0.001,
         'shop_regular_77' => abs( (float) $price['regular'] - 77 ) < 0.001,
@@ -47,6 +50,8 @@ try {
         'summary_tax_basis_included' => true === $summary['price']['vat_included'],
         'detail_price_71_50' => abs( (float) $detail['price']['current'] - 71.5 ) < 0.001,
         'detail_tax_basis_included' => true === $detail['price']['vat_included'],
+        'compact_tax_basis_included' => true === $compact['price']['vat_included'],
+        'compact_tax_enabled' => true === $compact['price']['tax_enabled'],
     ];
     $child = new WC_Product_Simple();
     $child->set_name( 'KaliCart grouped child' );
@@ -93,6 +98,11 @@ try {
     $checks['variable_min_71_50'] = abs( (float) $variable_price['current'] - 71.5 ) < 0.001;
     $checks['variable_max_88'] = abs( (float) $variable_price['max_current'] - 88 ) < 0.001;
     $checks['variable_tax_basis_included'] = true === $variable_price['vat_included'];
+    $variable_detail = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $parent_id ), 'detail' );
+    $variable_compact = $compact_method->invoke( null, $variable_detail );
+    $checks['compact_variant_tax_basis_included'] = ! empty( $variable_compact['variants'] )
+        && count( array_filter( $variable_compact['variants'], static fn( $v ) => true === ( $v['price']['vat_included'] ?? null ) ) )
+            === count( $variable_compact['variants'] );
     $zero_tax = new WC_Product_Simple();
     $zero_tax->set_name( 'KaliCart price fixture zero tax' );
     $zero_tax->set_status( 'publish' );

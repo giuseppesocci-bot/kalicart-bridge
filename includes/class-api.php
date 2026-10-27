@@ -1874,6 +1874,8 @@ class KaliCart_Bridge_API {
                 'range_over'      => $price['range_over'] ?? null,
                 'current'         => $price['current'] ?? null,
                 'max_current'     => $price['max_current'] ?? null,
+                'vat_included'    => $price['vat_included'] ?? null,
+                'tax_enabled'     => $price['tax_enabled'] ?? null,
                 'sale_note'       => $price['sale_note'] ?? null,
                 'regular'         => $price['regular'] ?? $price['min_regular'] ?? null,
                 'max_regular'     => $price['max_regular'] ?? null,

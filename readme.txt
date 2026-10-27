@@ -170,6 +170,11 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.153 =
+**Compact product verification declares the same tax basis as the catalog.**
+
+* The default product detail and MCP get_product now retain `vat_included` and `tax_enabled` in product and variant prices. Full detail, compact search, shopper prices, catalog data version and checkout behavior are unchanged from 1.0.152.
+
 = 1.0.152 =
 **Catalog prices now match the WooCommerce shop display tax basis.**
 
