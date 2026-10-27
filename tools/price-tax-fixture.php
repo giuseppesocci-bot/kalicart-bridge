@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) || ! class_exists( 'WC_Product_Simple' ) ) {
 }
 require_once dirname( __DIR__ ) . '/includes/class-catalog-engine.php';
 
-$keys = [ 'woocommerce_calc_taxes', 'woocommerce_prices_include_tax', 'woocommerce_tax_display_shop', 'woocommerce_default_country', 'woocommerce_tax_based_on' ];
+$keys = [ 'woocommerce_calc_taxes', 'woocommerce_prices_include_tax', 'woocommerce_tax_display_shop', 'woocommerce_default_country', 'woocommerce_tax_based_on', 'woocommerce_currency' ];
 $previous = [];
 foreach ( $keys as $key ) { $previous[ $key ] = get_option( $key ); }
 $product_id = null;
@@ -15,6 +15,7 @@ try {
     update_option( 'woocommerce_tax_display_shop', 'incl' );
     update_option( 'woocommerce_default_country', 'IT' );
     update_option( 'woocommerce_tax_based_on', 'base' );
+    update_option( 'woocommerce_currency', 'EUR' );
     $rate_id = WC_Tax::_insert_tax_rate( [
         'tax_rate_country' => 'IT', 'tax_rate_state' => '', 'tax_rate' => '10.0000',
         'tax_rate_name' => 'KaliCart fixture', 'tax_rate_priority' => 1,
