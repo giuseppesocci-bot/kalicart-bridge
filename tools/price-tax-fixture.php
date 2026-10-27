@@ -133,6 +133,13 @@ try {
     $entered_inclusive = $method->invoke( null, wc_get_product( $product_id ) );
     $checks['entered_inclusive_display_exclusive_65'] = abs( (float) $entered_inclusive['current'] - 65 ) < 0.001;
     $checks['entered_inclusive_display_exclusive_70'] = abs( (float) $entered_inclusive['regular'] - 70 ) < 0.001;
+    update_option( 'woocommerce_calc_taxes', 'no' );
+    $p->set_regular_price( '70' );
+    $p->set_sale_price( '65' );
+    $p->save();
+    $untaxed = $method->invoke( null, wc_get_product( $product_id ) );
+    $checks['tax_disabled_keeps_65'] = abs( (float) $untaxed['current'] - 65 ) < 0.001;
+    $checks['tax_disabled_is_explicit'] = false === $untaxed['tax_enabled'];
     echo wp_json_encode( [ 'checks' => $checks, 'inclusive' => $price, 'exclusive' => $excluded ] ) . "\n";
     if ( in_array( false, $checks, true ) ) { throw new RuntimeException( 'Price fixture failed.' ); }
 } finally {
