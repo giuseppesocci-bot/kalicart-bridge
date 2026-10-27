@@ -2676,3 +2676,12 @@ msgstr "WooCommerce-Warenkorbangebot"
 #: admin/admin-page.php
 msgid "Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown."
 msgstr "Ermöglicht Agenten, ein Angebot für Versand und Steuern für einen ausgewählten Warenkorb und ein Lieferziel anzufordern. Verwendet einen temporären WooCommerce-Warenkorb; es werden weder eine Bestellung noch eine Checkout-Sitzung erstellt. Wenn die Berechnung nicht möglich ist, lautet das Ergebnis unbekannt."
+
+msgid "Delivered-total quotes and checkout handoff are now on, so AI agents can state your real price including shipping. The buyer still completes every order on your checkout."
+msgstr "Angebote mit Lieferendpreis und die Übergabe an den Checkout sind jetzt aktiv: KI-Agenten können Ihren tatsächlichen Preis inklusive Versand nennen. Die Bestellung schließt der Käufer immer in Ihrem Checkout ab."
+
+msgid "Review settings"
+msgstr "Einstellungen prüfen"
+
+msgid "Dismiss"
+msgstr "Ausblenden"

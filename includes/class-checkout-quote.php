@@ -7,7 +7,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class KaliCart_Bridge_Quote {
 	private const MAX_ITEMS = 20;
-	private const CORE_SHIPPING_METHODS = [ 'flat_rate', 'free_shipping', 'local_pickup' ];
+	private const CORE_SHIPPING_METHODS = [ 'flat_rate', 'free_shipping', 'local_pickup', 'pickup_location' ];
+	private const PICKUP_METHODS = [ 'local_pickup', 'pickup_location' ];
 	private const MAX_BODY_BYTES = 8192;
 	private const REQUESTS_PER_MINUTE = 30;
 
@@ -18,7 +19,7 @@ final class KaliCart_Bridge_Quote {
 	}
 
 	public static function register_routes(): void {
-		// The quote is a separate merchant choice; an update never enables it.
+		// The quote is a merchant setting, on by default since 1.0.154 (one-time migration with notice).
 		if ( ! get_option( 'kalicart_bridge_quote_enabled', false ) ) { return; }
 		register_rest_route( KALICART_BRIDGE_API_NS, '/checkout/quote', [
 			'methods' => 'POST',
@@ -125,21 +126,6 @@ final class KaliCart_Bridge_Quote {
 			&& $counts['version'] === $version;
 	}
 
-	private static function core_shipping_only( array $package ): bool {
-		global $wpdb;
-		$zone = WC_Shipping_Zones::get_zone_matching_package( $package );
-		if ( ! $zone instanceof WC_Shipping_Zone ) { return false; }
-		$table = $wpdb->prefix . 'woocommerce_shipping_zone_methods';
-		$method_ids = $wpdb->get_col( $wpdb->prepare(
-			"SELECT method_id FROM {$table} WHERE zone_id = %d AND is_enabled = 1",
-			$zone->get_id()
-		) );
-		if ( ! is_array( $method_ids ) || [] === $method_ids ) { return false; }
-		foreach ( $method_ids as $id ) {
-			if ( ! in_array( $id, self::CORE_SHIPPING_METHODS, true ) ) { return false; }
-		}
-		return true;
-	}
 
 	/** Missing address fields must not silently select a broader zone or tax. */
 	private static function incomplete_destination_reason( string $country, string $state, string $postcode, string $city, bool $requires_shipping ): ?string {
@@ -291,10 +277,8 @@ final class KaliCart_Bridge_Quote {
 		}
 		$incomplete = self::incomplete_destination_reason( $country, $state, $postcode, $city, $requires_shipping );
 		if ( null !== $incomplete ) { return self::unknown( $incomplete ); }
-		$shipping_counts = $requires_shipping ? get_transient( 'wc_shipping_method_count' ) : null;
-		if ( $requires_shipping && is_array( $shipping_counts ) && (int) $shipping_counts['legacy'] > 0 ) {
-			return self::unknown( 'shipping_method_not_verifiable' );
-		}
+		// 1.0.154: no pre-check on legacy methods or on the zone's method list. The rates below are WooCommerce's
+		// own calculation; SQL writes and HTTP are blocked during it, and every returned rate declares its method.
 
 		$previous_cart = WC()->cart;
 		$previous_session = WC()->session;
@@ -319,13 +303,26 @@ final class KaliCart_Bridge_Quote {
 			remove_filter( 'woocommerce_cart_session_initialize', $disable_session_hooks );
 			WC()->cart = $temp_cart;
 			$temp_cart->set_cart_contents( $contents );
-			if ( $requires_shipping ) {
-				$packages = $temp_cart->get_shipping_packages();
-				if ( 1 !== count( $packages ) || ! self::core_shipping_only( reset( $packages ) ) ) {
-					return self::unknown( 'shipping_method_not_verifiable' );
-				}
+			if ( $requires_shipping && 1 !== count( $temp_cart->get_shipping_packages() ) ) {
+				return self::unknown( 'shipping_packages_not_single' );
 			}
 			$temp_cart->calculate_totals();
+			// A delivered total must not be the pickup price: when WooCommerce preselects pickup and a delivery
+			// rate exists, recalculate with the cheapest delivery rate (the buyer can still pick up at checkout).
+			if ( $requires_shipping ) {
+				$first = $shipping->get_packages();
+				$delivery = [];
+				foreach ( ( $first[0]['rates'] ?? [] ) as $rate ) {
+					if ( ! in_array( $rate->get_method_id(), self::PICKUP_METHODS, true ) ) { $delivery[] = $rate; }
+				}
+				$chosen = (array) WC()->session->get( 'chosen_shipping_methods', [] );
+				$chosen_rate = isset( $chosen[0] ) ? ( $first[0]['rates'][ $chosen[0] ] ?? null ) : null;
+				if ( $delivery && ( ! $chosen_rate || in_array( $chosen_rate->get_method_id(), self::PICKUP_METHODS, true ) ) ) {
+					usort( $delivery, static fn( $a, $b ) => (float) $a->get_cost() <=> (float) $b->get_cost() );
+					WC()->session->set( 'chosen_shipping_methods', [ $delivery[0]->get_id() ] );
+					$temp_cart->calculate_totals();
+				}
+			}
 			$calculated_contents = $temp_cart->get_cart();
 			if ( count( $calculated_contents ) !== count( $contents ) || $temp_cart->get_applied_coupons() ) {
 				return self::unknown( 'cart_lines_changed' );
@@ -344,13 +341,15 @@ final class KaliCart_Bridge_Quote {
 				return self::unknown( 'shipping_rate_unavailable' );
 			}
 			$rates = [];
+			$third_party_rates = false;
 			$selected_rate_ids = [];
 			foreach ( $packages as $package ) {
 				foreach ( $package['rates'] ?? [] as $rate ) {
-					if ( ! in_array( $rate->get_method_id(), self::CORE_SHIPPING_METHODS, true ) ) {
-						return self::unknown( 'shipping_method_not_verifiable' );
-					}
-					$rates[] = [ 'id' => $rate->get_id(), 'label' => $rate->get_label(), 'cost' => wc_format_decimal( $rate->get_cost(), wc_get_price_decimals() ) ];
+					$third_party = ! in_array( $rate->get_method_id(), self::CORE_SHIPPING_METHODS, true );
+					$third_party_rates = $third_party_rates || $third_party;
+					$rates[] = [ 'id' => $rate->get_id(), 'method_id' => $rate->get_method_id(), 'label' => $rate->get_label(),
+						'cost' => wc_format_decimal( $rate->get_cost(), wc_get_price_decimals() ),
+						'pickup' => in_array( $rate->get_method_id(), self::PICKUP_METHODS, true ), 'third_party' => $third_party ];
 				}
 			}
 			foreach ( $temp_cart->get_shipping_methods() as $selected_rate ) {
@@ -383,7 +382,8 @@ final class KaliCart_Bridge_Quote {
 				'shipping' => wc_format_decimal( $temp_cart->get_shipping_total(), wc_get_price_decimals() ),
 				'tax' => wc_format_decimal( $temp_cart->get_total_tax(), wc_get_price_decimals() ),
 				'total' => wc_format_decimal( $temp_cart->get_total( 'edit' ), wc_get_price_decimals() ),
-				'rates' => $rates, 'selected_rate_ids' => $selected_rate_ids,
+				'rates' => $rates, 'selected_rate_ids' => $selected_rate_ids, 'third_party_rates' => $third_party_rates,
+				'rate_source' => 'woocommerce_cart_calculation',
 				'calculated_at' => gmdate( 'c' ), 'checkout_may_change' => true,
 			];
 		} catch ( Throwable $error ) {

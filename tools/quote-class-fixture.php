@@ -1,7 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) || ! class_exists( 'WC_Cart' ) ) { throw new RuntimeException( 'Isolated WooCommerce fixture required.' ); }
 if ( ! class_exists( 'KaliCart_Bridge_Quote' ) ) {
-	require_once '/root/worktrees/bridge-151-quote/includes/class-checkout-quote.php';
+	require_once dirname( __DIR__ ) . '/includes/class-checkout-quote.php';
 }
 
 $product = new WC_Product_Simple();
@@ -190,10 +190,33 @@ try {
 			[ [ 'product_id' => $product_id, 'quantity' => 2 ] ],
 			[ 'country' => 'FR', 'postcode' => '75001' ]
 		);
-		$checks['unknown_method_rejected'] = 'unknown' === ( $unknown_method['status'] ?? null )
-			&& 'shipping_method_not_verifiable' === ( $unknown_method['reason'] ?? null );
+		// 1.0.154: a zone row whose plugin is not loaded is invisible to WooCommerce checkout too; the quote
+		// carries only the rates WooCommerce computes, each with its method_id.
+		$checks['unloaded_method_ignored_like_checkout'] = 'quoted' === ( $unknown_method['status'] ?? null )
+			&& '54.00' === ( $unknown_method['total'] ?? null )
+			&& [ 'flat_rate' ] === array_values( array_unique( array_column( $unknown_method['rates'] ?? [], 'method_id' ) ) )
+			&& false === ( $unknown_method['third_party_rates'] ?? null );
 	} finally {
 		$wpdb->delete( $table, [ 'instance_id' => $unknown_method_row ] );
+	}
+	// 1.0.154: when WooCommerce preselects pickup, the delivered total uses the cheapest delivery rate.
+	$pickup_instance = $zone->add_shipping_method( 'local_pickup' );
+	$pickup_option = 'woocommerce_local_pickup_' . $pickup_instance . '_settings';
+	update_option( $pickup_option, [ 'title' => 'Fixture pickup', 'cost' => '0', 'tax_status' => 'none' ] );
+	$wpdb->update( $table, [ 'method_order' => -1 ], [ 'instance_id' => $pickup_instance ] );
+	WC_Cache_Helper::get_transient_version( 'shipping', true );
+	try {
+		$with_pickup = KaliCart_Bridge_Quote::calculate(
+			[ [ 'product_id' => $product_id, 'quantity' => 2 ] ],
+			[ 'country' => 'FR', 'postcode' => '75001' ]
+		);
+		$methods = array_column( $with_pickup['rates'] ?? [], 'method_id' );
+		$checks['pickup_not_used_as_delivered_total'] = 'quoted' === ( $with_pickup['status'] ?? null )
+			&& in_array( 'local_pickup', $methods, true ) && '54.00' === ( $with_pickup['total'] ?? null );
+	} finally {
+		$zone->delete_shipping_method( $pickup_instance );
+		delete_option( $pickup_option );
+		WC_Cache_Helper::get_transient_version( 'shipping', true );
 	}
 	update_option( 'kalicart_bridge_quote_enabled', true );
 	KaliCart_Bridge_Quote::init();

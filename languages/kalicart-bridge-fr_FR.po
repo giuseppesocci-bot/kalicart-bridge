@@ -2681,3 +2681,12 @@ msgstr "Devis du panier WooCommerce"
 #: admin/admin-page.php
 msgid "Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown."
 msgstr "Permet aux agents de demander un devis des frais de livraison et des taxes pour un panier et une destination choisis. Utilise un panier WooCommerce temporaire ; aucune commande ni session de paiement n’est créée. Si le calcul est indisponible, le résultat est inconnu."
+
+msgid "Delivered-total quotes and checkout handoff are now on, so AI agents can state your real price including shipping. The buyer still completes every order on your checkout."
+msgstr "Les devis avec total livré et le passage au paiement sont désormais actifs : les agents IA peuvent annoncer votre prix réel, livraison comprise. L'acheteur finalise toujours la commande dans votre page de paiement."
+
+msgid "Review settings"
+msgstr "Vérifier les réglages"
+
+msgid "Dismiss"
+msgstr "Masquer"
