@@ -199,6 +199,34 @@ try {
 	} finally {
 		$wpdb->delete( $table, [ 'instance_id' => $unknown_method_row ] );
 	}
+	// 1.0.155: a cart hook that uses the full WooCommerce session API (common in pricing plugins) is supported.
+	$session_api_hook = static function () {
+		if ( WC()->session ) { WC()->session->has_session(); WC()->session->get_customer_unique_id(); WC()->session->set( 'kali_probe', 1 ); }
+	};
+	add_action( 'woocommerce_cart_calculate_fees', $session_api_hook );
+	try {
+		$with_session_api = KaliCart_Bridge_Quote::calculate(
+			[ [ 'product_id' => $product_id, 'quantity' => 2 ] ],
+			[ 'country' => 'FR', 'postcode' => '75001' ]
+		);
+		$checks['session_api_hook_quoted'] = 'quoted' === ( $with_session_api['status'] ?? null )
+			&& '54.00' === ( $with_session_api['total'] ?? null ) && $old_session === WC()->session;
+	} finally {
+		remove_action( 'woocommerce_cart_calculate_fees', $session_api_hook );
+	}
+	// 1.0.155: a failing calculation states the error type and the plugin it came from.
+	$failing_hook = static function () { throw new RuntimeException( 'fixture failure' ); };
+	add_action( 'woocommerce_cart_calculate_fees', $failing_hook );
+	try {
+		$failed = KaliCart_Bridge_Quote::calculate(
+			[ [ 'product_id' => $product_id, 'quantity' => 2 ] ],
+			[ 'country' => 'FR', 'postcode' => '75001' ]
+		);
+		$checks['failure_diagnostic'] = 'calculation_failed' === ( $failed['reason'] ?? null )
+			&& 'RuntimeException' === ( $failed['diagnostic']['error'] ?? null );
+	} finally {
+		remove_action( 'woocommerce_cart_calculate_fees', $failing_hook );
+	}
 	// 1.0.154: when WooCommerce preselects pickup, the delivered total uses the cheapest delivery rate.
 	$pickup_instance = $zone->add_shipping_method( 'local_pickup' );
 	$pickup_option = 'woocommerce_local_pickup_' . $pickup_instance . '_settings';

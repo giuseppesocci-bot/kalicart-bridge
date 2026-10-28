@@ -127,6 +127,55 @@ final class KaliCart_Bridge_Quote {
 	}
 
 
+	/**
+	 * 1.0.155: the temporary session is a full WooCommerce session handler, so cart hooks of other plugins find the
+	 * API they expect (has_session, get_customer_unique_id, cookies...). Nothing is persisted: no cookie, no
+	 * session row, no cleanup; data lives in memory for this one calculation.
+	 */
+	private static function temporary_session(): WC_Session {
+		if ( ! class_exists( 'WC_Session_Handler' ) ) {
+			return new class extends WC_Session {};
+		}
+		return new class extends WC_Session_Handler {
+			public function __construct() {
+				parent::__construct();
+				$this->_customer_id = 't_' . substr( md5( uniqid( 'kalicart-quote', true ) ), 0, 30 );
+				$this->_data = [];
+			}
+			public function init() {}
+			public function init_session_cookie() {}
+			public function maybe_set_customer_session_cookie() {}
+			public function set_customer_session_cookie( $set ) {}
+			public function has_session() { return false; }
+			public function get_session_cookie() { return false; }
+			public function save_data( $old_session_key = '' ) {}
+			public function destroy_session() { $this->_data = []; }
+			public function forget_session() { $this->_data = []; }
+			public function cleanup_sessions() {}
+			public function delete_session( $customer_id ) {}
+			public function update_session_timestamp( $customer_id, $timestamp ) {}
+			public function destroy_session_if_empty() {}
+			public function maybe_update_nonce_user_logged_out( $uid, $action ) { return $uid; }
+		};
+	}
+
+	/** Short, non-sensitive reason for a failed calculation: error type and the plugin it came from. */
+	private static function diagnostic( Throwable $error ): array {
+		$out = [ 'error' => ( new ReflectionClass( $error ) )->getShortName() ];
+		if ( preg_match( '/Call to undefined method [\\\w@]+::(\w+)\(\)/', $error->getMessage(), $m ) ) {
+			$out['undefined_method'] = $m[1];
+		}
+		$plugins = wp_normalize_path( WP_PLUGIN_DIR ) . '/';
+		foreach ( array_merge( [ [ 'file' => $error->getFile() ] ], $error->getTrace() ) as $frame ) {
+			$file = isset( $frame['file'] ) ? wp_normalize_path( (string) $frame['file'] ) : '';
+			if ( 0 === strpos( $file, $plugins ) ) {
+				$slug = strtok( substr( $file, strlen( $plugins ) ), '/' );
+				if ( $slug && 'kalicart-bridge' !== $slug && 'woocommerce' !== $slug ) { $out['plugin'] = sanitize_key( $slug ); break; }
+			}
+		}
+		return $out;
+	}
+
 	/** Missing address fields must not silently select a broader zone or tax. */
 	private static function incomplete_destination_reason( string $country, string $state, string $postcode, string $city, bool $requires_shipping ): ?string {
 		global $wpdb;
@@ -195,7 +244,8 @@ final class KaliCart_Bridge_Quote {
 			$result = self::calculate_guarded( $items, $destination );
 			return $side_effects ? self::unknown( 'side_effect_blocked' ) : $result;
 		} catch ( Throwable $error ) {
-			return self::unknown( $side_effects ? 'side_effect_blocked' : 'calculation_failed' );
+			return self::unknown( $side_effects ? 'side_effect_blocked' : 'calculation_failed' )
+				+ ( $side_effects ? [] : [ 'diagnostic' => self::diagnostic( $error ) ] );
 		} finally {
 			remove_filter( 'query', $read_only_sql, PHP_INT_MIN );
 			remove_filter( 'pre_http_request', $no_http, PHP_INT_MIN );
@@ -288,7 +338,7 @@ final class KaliCart_Bridge_Quote {
 		$disable_session_hooks = static function() { return false; };
 		$temp_cart = null;
 		try {
-			WC()->session = new class extends WC_Session {};
+			WC()->session = self::temporary_session();
 			WC()->customer = new WC_Customer( 0, true );
 			WC()->customer->set_shipping_country( $country );
 			WC()->customer->set_shipping_state( $state );
@@ -387,7 +437,7 @@ final class KaliCart_Bridge_Quote {
 				'calculated_at' => gmdate( 'c' ), 'checkout_may_change' => true,
 			];
 		} catch ( Throwable $error ) {
-			return self::unknown( 'calculation_failed' );
+			return self::unknown( 'calculation_failed' ) + [ 'diagnostic' => self::diagnostic( $error ) ];
 		} finally {
 			remove_filter( 'woocommerce_cart_session_initialize', $disable_session_hooks );
 			if ( $temp_cart ) { self::remove_cart_hooks( $temp_cart ); }
