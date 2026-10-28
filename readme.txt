@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.154
+Stable tag: 1.0.155
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,12 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.155 =
+**Basket quotes work alongside pricing and discount plugins that use the WooCommerce session.**
+
+* The temporary cart used for a quote now has the full WooCommerce session interface, kept in memory only: nothing is saved, no cookie is set and the customer's real session is untouched. Plugins that read or write session data while prices are calculated (for example dynamic pricing and discount rules) now produce a quote instead of an error.
+* When a quote still cannot be calculated, the response carries a short diagnostic (error type and, when identifiable, the plugin involved) so the cause can be fixed without guessing. No paths, data or messages from the shop are exposed.
 
 = 1.0.154 =
 **Delivered-total quotes and checkout handoff are on by default, calculated by WooCommerce.**

@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-28 - version 1.0.155
+
+* The temporary cart used for a quote now has the full WooCommerce session interface, kept in memory only: nothing is saved, no cookie is set and the customer's real session is untouched. Plugins that read or write session data while prices are calculated (for example dynamic pricing and discount rules) now produce a quote instead of an error.
+* When a quote still cannot be calculated, the response carries a short diagnostic (error type and, when identifiable, the plugin involved) so the cause can be fixed without guessing. No paths, data or messages from the shop are exposed.
+
+
 2026-10-27 - version 1.0.154
 
 * The basket quote returns WooCommerce's own calculation for every shipping method WooCommerce applies, including legacy and third-party methods. Each rate declares its method, whether it is pickup, and whether it comes from a third-party plugin. Database writes and outbound HTTP remain blocked during the calculation.
