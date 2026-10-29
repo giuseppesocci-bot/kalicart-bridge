@@ -1,7 +1,7 @@
 <?php
 /**
  * KaliCart Bridge 1.0.138 — installation identity, end to end against a
- * KaliCart Global identity endpoint (CONTRATTO REVISIONE 2).
+ * KaliCart Global identity endpoint.
  *
  * Run with a Global test endpoint (identity routes only, observe mode):
  *   KALICART_IDENTITY_TEST_TRANSPORT=http://127.0.0.1:3099 \

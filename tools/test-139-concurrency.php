@@ -1,6 +1,6 @@
 <?php
 /**
- * 1.0.139, contract §16.4 (collaudo ChatGPT 07:41): no lost dirty marks.
+ * 1.0.139: no lost dirty marks under concurrency.
  *  A. N real processes mark N distinct buckets at the same instant: all N stay.
  *  B. Same bucket from M processes at once: one marker, with a new token.
  *  C. A change (from another real process) during publish of a DIRTY job: stays dirty, build queued.
@@ -38,34 +38,34 @@ $spawn = function ( array $php_list ) use ( $wp, $path ) {
 	foreach ( $procs as $k => $p ) {
 		$out = stream_get_contents( $pipes_all[ $k ][1] ) . stream_get_contents( $pipes_all[ $k ][2] );
 		$rc  = proc_close( $p );
-		if ( 0 !== $rc || '' !== trim( $out ) ) { $bad++; echo "  [figlio $k rc=$rc] " . substr( trim( $out ), 0, 300 ) . "\n"; }
+		if ( 0 !== $rc || '' !== trim( $out ) ) { $bad++; echo "  [child $k rc=$rc] " . substr( trim( $out ), 0, 300 ) . "\n"; }
 	}
 	return $bad;
 };
 $cleanup();
-$ok( '' !== $wp, "wp-cli trovato ($wp)" );
+$ok( '' !== $wp, "wp-cli found ($wp)" );
 // Isolation: no real build (WP Cron / AS) may consume the markers while A and B count them
-// (first run 07:48: action 11178 ran via WP Cron mid-test and legitimately cleared 2).
+// (an earlier run saw a WP Cron action run mid-test and legitimately clear two markers).
 foreach ( as_get_scheduled_actions( [ 'hook' => $S::HOOK_BUILD, 'group' => $S::GROUP, 'status' => ActionScheduler_Store::STATUS_PENDING, 'per_page' => 50 ], 'ids' ) as $aid ) { ActionScheduler::store()->cancel_action( $aid ); }
-$held = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')", $S::LOCK_KEY, time() . ':test-isolamento' ) );
-$ok( 1 === (int) $held, 'lock del build tenuto dal test durante A e B' );
+$held = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')", $S::LOCK_KEY, time() . ':test-isolation' ) );
+$ok( 1 === (int) $held, 'build lock held by the test during A and B' );
 
 // A. distinct buckets, all at once.
 $N = 24;
 $spawn( array_map( function ( $i ) use ( $BASE ) { return "KaliCart_Bridge_Snapshot::mark_dirty(" . ( $BASE + $i ) . ");"; }, range( 0, $N - 1 ) ) );
 $d = array_filter( $S::dirty_list(), function ( $b ) use ( $BASE ) { return $b >= $BASE && $b < $BASE + 100; }, ARRAY_FILTER_USE_KEY );
-$ok( count( $d ) === $N, "A: $N processi su $N bucket distinti -> " . count( $d ) . " marcatori (nessuna modifica persa)" );
-$ok( count( array_unique( $d ) ) === $N, 'A: token tutti distinti' );
+$ok( count( $d ) === $N, "A: $N processes on $N distinct buckets -> " . count( $d ) . " markers (no change lost)" );
+$ok( count( array_unique( $d ) ) === $N, 'A: all tokens distinct' );
 
 // B. same bucket, many processes.
 $M  = 12;
 $e0 = $S::mark_dirty( $BASE + 500 );
 $spawn( array_fill( 0, $M, 'KaliCart_Bridge_Snapshot::mark_dirty(' . ( $BASE + 500 ) . ');' ) );
 $e1 = $S::dirty_list()[ $BASE + 500 ] ?? null;
-$ok( 1 === count( array_filter( array_keys( $S::dirty_list() ), function ( $b ) use ( $BASE ) { return $b === $BASE + 500; } ) ), "B: $M processi sullo stesso bucket -> un solo marcatore" );
-$ok( isset( $S::dirty_list()[ $BASE + 500 ] ) && $e1 !== $e0, 'B: il marcatore porta un token nuovo (non quello di prima)' );
+$ok( 1 === count( array_filter( array_keys( $S::dirty_list() ), function ( $b ) use ( $BASE ) { return $b === $BASE + 500; } ) ), "B: $M processes on the same bucket -> a single marker" );
+$ok( isset( $S::dirty_list()[ $BASE + 500 ] ) && $e1 !== $e0, 'B: the marker carries a new token (not the previous one)' );
 $cleanup();
-$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value LIKE %s", $S::LOCK_KEY, '%:test-isolamento' ) );
+$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value LIKE %s", $S::LOCK_KEY, '%:test-isolation' ) );
 
 // Settle: publish once so the next job is a DIRTY job.
 $run = function () use ( $S ) { for ( $i = 0; $i < 60; $i++ ) { $S::build(); if ( empty( get_option( $S::OPTION )['job'] ) ) { break; } } };
@@ -89,11 +89,11 @@ add_action( 'kalicart_snapshot_before_clear_dirty', $hook );
 $run();
 remove_action( 'kalicart_snapshot_before_clear_dirty', $hook );
 $after = $S::dirty_list()[ $b0 ] ?? null;
-$ok( 1 === $fired, 'C: pubblicazione di un lavoro dirty eseguita, modifica concorrente iniettata' );
-$ok( null !== $after && $after !== $seen, "C: il bucket $b0 modificato durante publish resta sporco (token nuovo)" );
-$ok( count( $pending() ) >= 1, 'C: un nuovo passo e\' in coda' );
+$ok( 1 === $fired, 'C: publish of a dirty job ran, concurrent change injected' );
+$ok( null !== $after && $after !== $seen, "C: bucket $b0 changed during publish stays dirty (new token)" );
+$ok( count( $pending() ) >= 1, 'C: a new step is queued' );
 $run();
-$ok( ! isset( $S::dirty_list()[ $b0 ] ), 'C: il passo successivo lo ripulisce' );
+$ok( ! isset( $S::dirty_list()[ $b0 ] ), 'C: the next step clears it' );
 
 // D. full job; mark + daily request during publish.
 foreach ( $pending() as $aid ) { ActionScheduler::store()->cancel_action( $aid ); }
@@ -107,13 +107,13 @@ add_action( 'kalicart_snapshot_before_clear_dirty', $hook );
 $run();
 remove_action( 'kalicart_snapshot_before_clear_dirty', $hook );
 $full_row = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $S::FULL_KEY ) );
-$ok( 1 === $fired, 'D: pubblicazione di un lavoro full eseguita, modifiche concorrenti iniettate' );
-$ok( isset( $S::dirty_list()[ $b0 ] ), "D: il bucket $b0 modificato durante la pubblicazione full resta sporco" );
-$ok( null !== $full_row && '1' !== $full_row, 'D: la nuova richiesta giornaliera sopravvive (la vecchia e\' stata consumata)' );
+$ok( 1 === $fired, 'D: publish of a full job ran, concurrent changes injected' );
+$ok( isset( $S::dirty_list()[ $b0 ] ), "D: bucket $b0 changed during the full publish stays dirty" );
+$ok( null !== $full_row && '1' !== $full_row, 'D: the new daily request survives (the old one was consumed)' );
 $run();
-$ok( ! $S::dirty_list() && null === $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $S::FULL_KEY ) ), 'D: il lavoro successivo consuma tutto' );
+$ok( ! $S::dirty_list() && null === $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $S::FULL_KEY ) ), 'D: the next job consumes everything' );
 $st = get_option( $S::OPTION );
-$ok( 'ok' === ( $st['state'] ?? '' ) && ! isset( $st['dirty'] ) && ! isset( $st['full_requested'] ), 'stato finale ok, nessuna chiave dirty nell\'opzione principale' );
+$ok( 'ok' === ( $st['state'] ?? '' ) && ! isset( $st['dirty'] ) && ! isset( $st['full_requested'] ), 'final state ok, no dirty key in the main option' );
 foreach ( $pending() as $aid ) { ActionScheduler::store()->cancel_action( $aid ); }
 $cleanup();
 echo "\nsnapshot-concurrency-139: " . ( $fails ? 'FAIL' : 'OK' ) . " (" . ( $n - $fails ) . "/$n)\n";

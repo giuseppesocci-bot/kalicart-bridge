@@ -1,6 +1,6 @@
 <?php
 /**
- * Generates the shared signed fixture of CONTRATTO-1.0.139-SNAPSHOT §14.3:
+ * Generates the shared signed snapshot fixture:
  * manifest + 2 shards produced by PHP, verified by KaliCart Global (Node).
  * Deterministic: fixed seed key, fixed timestamps, gzencode (mtime 0).
  * Run: php tools/make-139-snapshot-fixture.php [outdir]

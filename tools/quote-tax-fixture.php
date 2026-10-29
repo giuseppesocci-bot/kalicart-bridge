@@ -1,7 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) || ! class_exists( 'WC_Cart' ) ) { throw new RuntimeException( 'Isolated WooCommerce fixture required.' ); }
 if ( ! class_exists( 'KaliCart_Bridge_Quote' ) ) {
-	require_once '/root/worktrees/bridge-151-quote/includes/class-checkout-quote.php';
+	require_once dirname( __DIR__ ) . '/includes/class-checkout-quote.php';
 }
 
 $previous = [

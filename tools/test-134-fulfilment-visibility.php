@@ -1,15 +1,15 @@
 <?php
 /**
- * KaliCart Bridge 1.0.134 — fulfilment a tre valori e visibilita' di catalogo.
+ * KaliCart Bridge 1.0.134 — three-valued fulfilment and catalog visibility.
  *
  * Run with:
  *   wp eval-file wp-content/plugins/kalicart-bridge/tools/test-134-fulfilment-visibility.php
  *
- * Crea le proprie fixture e le rimuove. Copre le due idee della versione:
- *  - il catalogo e' lo specchio del negozio: dice cosa arriva a casa, cosa si
- *    scarica, cosa si ritira, e non mostra cio' che il merchant ha nascosto;
- *  - un prodotto che non si spedisce non porta con se' le condizioni di
- *    spedizione del negozio, che per lui non esistono.
+ * Creates its own fixtures and removes them. Covers the two ideas of this version:
+ *  - the catalog mirrors the shop: it says what is delivered, what is downloaded
+ *    and what is picked up, and it does not show what the merchant has hidden;
+ *  - a product that is not shipped does not carry the shop's shipping
+ *    conditions, which do not apply to it.
  */
 
 defined( 'ABSPATH' ) || exit( 1 );
@@ -40,7 +40,7 @@ $hidden       = $simple( 'KC134 hidden',       false, false, 'hidden' );
 $search_only  = $simple( 'KC134 searchonly',   false, false, 'search' );
 $catalog_only = $simple( 'KC134 catalogonly',  false, false, 'catalog' );
 
-// Variabile con TUTTE le varianti virtuali e scaricabili -> download.
+// Variable product with ALL variations virtual and downloadable -> download.
 $var = new WC_Product_Variable();
 $var->set_name( 'KC134 variable download' ); $var->set_status( 'publish' );
 $attr = new WC_Product_Attribute();
@@ -56,65 +56,65 @@ foreach ( [ 'PDF', 'EPUB' ] as $fmt ) {
 }
 WC_Product_Variable::sync( $var_id );
 
-// 1.0.136: product_fulfilment() e' confluita in product_delivery(), che rende anche i flag grezzi.
+// 1.0.136: product_fulfilment() was merged into product_delivery(), which also returns the raw flags.
 $ful = new ReflectionMethod( 'KaliCart_Bridge_Catalog_Engine', 'product_delivery' );
 $ful->setAccessible( true );
 $fulfilment = static fn( int $id ): string => (string) ( $ful->invoke( null, wc_get_product( $id ) )['fulfilment'] ?? '' );
 
-// ── 1. I tre modi di ottenere un prodotto ───────────────────────────────────
-$check( 'shipped'      === $fulfilment( $shipped ),      'un prodotto spedibile e\' shipped' );
-$check( 'shipped'      === $fulfilment( $ship_with_dl ), 'scaricabile MA spedibile resta shipped: downloadable non implica non spedibile' );
-$check( 'downloadable' === $fulfilment( $download ),     'virtuale e scaricabile e\' downloadable' );
-// 1.0.136 (CONSEGNA-VIRTUALE-v1): questa asserzione diceva pickup_only, "esiste, quindi si
-// ritira". Era sbagliata: VIRTUALE e non scaricabile e' una chiave, un corso, un servizio.
-$check( 'virtual'      === $fulfilment( $pickup ),       'virtuale e NON scaricabile e\' virtual, non un oggetto da ritirare' );
-$check( 'downloadable' === $fulfilment( $var_id ),       'variabile con tutte le varianti scaricabili e\' downloadable (il parent Woo direbbe di no)' );
+// ── 1. The three ways to obtain a product ───────────────────────────────────
+$check( 'shipped'      === $fulfilment( $shipped ),      'a shippable product is shipped' );
+$check( 'shipped'      === $fulfilment( $ship_with_dl ), 'downloadable BUT shippable stays shipped: downloadable does not imply not shippable' );
+$check( 'downloadable' === $fulfilment( $download ),     'virtual and downloadable is downloadable' );
+// 1.0.136 (CONSEGNA-VIRTUALE-v1): this assertion used to say pickup_only ("it exists, so it is
+// picked up"). That was wrong: VIRTUAL and not downloadable is a licence key, a course, a service.
+$check( 'virtual'      === $fulfilment( $pickup ),       'virtual and NOT downloadable is virtual, not an item to pick up' );
+$check( 'downloadable' === $fulfilment( $var_id ),       'variable product with all variations downloadable is downloadable (the Woo parent would say no)' );
 
-// ── 2. Nessuna contraddizione sulla spedizione ──────────────────────────────
+// ── 2. No contradiction about shipping ──────────────────────────────────────
 foreach ( [ $download, $pickup ] as $id ) {
 	$s = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $id ), 'detail' )['shipping'] ?? [];
-	$check( false === ( $s['shipping_required'] ?? null ), "shipping_required false per {$id}" );
+	$check( false === ( $s['shipping_required'] ?? null ), "shipping_required false for {$id}" );
 	foreach ( [ 'free_shipping_available', 'free_shipping_thresholds', 'free_shipping_eligible_by_product_price', 'amount_to_nearest_free_shipping_threshold' ] as $k ) {
-		$check( ! array_key_exists( $k, $s ), "un prodotto non spedibile non deve portare {$k} ({$id})" );
+		$check( ! array_key_exists( $k, $s ), "a non-shippable product must not carry {$k} ({$id})" );
 	}
-	$check( ! empty( $s['delivery_note'] ), "serve una spiegazione di come si ottiene ({$id})" );
+	$check( ! empty( $s['delivery_note'] ), "an explanation of how it is obtained is required ({$id})" );
 }
 $shipped_block = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $shipped ), 'detail' )['shipping'] ?? [];
-$check( array_key_exists( 'free_shipping_available', $shipped_block ), 'il prodotto spedibile conserva le condizioni di spedizione' );
+$check( array_key_exists( 'free_shipping_available', $shipped_block ), 'the shippable product keeps its shipping conditions' );
 
-// ── 3. Il summary dichiara come si ottiene ──────────────────────────────────
+// ── 3. The summary states how the product is obtained ───────────────────────
 $sum = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $pickup ), 'summary' );
-$check( 'virtual' === ( $sum['fulfilment'] ?? null ), 'fulfilment e\' nel summary: e\' li\' che l\'agente sceglie' );
+$check( 'virtual' === ( $sum['fulfilment'] ?? null ), 'fulfilment is in the summary: that is where the agent chooses' );
 
-// ── 4. Lo specchio: visibilita' di catalogo ─────────────────────────────────
+// ── 4. The mirror: catalog visibility ───────────────────────────────────────
 $ids_of = static function ( array $args ): array {
 	return array_column( KaliCart_Bridge_Catalog_Engine::query_products( $args )['products'] ?? [], 'id' );
 };
-// Lo specchio: il Bridge mostra il prodotto dove il negozio lo mostrerebbe.
-// "Nascosto" sparisce da tutto; gli altri due stati limitano DOVE si trova, non
-// se esiste, perche' su WooCommerce quei prodotti sono in vendita.
+// The mirror: the Bridge shows a product where the shop would show it.
+// "Hidden" disappears everywhere; the other two states limit WHERE it is found, not
+// whether it exists, because on WooCommerce those products are for sale.
 $found = $ids_of( [ 'search' => 'KC134', 'per_page' => 50, 'fields' => 'summary' ] );
-$check( in_array( $search_only, $found, true ),   '"solo ricerca" si trova cercandolo, come sul sito' );
-$check( in_array( $shipped, $found, true ),       'un prodotto visibile si trova cercandolo' );
-$check( ! in_array( $catalog_only, $found, true ),'"solo negozio" e\' escluso dalla ricerca, come sul sito' );
-$check( ! in_array( $hidden, $found, true ),      '"nascosto" non compare nella ricerca' );
+$check( in_array( $search_only, $found, true ),   '"search only" is found by searching, as on the site' );
+$check( in_array( $shipped, $found, true ),       'a visible product is found by searching' );
+$check( ! in_array( $catalog_only, $found, true ),'"shop only" is excluded from search, as on the site' );
+$check( ! in_array( $hidden, $found, true ),      '"hidden" does not appear in search' );
 
 $browsed = $ids_of( [ 'per_page' => 100, 'fields' => 'summary' ] );
-$check( in_array( $catalog_only, $browsed, true ),   '"solo negozio" compare in navigazione' );
-$check( in_array( $shipped, $browsed, true ),        'un prodotto visibile compare normalmente' );
-$check( ! in_array( $search_only, $browsed, true ),  '"solo ricerca" non compare in navigazione' );
-$check( ! in_array( $hidden, $browsed, true ),       '"nascosto" non compare in navigazione' );
+$check( in_array( $catalog_only, $browsed, true ),   '"shop only" appears when browsing' );
+$check( in_array( $shipped, $browsed, true ),        'a visible product appears normally' );
+$check( ! in_array( $search_only, $browsed, true ),  '"search only" does not appear when browsing' );
+$check( ! in_array( $hidden, $browsed, true ),       '"hidden" does not appear when browsing' );
 
-// Il fatto va esposto a Global, che oggi non lo riceve affatto.
+// The fact must be exposed to Global, which did not receive it before this version.
 $full = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $search_only ), 'detail' );
-$check( 'search' === ( $full['catalog_visibility'] ?? null ), 'il payload porta catalog_visibility cosi\' com\'e\'' );
+$check( 'search' === ( $full['catalog_visibility'] ?? null ), 'the payload carries catalog_visibility as it is' );
 
 // ── Cleanup ─────────────────────────────────────────────────────────────────
 foreach ( array_reverse( array_filter( $created ) ) as $id ) {
 	wp_delete_post( (int) $id, true );
 }
 $leftover = get_posts( [ 'post_type' => [ 'product', 'product_variation' ], 'post_status' => 'any', 'fields' => 'ids', 'numberposts' => -1, 's' => 'KC134' ] );
-$check( empty( $leftover ), 'ogni fixture creata da questo test deve essere rimossa' );
+$check( empty( $leftover ), 'every fixture created by this test must be removed' );
 
 if ( empty( $failures ) ) {
 	echo 'PASS test-134-fulfilment-visibility' . "\n";

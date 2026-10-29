@@ -1,6 +1,6 @@
 <?php
 /**
- * 1.0.139: decision_v1 validation and Site Health tests (contract §7, §10).
+ * 1.0.139: decision_v1 validation and Site Health tests.
  * Writes nothing: the identity and snapshot states are overlaid in memory with
  * pre_option_* filters, so the live site and WP-Cron are never touched.
  * Run: wp eval-file wp-content/plugins/kalicart-bridge/tools/test-139-site-health.php
@@ -15,25 +15,25 @@ $base_id = (array) get_option( 'kalicart_bridge_identity', [] );
 $dec = function ( array $o = [] ) { return $o + [ 'version' => 'decision_v1', 'outcome' => 'not_served', 'transport' => 'none', 'reason_code' => 'site_unreachable', 'owner' => 'hosting', 'action' => null, 'measured_at' => '2026-09-28T10:00:00Z' ]; };
 
 // ── 1. validate_decision ──
-$ok( null === $H::validate_decision( null ) && null === $H::validate_decision( 'x' ) && null === $H::validate_decision( [ 'version' => 'decision_v2', 'reason_code' => 'ok_rest' ] ), 'non array / versione diversa: scartata' );
-$ok( null === $H::validate_decision( $dec( [ 'reason_code' => 'Bad Code!' ] ) ) && null === $H::validate_decision( $dec( [ 'reason_code' => str_repeat( 'a', 49 ) ] ) ), 'reason_code fuori formato: scartata' );
+$ok( null === $H::validate_decision( null ) && null === $H::validate_decision( 'x' ) && null === $H::validate_decision( [ 'version' => 'decision_v2', 'reason_code' => 'ok_rest' ] ), 'not an array / different version: discarded' );
+$ok( null === $H::validate_decision( $dec( [ 'reason_code' => 'Bad Code!' ] ) ) && null === $H::validate_decision( $dec( [ 'reason_code' => str_repeat( 'a', 49 ) ] ) ), 'malformed reason_code: discarded' );
 $v = $H::validate_decision( $dec( [ 'action' => [ 'type' => 'push', 'url' => 'https://x' ], 'extra' => 'boh', 'message' => '<b>clicca</b>' ] ) );
-$ok( null === $v['action'] && ! isset( $v['extra'] ) && ! isset( $v['message'] ), 'action forzata a null, campi sconosciuti eliminati' );
-$ok( [ 'version', 'outcome', 'transport', 'reason_code', 'known', 'owner', 'action', 'measured_at' ] === array_keys( $v ), 'solo i campi del contratto' );
-$v = $H::validate_decision( $dec( [ 'outcome' => 'great', 'transport' => 'ftp', 'owner' => 'giuseppe' ] ) );
-$ok( 'unknown' === $v['outcome'] && 'unknown' === $v['transport'] && 'unknown' === $v['owner'], 'enum sconosciuti -> unknown' );
+$ok( null === $v['action'] && ! isset( $v['extra'] ) && ! isset( $v['message'] ), 'action forced to null, unknown fields removed' );
+$ok( [ 'version', 'outcome', 'transport', 'reason_code', 'known', 'owner', 'action', 'measured_at' ] === array_keys( $v ), 'only the contract fields' );
+$v = $H::validate_decision( $dec( [ 'outcome' => 'great', 'transport' => 'ftp', 'owner' => 'example-owner' ] ) );
+$ok( 'unknown' === $v['outcome'] && 'unknown' === $v['transport'] && 'unknown' === $v['owner'], 'unknown enums -> unknown' );
 $v = $H::validate_decision( $dec( [ 'reason_code' => 'future_code_2027' ] ) );
-$ok( false === $v['known'] && 'future_code_2027' === $v['reason_code'], 'codice sconosciuto conservato come etichetta, known=false' );
-$ok( 31 === count( $H::REASONS ) && 31 === count( array_unique( $H::REASONS ) ), '31 reason_code noti, nessun doppione' );
-$ok( '2026-09-28T08:00:00Z' === $H::validate_decision( $dec( [ 'measured_at' => '2026-09-28T10:00:00+02:00' ] ) )['measured_at'] && null === $H::validate_decision( $dec( [ 'measured_at' => 'ieri' ] ) )['measured_at'], 'measured_at normalizzato in UTC, invalido -> null' );
+$ok( false === $v['known'] && 'future_code_2027' === $v['reason_code'], 'unknown code kept as a label, known=false' );
+$ok( 31 === count( $H::REASONS ) && 31 === count( array_unique( $H::REASONS ) ), '31 known reason_code values, no duplicates' );
+$ok( '2026-09-28T08:00:00Z' === $H::validate_decision( $dec( [ 'measured_at' => '2026-09-28T10:00:00+02:00' ] ) )['measured_at'] && null === $H::validate_decision( $dec( [ 'measured_at' => 'not-a-date' ] ) )['measured_at'], 'measured_at normalized to UTC, invalid -> null' );
 
 // ── 2. register ──
 $f = $overlay( 'kalicart_bridge_global_consent', 0 );
-$ok( [] === $H::register( [] ), 'senza consenso nessun test registrato' );
+$ok( [] === $H::register( [] ), 'without consent no test is registered' );
 $clear( 'kalicart_bridge_global_consent', $f );
 $f = $overlay( 'kalicart_bridge_global_consent', 1 );
 $t = $H::register( [] );
-$ok( isset( $t['direct']['kalicart_bridge_heartbeat'], $t['direct']['kalicart_bridge_snapshot'], $t['direct']['kalicart_bridge_decision'] ), 'con consenso tre test diretti' );
+$ok( isset( $t['direct']['kalicart_bridge_heartbeat'], $t['direct']['kalicart_bridge_snapshot'], $t['direct']['kalicart_bridge_decision'] ), 'with consent, three direct tests' );
 $clear( 'kalicart_bridge_global_consent', $f );
 
 $all = [];
@@ -44,18 +44,18 @@ $idv = $base_id; $idv['status'] = 'verified';
 if ( '' === KaliCart_Bridge_Identity::summary()['unavailable'] ) {
 	$idv['last_heartbeat_at'] = time() - 3600;
 	$f = $overlay( 'kalicart_bridge_identity', $idv ); $r = $run( 'test_heartbeat' ); $clear( 'kalicart_bridge_identity', $f );
-	$ok( 'good' === $r['status'], 'heartbeat di un\'ora fa: good' );
+	$ok( 'good' === $r['status'], 'heartbeat from an hour ago: good' );
 	$idv['last_heartbeat_at'] = time() - 5 * DAY_IN_SECONDS;
 	$f = $overlay( 'kalicart_bridge_identity', $idv ); $r = $run( 'test_heartbeat' ); $clear( 'kalicart_bridge_identity', $f );
-	$ok( 'recommended' === $r['status'] && false !== strpos( $r['label'], '5 days' ), 'heartbeat di 5 giorni fa: recommended, 5 days' );
+	$ok( 'recommended' === $r['status'] && false !== strpos( $r['label'], '5 days' ), 'heartbeat from 5 days ago: recommended, 5 days' );
 	$idv['last_heartbeat_at'] = 0;
 	$f = $overlay( 'kalicart_bridge_identity', $idv ); $r = $run( 'test_heartbeat' ); $clear( 'kalicart_bridge_identity', $f );
-	$ok( 'recommended' === $r['status'] && false !== strpos( $r['label'], 'yet' ), 'verificato e mai inviato: recommended' );
+	$ok( 'recommended' === $r['status'] && false !== strpos( $r['label'], 'yet' ), 'verified and never sent: recommended' );
 	$idn = $base_id; $idn['status'] = 'new';
 	$f = $overlay( 'kalicart_bridge_identity', $idn ); $r = $run( 'test_heartbeat' ); $clear( 'kalicart_bridge_identity', $f );
-	$ok( 'good' === $r['status'], 'non ancora verificato: good (parte dopo la verifica)' );
+	$ok( 'good' === $r['status'], 'not yet verified: good (starts after verification)' );
 } else {
-	$ok( false, 'identita\' non disponibile su questo sito: test heartbeat non eseguibili' );
+	$ok( false, 'identity not available on this site: heartbeat tests cannot run' );
 }
 
 // ── 4. snapshot ──
@@ -76,17 +76,17 @@ if ( KaliCart_Bridge_Snapshot::eligible() ) {
 		$ok( $want === $state && ( 'ok' === $want ? 'good' : 'recommended' ) === $r['status'], "snapshot $want -> " . $r['status'] );
 	}
 } else {
-	$ok( false, 'snapshot non eleggibile su questo sito: test snapshot non eseguibili' );
+	$ok( false, 'snapshot not eligible on this site: snapshot tests cannot run' );
 }
 
 // ── 5. decision ──
 $with = function ( $d ) use ( $overlay, $clear, $base_id, $run ) { $i = $base_id; $i['decision'] = $d; $f = $overlay( 'kalicart_bridge_identity', $i ); $r = $run( 'test_decision' ); $clear( 'kalicart_bridge_identity', $f ); return $r; };
-$ok( 'good' === $with( null )['status'], 'nessuna decisione: good' );
+$ok( 'good' === $with( null )['status'], 'no decision: good' );
 $ok( 'good' === $with( $dec( [ 'outcome' => 'served', 'transport' => 'rest', 'reason_code' => 'ok_rest', 'owner' => 'kalicart' ] ) )['status'], 'served/ok_rest: good' );
 $r = $with( $dec( [ 'reason_code' => 'future_code_2027' ] ) );
-$ok( 'good' === $r['status'] && false !== strpos( $r['description'], 'future_code_2027' ), 'codice sconosciuto: good, mostrato come etichetta' );
-$ok( 'good' === $with( $dec( [ 'reason_code' => 'global_import_error', 'owner' => 'kalicart' ] ) )['status'], 'problema lato KaliCart: good, nulla da chiedere al sito' );
-$ok( 'good' === $with( $dec( [ 'reason_code' => 'consent_absent', 'owner' => 'merchant' ] ) )['status'], 'codice senza testo (consenso): good' );
+$ok( 'good' === $r['status'] && false !== strpos( $r['description'], 'future_code_2027' ), 'unknown code: good, shown as a label' );
+$ok( 'good' === $with( $dec( [ 'reason_code' => 'global_import_error', 'owner' => 'kalicart' ] ) )['status'], 'problem on the KaliCart side: good, nothing to ask of the site' );
+$ok( 'good' === $with( $dec( [ 'reason_code' => 'consent_absent', 'owner' => 'merchant' ] ) )['status'], 'code without text (consent): good' );
 $texted = [ 'blocked_by_bot_challenge', 'site_unreachable', 'disallowed_by_robots', 'store_coming_soon', 'site_maintenance', 'snapshot_missing', 'snapshot_expired', 'snapshot_overdue', 'snapshot_stale_cache', 'snapshot_hash_mismatch', 'snapshot_partial', 'snapshot_storage_failure', 'identity_pending', 'identity_failed', 'identity_recovery_pending' ];
 $bad = [];
 foreach ( $texted as $code ) {
@@ -96,19 +96,19 @@ foreach ( $texted as $code ) {
 	}
 	if ( 'good' !== $with( $dec( [ 'reason_code' => $code, 'owner' => 'merchant', 'outcome' => 'served' ] ) )['status'] ) { $bad[] = "$code/served"; }
 }
-$ok( [] === $bad, count( $texted ) . ' codici con testo: recommended se merchant/hosting e non servito, good se servito ' . implode( ',', $bad ) );
+$ok( [] === $bad, count( $texted ) . ' codes with text: recommended if merchant/hosting and not served, good if served ' . implode( ',', $bad ) );
 
 // ── 6. texts: never critical, never a request ──
-$ok( [] === array_filter( $all, function ( $r ) { return 'critical' === $r['status']; } ), 'nessun risultato critical (' . count( $all ) . ' risultati)' );
-$ok( [] === array_filter( $all, function ( $r ) { return '' !== $r['actions']; } ), 'nessun pulsante/azione nei risultati' );
+$ok( [] === array_filter( $all, function ( $r ) { return 'critical' === $r['status']; } ), 'no critical result (' . count( $all ) . ' results)' );
+$ok( [] === array_filter( $all, function ( $r ) { return '' !== $r['actions']; } ), 'no button/action in the results' );
 $ask = '/\b(please|you should|you must|contact|ask your|configure|change|disable|enable|whitelist|allowlist|allow[- ]?list|add a rule|update your|set up|turn off|turn on)\b/i';
 $hit = [];
 foreach ( $all as $r ) { $txt = $r['label'] . ' ' . wp_strip_all_tags( $r['description'] ); if ( preg_match( $ask, $txt, $m ) ) { $hit[] = $r['test'] . ':' . $m[0]; } }
 $src = (string) file_get_contents( KALICART_BRIDGE_DIR . 'includes/class-site-health.php' );
 preg_match_all( "/__\\(\\s*'((?:[^'\\\\]|\\\\.)*)'/", $src, $mm );
 foreach ( $mm[1] as $s ) { if ( preg_match( $ask, stripslashes( $s ), $m ) ) { $hit[] = 'src:' . $m[0] . ' in "' . substr( $s, 0, 60 ) . '"'; } }
-$ok( [] === $hit && count( $mm[1] ) > 30, 'nessun testo chiede di cambiare regole o configurazione (' . count( $mm[1] ) . ' stringhe) ' . implode( ' | ', array_unique( $hit ) ) );
+$ok( [] === $hit && count( $mm[1] ) > 30, 'no text asks to change rules or configuration (' . count( $mm[1] ) . ' strings) ' . implode( ' | ', array_unique( $hit ) ) );
 
-$ok( (array) get_option( 'kalicart_bridge_identity', [] ) === $base_id, 'stato identita\' reale intatto' );
+$ok( (array) get_option( 'kalicart_bridge_identity', [] ) === $base_id, 'real identity state untouched' );
 restore_previous_locale();
 echo "\nsite-health-139: " . ( $fails ? "FAIL" : "OK" ) . " (" . ( $n - $fails ) . "/$n)\n";

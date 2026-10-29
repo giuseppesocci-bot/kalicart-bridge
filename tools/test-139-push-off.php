@@ -1,6 +1,6 @@
 <?php
 /**
- * 1.0.139: push banner/badge/Site Health present but off (contract §9, BOZZA §9 properties).
+ * 1.0.139: push banner/badge/Site Health present but off (off by design in this version).
  * Writes nothing: consent is overlaid in memory with pre_option_*.
  * Run: wp eval-file wp-content/plugins/kalicart-bridge/tools/test-139-push-off.php
  */
@@ -14,45 +14,45 @@ $d = function ( array $o = [] ) use ( $H ) { $raw = $o + [ 'version' => 'decisio
 $act = [ 'action' => [ 'type' => 'push_offer' ] ];
 
 // ── 1. off in this build ──
-$ok( false === $P::PUSH_AVAILABLE, 'PUSH_AVAILABLE e\' false (costante, non filtro ne\' opzione)' );
-$ok( false === has_action( 'admin_notices', [ $P, 'render' ] ), 'nessun banner agganciato ad admin_notices' );
+$ok( false === $P::PUSH_AVAILABLE, 'PUSH_AVAILABLE is false (a constant, not a filter or option)' );
+$ok( false === has_action( 'admin_notices', [ $P, 'render' ] ), 'no banner hooked to admin_notices' );
 $src = (string) file_get_contents( KALICART_BRIDGE_DIR . 'includes/class-push-notice.php' );
-$ok( false === strpos( $src, 'apply_filters' ) && false === strpos( $src, "get_option( 'kalicart_bridge_push" ) && false === strpos( $src, 'wp_ajax' ), 'nessun filtro, opzione o handler AJAX per accenderlo o concederlo' );
+$ok( false === strpos( $src, 'apply_filters' ) && false === strpos( $src, "get_option( 'kalicart_bridge_push" ) && false === strpos( $src, 'wp_ajax' ), 'no filter, option or AJAX handler to switch it on or grant it' );
 $f = $consent( 1 );
-$ok( false === $P::should_show( $d( $act ) ) && 0 === $P::badge_count( $d( $act ) ) && null === $P::site_health( $d( $act ) ), 'push_available=false: mai banner, badge o Site Health, anche con action e consenso' );
-$ok( false === $P::should_show( $d() , true ), 'decisione reale 1.0.139 (action forzata a null): mai banner anche con lo switch acceso' );
+$ok( false === $P::should_show( $d( $act ) ) && 0 === $P::badge_count( $d( $act ) ) && null === $P::site_health( $d( $act ) ), 'push_available=false: never a banner, badge or Site Health item, even with an action and consent' );
+$ok( false === $P::should_show( $d() , true ), 'real 1.0.139 decision (action forced to null): never a banner even with the switch on' );
 ob_start(); $P::render(); $out = ob_get_clean();
-$ok( '' === $out, 'render() non stampa nulla' );
+$ok( '' === $out, 'render() prints nothing' );
 
 // ── 2. rules with the switch on (test only) ──
-$ok( true === $P::should_show( $d( $act ), true ) && 1 === $P::badge_count( $d( $act ), true ), 'switch acceso + action + reason noto + hosting: banner e badge 1' );
-$ok( false === $P::should_show( $d( $act + [ 'reason_code' => 'future_code_2027' ] ), true ), 'reason sconosciuto: mai banner' );
-$ok( false === $P::should_show( $d( $act + [ 'owner' => 'kalicart', 'reason_code' => 'global_import_error' ] ), true ) && false === $P::should_show( $d( $act + [ 'owner' => 'kalicart' ] ), true ), 'errore di proprieta\' KaliCart: mai banner' );
-$ok( false === $P::should_show( $d( $act + [ 'outcome' => 'served' ] ), true ), 'negozio servito: mai banner (misura positiva -> ritiro)' );
-$ok( false === $P::should_show( $d( $act + [ 'owner' => 'giuseppe' ] ), true ), 'owner sconosciuto: mai banner' );
-$ok( false === $P::should_show( $d( $act + [ 'reason_code' => 'disallowed_by_robots', 'owner' => 'merchant' ] ), true ) && false === $P::should_show( $d( $act + [ 'reason_code' => 'store_coming_soon', 'owner' => 'merchant' ] ), true ), 'robots / coming soon: il push non li risolve, mai banner' );
-$ok( false === $P::should_show( $d( $act ), true, true ), '"Non ora" / X: nessun banner' );
-$ok( $P::should_show( $d( $act ), true ) === $P::should_show( $d( $act ), true ), 'stesso input -> stesso esito' );
+$ok( true === $P::should_show( $d( $act ), true ) && 1 === $P::badge_count( $d( $act ), true ), 'switch on + action + known reason + hosting: banner and badge 1' );
+$ok( false === $P::should_show( $d( $act + [ 'reason_code' => 'future_code_2027' ] ), true ), 'unknown reason: never a banner' );
+$ok( false === $P::should_show( $d( $act + [ 'owner' => 'kalicart', 'reason_code' => 'global_import_error' ] ), true ) && false === $P::should_show( $d( $act + [ 'owner' => 'kalicart' ] ), true ), 'error owned by KaliCart: never a banner' );
+$ok( false === $P::should_show( $d( $act + [ 'outcome' => 'served' ] ), true ), 'shop served: never a banner (positive measurement -> withdrawn)' );
+$ok( false === $P::should_show( $d( $act + [ 'owner' => 'example-owner' ] ), true ), 'unknown owner: never a banner' );
+$ok( false === $P::should_show( $d( $act + [ 'reason_code' => 'disallowed_by_robots', 'owner' => 'merchant' ] ), true ) && false === $P::should_show( $d( $act + [ 'reason_code' => 'store_coming_soon', 'owner' => 'merchant' ] ), true ), 'robots / coming soon: push does not fix them, never a banner' );
+$ok( false === $P::should_show( $d( $act ), true, true ), '"Not now" / X: no banner' );
+$ok( $P::should_show( $d( $act ), true ) === $P::should_show( $d( $act ), true ), 'same input -> same outcome' );
 $sh = $P::site_health( $d( $act ), true );
-$ok( is_array( $sh ) && 'recommended' === $sh['status'], 'Site Health del push: recommended, mai critical' );
+$ok( is_array( $sh ) && 'recommended' === $sh['status'], 'push Site Health: recommended, never critical' );
 $unset( $f );
 $f = $consent( 0 );
-$ok( false === $P::should_show( $d( $act ), true ), 'consenso A revocato: mai banner' );
+$ok( false === $P::should_show( $d( $act ), true ), 'consent A revoked: never a banner' );
 $unset( $f );
 
 // ── 3. texts ──
 $u = $P::texts( 'unreadable' ); $s = $P::texts( 'stale' );
-$ok( null === $P::texts( 'boh' ) && 3 === count( $u['visible'] ) && 5 === count( $u['expand'] ), 'tre frasi visibili + espansione di cinque' );
-$ok( $u['visible'][0] !== $s['visible'][0] && $u['visible'][2] === $s['visible'][2] && $u['expand'] === $s['expand'] && $u['allow'] === $s['allow'] && $u['not_now'] === $s['not_now'], 'la variante sceglie le prime frasi; domanda, espansione e pulsanti identici' );
-$ok( 1 === substr_count( $s['visible'][0] . ' ' . $s['visible'][1], 'Federated Catalog' ) && 1 === substr_count( $u['visible'][0] . ' ' . $u['visible'][1], 'Federated Catalog' ), 'variante non aggiornato: "Federated Catalog" una volta sola' );
-$ok( 'Allow KaliCart Bridge to send the catalog?' === $u['visible'][2] && 'Allow sending' === $u['allow'] && 'Not now' === $u['not_now'], 'stesso verbo nella domanda e nel pulsante' );
-$ok( false !== strpos( implode( ' ', $u['expand'] ), 'dashboard.kalicart.com' ) && false !== strpos( implode( ' ', $u['expand'] ), 'No customer or order data is sent.' ), 'espansione: destinatario col dominio, nessun dato clienti/ordini' );
-$ok( false === stripos( implode( ' ', $u['visible'] ), 'customer' ) && false === stripos( implode( ' ', $u['visible'] ), 'revoke' ), 'garanzie e revoca solo nell\'espansione' );
-$ok( 64 === strlen( $P::text_hash( $u ) ) && $P::text_hash( $u ) !== $P::text_hash( $s ), 'hash del testo mostrato, diverso per variante' );
+$ok( null === $P::texts( 'boh' ) && 3 === count( $u['visible'] ) && 5 === count( $u['expand'] ), 'three visible sentences + an expansion of five' );
+$ok( $u['visible'][0] !== $s['visible'][0] && $u['visible'][2] === $s['visible'][2] && $u['expand'] === $s['expand'] && $u['allow'] === $s['allow'] && $u['not_now'] === $s['not_now'], 'the variant picks the first sentences; question, expansion and buttons identical' );
+$ok( 1 === substr_count( $s['visible'][0] . ' ' . $s['visible'][1], 'Federated Catalog' ) && 1 === substr_count( $u['visible'][0] . ' ' . $u['visible'][1], 'Federated Catalog' ), 'not-updated variant: "Federated Catalog" only once' );
+$ok( 'Allow KaliCart Bridge to send the catalog?' === $u['visible'][2] && 'Allow sending' === $u['allow'] && 'Not now' === $u['not_now'], 'same verb in the question and on the button' );
+$ok( false !== strpos( implode( ' ', $u['expand'] ), 'dashboard.kalicart.com' ) && false !== strpos( implode( ' ', $u['expand'] ), 'No customer or order data is sent.' ), 'expansion: recipient with its domain, no customer/order data' );
+$ok( false === stripos( implode( ' ', $u['visible'] ), 'customer' ) && false === stripos( implode( ' ', $u['visible'] ), 'revoke' ), 'guarantees and revocation only in the expansion' );
+$ok( 64 === strlen( $P::text_hash( $u ) ) && $P::text_hash( $u ) !== $P::text_hash( $s ), 'hash of the displayed text, different per variant' );
 $map = array_count_values( $P::VARIANTS );
-$ok( 3 === ( $map['unreadable'] ?? 0 ) && 6 === ( $map['stale'] ?? 0 ) && [] === array_diff( array_keys( $P::VARIANTS ), $H::REASONS ), 'varianti: solo reason_code noti del contratto' );
+$ok( 3 === ( $map['unreadable'] ?? 0 ) && 6 === ( $map['stale'] ?? 0 ) && [] === array_diff( array_keys( $P::VARIANTS ), $H::REASONS ), 'variants: only known reason_code values' );
 $ask = '/\b(please|you should|you must|contact|ask your|configure|disable|enable|whitelist|allowlist|add a rule|update your|set up|turn off|turn on)\b/i';
-$ok( ! preg_match( $ask, implode( ' ', array_merge( $u['visible'], $u['expand'], $s['visible'] ) ) ), 'nessuna richiesta di cambiare regole o configurazione' );
+$ok( ! preg_match( $ask, implode( ' ', array_merge( $u['visible'], $u['expand'], $s['visible'] ) ) ), 'no request to change rules or configuration' );
 
 restore_previous_locale();
 echo "\npush-off-139: " . ( $fails ? "FAIL" : "OK" ) . " (" . ( $n - $fails ) . "/$n)\n";

@@ -119,7 +119,7 @@ try {
 	$check( false !== $provider_position && false !== $tabs_position && $provider_position < $tabs_position, 'Provider authorization is not always visible above the tabbed merchant-feed UI.' );
 	$check( false !== strpos( $admin_page, 'id="providerConsentCheckbox" value="1">' ), 'Provider authorization checkbox is missing or preselected.' );
 	$check( false === strpos( $admin_page, 'providerConsentEvidenceId' ), 'The dashboard still renders an empty consent ID field.' );
-	// Layout approved by Giuseppe 2026-09-29: at rest only the check button, the result appears below it after the click.
+	// Layout: at rest only the check button; the result appears below it after the click.
 	$check( false !== strpos( $admin_page, 'id="externalVisibilityBtn"' ) && false !== strpos( $admin_page, 'id="externalVisibilityResult"' ), 'External visibility button or result area is missing.' );
 	$check( false === strpos( $admin_page, 'kali-external-visibility__header' ), 'External visibility still renders a heading card at rest.' );
 	$check( false !== strpos( $admin_page, '<div class="kali-provider-consent__revoke">' ), 'Channel revocation is not on its own row under the status.' );

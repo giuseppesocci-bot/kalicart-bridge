@@ -2,9 +2,9 @@
 /**
  * KaliCart Bridge 1.0.136 — CONSEGNA-VIRTUALE-v1 e SOURCE-DELIVERY-v1.
  *
- * Nasce dal lavoro di Codex del 2026-09-22 (tools/test-136-distribution-format.php
- * nel suo clone), ripreso senza `distribution_format`: il Bridge espone i due
- * flag di WooCommerce e corregge `fulfilment`, la combinazione la fa chi legge.
+ * The Bridge exposes WooCommerce's two flags (virtual, downloadable) and corrects
+ * `fulfilment`; it does not add a `distribution_format`: combining the flags is up
+ * to the reader.
  *
  * Run with:
  *   wp eval-file wp-content/plugins/kalicart-bridge/tools/test-136-delivery-flags.php
@@ -49,28 +49,28 @@ foreach ( $expected as $id => [ $ships, $virtual, $downloadable, $fulfilment ] )
 	$check( $virtual      === ( $det['virtual'] ?? null ),           "detail virtual {$id}" );
 	$check( $downloadable === ( $det['downloadable'] ?? null ),      "detail downloadable {$id}" );
 	$check( $fulfilment   === ( $det['fulfilment'] ?? null ),        "detail fulfilment {$id}" );
-	$check( ! array_key_exists( 'distribution_format', $sum ),       "niente distribution_format: il Bridge espone, non interpreta ({$id})" );
+	$check( ! array_key_exists( 'distribution_format', $sum ),       "no distribution_format: the Bridge exposes, it does not interpret ({$id})" );
 }
 
-// Una chiave non si ritira: nessun metodo di ritiro nominato, anche se il negozio ne ha.
+// A licence key is not picked up: no pickup method is named, even if the shop has one.
 $kdet = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $key ), 'detail' )['shipping'] ?? [];
-$check( false === ( $kdet['local_pickup_available'] ?? null ), 'un virtuale non ha ritiro in sede' );
-// `??` non va usato qui: su una chiave che vale null restituirebbe il default.
-$check( array_key_exists( 'local_pickup', $kdet ) && null === $kdet['local_pickup'], 'un virtuale non elenca metodi di ritiro' );
-$check( false !== stripos( (string) ( $kdet['delivery_note'] ?? '' ), 'virtual' ), 'la nota dice che e\' virtuale' );
+$check( false === ( $kdet['local_pickup_available'] ?? null ), 'a virtual product has no local pickup' );
+// `??` must not be used here: on a key whose value is null it would return the default.
+$check( array_key_exists( 'local_pickup', $kdet ) && null === $kdet['local_pickup'], 'a virtual product lists no pickup methods' );
+$check( false !== stripos( (string) ( $kdet['delivery_note'] ?? '' ), 'virtual' ), 'the note says it is virtual' );
 
-// I flag sono quelli del merchant, NON dedotti da needs_shipping(): un filtro li separa.
+// The flags are the merchant's own, NOT derived from needs_shipping(): a filter separates them.
 $no_ship = static fn( $needs, $product ) => ( $product && (int) $product->get_id() === (int) $GLOBALS['kc136_filtered'] ) ? false : $needs;
 $GLOBALS['kc136_filtered'] = $physical;
 add_filter( 'woocommerce_product_needs_shipping', $no_ship, 10, 2 );
 $f = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $physical ), 'summary' );
 remove_filter( 'woocommerce_product_needs_shipping', $no_ship, 10 );
-$check( false === ( $f['shipping_required'] ?? null ), 'filtro: WooCommerce dice che non si spedisce' );
-$check( false === ( $f['virtual'] ?? null ), 'filtro: il prodotto resta NON virtuale per il merchant' );
-$check( 'pickup_only' === ( $f['fulfilment'] ?? null ), 'filtro: oggetto che esiste e non si spedisce -> pickup_only, l\'unico caso vero' );
+$check( false === ( $f['shipping_required'] ?? null ), 'filter: WooCommerce says it is not shipped' );
+$check( false === ( $f['virtual'] ?? null ), 'filter: the product stays NOT virtual for the merchant' );
+$check( 'pickup_only' === ( $f['fulfilment'] ?? null ), 'filter: a physical item that is not shipped -> pickup_only, the only true case' );
 
-// Variabile misto: una variante su disco, una chiave. Si spedisce (una si spedisce),
-// non e' virtuale ne' scaricabile nel suo insieme.
+// Mixed variable product: one variation on disc, one licence key. It ships (one variation ships)
+// and is neither virtual nor downloadable as a whole.
 $make_var = static function ( string $name, array $opts ) use ( &$created ): int {
 	$v = new WC_Product_Variable(); $v->set_name( $name ); $v->set_status( 'publish' );
 	$a = new WC_Product_Attribute(); $a->set_name( 'Formato' ); $a->set_options( array_keys( $opts ) );
@@ -87,18 +87,18 @@ $make_var = static function ( string $name, array $opts ) use ( &$created ): int
 };
 $mixed = $make_var( 'KC136 mixed', [ 'Disc' => [ false, false ], 'Key' => [ true, false ] ] );
 $m = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $mixed ), 'summary' );
-$check( true === ( $m['shipping_required'] ?? null ) && 'shipped' === ( $m['fulfilment'] ?? null ), 'misto: si spedisce se una variante si spedisce' );
-$check( false === ( $m['virtual'] ?? null ) && false === ( $m['downloadable'] ?? null ), 'misto: virtuale/scaricabile solo se lo sono tutte' );
+$check( true === ( $m['shipping_required'] ?? null ) && 'shipped' === ( $m['fulfilment'] ?? null ), 'mixed: ships if one variation ships' );
+$check( false === ( $m['virtual'] ?? null ) && false === ( $m['downloadable'] ?? null ), 'mixed: virtual/downloadable only if all variations are' );
 
 $keys = $make_var( 'KC136 keys', [ 'Steam' => [ true, false ], 'GOG' => [ true, false ] ] );
 $k = KaliCart_Bridge_Catalog_Engine::normalize_product( wc_get_product( $keys ), 'summary' );
-$check( 'virtual' === ( $k['fulfilment'] ?? null ) && true === ( $k['virtual'] ?? null ), 'variabile di sole chiavi -> virtual' );
+$check( 'virtual' === ( $k['fulfilment'] ?? null ) && true === ( $k['virtual'] ?? null ), 'variable product of licence keys only -> virtual' );
 
 foreach ( array_reverse( array_filter( $created ) ) as $id ) {
 	wp_delete_post( (int) $id, true );
 }
 $left = get_posts( [ 'post_type' => [ 'product', 'product_variation' ], 'post_status' => 'any', 'fields' => 'ids', 'numberposts' => -1, 's' => 'KC136' ] );
-$check( empty( $left ), 'tutte le fixture KC136 rimosse' );
+$check( empty( $left ), 'all KC136 fixtures removed' );
 
 if ( empty( $failures ) ) {
 	echo "PASS test-136-delivery-flags\n";

@@ -1,7 +1,7 @@
 <?php
 /**
  * 1.0.139: the snapshot build must continue itself through the REAL Action
- * Scheduler runner (collaudo ChatGPT 07:05). Forces one batch per step
+ * Scheduler runner. Forces one batch per step
  * (kalicart_snapshot_run_seconds = 0), then runs the queue in-process.
  * Run: wp eval-file wp-content/plugins/kalicart-bridge/tools/test-139-runner.php
  */
@@ -19,7 +19,7 @@ global $wpdb;
 $lockrow = function () use ( $wpdb, $S ) { return $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $S::LOCK_KEY ) ); };
 $wpdb->query( $wpdb->prepare( "INSERT INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, '1', 'no') ON DUPLICATE KEY UPDATE option_value = '1'", $S::FULL_KEY ) );
 $S::schedule_build( 0 );
-$ok( 1 === count( $pending() ), 'un solo passo in coda all\'inizio' );
+$ok( 1 === count( $pending() ), 'a single step queued at the start' );
 $runner = ActionScheduler_QueueRunner::instance();
 // Inspect right after the FIRST executed step, inside the real runner.
 $steps = 0; $b = null;
@@ -28,8 +28,8 @@ add_action( 'action_scheduler_after_execute', function ( $action_id, $action ) u
 	$steps++;
 	if ( 1 !== $steps ) { return; }
 	$st = get_option( $S::OPTION );
-	$ok( ! empty( $st['job'] ), 'dopo il primo passo il lavoro non e\' finito (catalogo > 1 lotto)' );
-	$ok( 1 === count( $pending() ), 'dopo il primo passo, dentro il runner, la continuazione e\' in coda (' . count( $pending() ) . ')' );
+	$ok( ! empty( $st['job'] ), 'after the first step the job is not finished (catalog > 1 batch)' );
+	$ok( 1 === count( $pending() ), 'after the first step, inside the runner, the continuation is queued (' . count( $pending() ) . ')' );
 	// A change arrives while the job runs (before step 2): its bucket must stay dirty.
 	$b = KaliCart_Bridge_Snapshot_Profile::bucket_of( (int) ( $st['job']['cursor'] ?? 1 ) );
 	$S::on_change( (int) ( $st['job']['cursor'] ?? 0 ) );
@@ -38,15 +38,15 @@ for ( $i = 0; $i < 20 && ( 0 === $steps || ! empty( get_option( $S::OPTION )['jo
 	$runner->run( 'Test' );
 }
 $st = get_option( $S::OPTION );
-$ok( empty( $st['job'] ) && (int) $st['seq'] === $seq0 + 1 && 'ok' === $st['state'], "lavoro completato dal runner in $steps passi, seq " . $st['seq'] );
-$ok( isset( $S::dirty_list()[ $b ] ), "token: il bucket $b modificato durante il lavoro resta sporco" );
-$ok( count( $pending() ) >= 1, 'token: un nuovo passo e\' in coda per quel bucket' );
-$ok( null === $lockrow(), 'lock rilasciato' );
+$ok( empty( $st['job'] ) && (int) $st['seq'] === $seq0 + 1 && 'ok' === $st['state'], "job completed by the runner in $steps steps, seq " . $st['seq'] );
+$ok( isset( $S::dirty_list()[ $b ] ), "token: bucket $b changed during the job stays dirty" );
+$ok( count( $pending() ) >= 1, 'token: a new step is queued for that bucket' );
+$ok( null === $lockrow(), 'lock released' );
 // Lock: a second concurrent step does not run, it re-queues.
-$wpdb->query( $wpdb->prepare( "INSERT INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')", $S::LOCK_KEY, time() . ':altro' ) );
+$wpdb->query( $wpdb->prepare( "INSERT INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')", $S::LOCK_KEY, time() . ':other' ) );
 $before = get_option( $S::OPTION );
 $S::build();
-$ok( get_option( $S::OPTION ) == $before, 'con il lock preso un secondo passo non tocca lo stato' );
-$ok( time() . ':altro' === $lockrow() || strpos( (string) $lockrow(), ':altro' ), 'il lock di un altro processo non viene rilasciato da chi non lo possiede' );
+$ok( get_option( $S::OPTION ) == $before, 'with the lock taken, a second step does not touch the state' );
+$ok( time() . ':other' === $lockrow() || strpos( (string) $lockrow(), ':other' ), 'a lock held by another process is not released by a non-owner' );
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s", $S::LOCK_KEY ) );
 echo "\nsnapshot-runner-139: " . ( $fails ? 'FAIL' : 'OK' ) . " (" . ( $n - $fails ) . "/$n)\n";

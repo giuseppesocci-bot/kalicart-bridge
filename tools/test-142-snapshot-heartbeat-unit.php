@@ -78,31 +78,31 @@ unset( $scheduled[ KaliCart_Bridge_Identity::CRON_HOOK ] );
 $secret_method = new ReflectionMethod( KaliCart_Bridge_Identity::class, 'secret_key' );
 $secret_method->setAccessible( true );
 $ok( '' === KaliCart_Bridge_Identity::unavailable_reason() && is_string( $secret_method->invoke( null, get_option( KaliCart_Bridge_Identity::OPTION ) ) ),
-	'identita verificata e chiave locale utilizzabile' );
+	'identity verified and local key usable' );
 KaliCart_Bridge_Identity::snapshot_published();
 $first = $scheduled[ KaliCart_Bridge_Identity::SNAPSHOT_HEARTBEAT_HOOK ] ?? null;
 KaliCart_Bridge_Identity::snapshot_published();
-$ok( $first && $first === $scheduled[ KaliCart_Bridge_Identity::SNAPSHOT_HEARTBEAT_HOOK ], 'pubblicazioni ravvicinate: una sola azione pending' );
+$ok( $first && $first === $scheduled[ KaliCart_Bridge_Identity::SNAPSHOT_HEARTBEAT_HOOK ], 'publications close together: a single pending action' );
 
 unset( $scheduled[ KaliCart_Bridge_Identity::SNAPSHOT_HEARTBEAT_HOOK ] );
 KaliCart_Bridge_Identity::snapshot_heartbeat();
-$ok( 1 === count( $posts ) && 10 === $posts[0]['body']['snapshot']['seq'], 'il worker invia la generazione corrente' );
-$ok( 10 === (int) get_option( KaliCart_Bridge_Identity::OPTION )['last_snapshot_heartbeat_seq'], 'la seq consegnata e persistita' );
+$ok( 1 === count( $posts ) && 10 === $posts[0]['body']['snapshot']['seq'], 'the worker sends the current generation' );
+$ok( 10 === (int) get_option( KaliCart_Bridge_Identity::OPTION )['last_snapshot_heartbeat_seq'], 'the delivered seq is persisted' );
 KaliCart_Bridge_Identity::snapshot_heartbeat();
-$ok( 1 === count( $posts ), 'stessa seq: nessuna chiamata duplicata' );
+$ok( 1 === count( $posts ), 'same seq: no duplicate call' );
 
 $snapshot_seq = 11;
 $http_code = 503;
 KaliCart_Bridge_Identity::snapshot_heartbeat();
 $retry = $scheduled[ KaliCart_Bridge_Identity::SNAPSHOT_HEARTBEAT_HOOK ] ?? null;
 $state = get_option( KaliCart_Bridge_Identity::OPTION );
-$ok( 2 === count( $posts ) && 1 === (int) $state['snapshot_heartbeat_attempt'], 'errore temporaneo: tentativo contato senza perdere la seq' );
-$ok( $retry && $retry[0] >= time() + 299, 'errore temporaneo: retry con backoff di almeno 5 minuti' );
+$ok( 2 === count( $posts ) && 1 === (int) $state['snapshot_heartbeat_attempt'], 'temporary error: attempt counted without losing the seq' );
+$ok( $retry && $retry[0] >= time() + 299, 'temporary error: retry with a backoff of at least 5 minutes' );
 $snapshot_seq = 12;
 KaliCart_Bridge_Identity::snapshot_published();
 $early = $scheduled[ KaliCart_Bridge_Identity::SNAPSHOT_HEARTBEAT_HOOK ] ?? null;
 $ok( $early && $early[0] < $retry[0] && $early[0] <= time() + 61,
-	'nuova pubblicazione: anticipa il retry precedente senza creare una coda per generazione' );
+	'new publication: brings the previous retry forward without queueing one per generation' );
 
 echo "\nsnapshot-heartbeat-142: " . ( $fails ? 'FAIL' : 'OK' ) . " (" . ( $n - $fails ) . "/$n)\n";
 exit( $fails ? 1 : 0 );
