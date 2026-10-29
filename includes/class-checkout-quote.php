@@ -207,6 +207,52 @@ final class KaliCart_Bridge_Quote {
 		return null;
 	}
 
+	private static function quoted_line( array $item ): array {
+		return [
+			'product_id' => (int) $item['product_id'],
+			'variation_id' => (int) $item['variation_id'],
+			'quantity' => (int) $item['quantity'],
+			'line_subtotal' => wc_format_decimal( $item['line_subtotal'], wc_get_price_decimals() ),
+			'line_total' => wc_format_decimal( $item['line_total'], wc_get_price_decimals() ),
+			'line_tax' => wc_format_decimal( $item['line_tax'], wc_get_price_decimals() ),
+		];
+	}
+
+	/**
+	 * Runs woocommerce_check_cart_items for the temporary cart and returns the error notices it raised (at most
+	 * three, plain text). The shopper's own cart, if loaded, is detached from the hook while it runs, so its
+	 * contents are never checked or changed here. Notices land in the temporary session only.
+	 */
+	private static function run_cart_checks( WC_Cart $temp_cart, $previous_cart ): array {
+		$detached = [];
+		if ( $previous_cart instanceof WC_Cart && $previous_cart !== $temp_cart ) {
+			foreach ( [ 'check_cart_items', 'check_cart_coupons' ] as $method ) {
+				$priority = has_action( 'woocommerce_check_cart_items', [ $previous_cart, $method ] );
+				if ( false !== $priority ) {
+					remove_action( 'woocommerce_check_cart_items', [ $previous_cart, $method ], $priority );
+					$detached[] = [ $method, $priority ];
+				}
+			}
+		}
+		try {
+			do_action( 'woocommerce_check_cart_items' );
+		} finally {
+			foreach ( $detached as [ $method, $priority ] ) {
+				add_action( 'woocommerce_check_cart_items', [ $previous_cart, $method ], $priority );
+			}
+		}
+		if ( ! function_exists( 'wc_get_notices' ) ) { return []; }
+		$errors = [];
+		foreach ( (array) wc_get_notices( 'error' ) as $notice ) {
+			$text = is_array( $notice ) ? ( $notice['notice'] ?? '' ) : $notice;
+			$text = html_entity_decode( wp_strip_all_tags( (string) $text ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+			$text = trim( (string) preg_replace( '/[\s\x{00A0}]+/u', ' ', $text ) );
+			if ( '' !== $text ) { $errors[] = mb_substr( $text, 0, 200 ); }
+			if ( count( $errors ) >= 3 ) { break; }
+		}
+		return $errors;
+	}
+
 	private static function remove_cart_hooks( WC_Cart $cart ): void {
 		foreach ( [ 'woocommerce_add_to_cart', 'woocommerce_applied_coupon', 'woocommerce_removed_coupon', 'woocommerce_cart_item_removed', 'woocommerce_cart_item_restored' ] as $hook ) {
 			remove_action( $hook, [ $cart, 'calculate_totals' ], 20 );
@@ -373,8 +419,20 @@ final class KaliCart_Bridge_Quote {
 					$temp_cart->calculate_totals();
 				}
 			}
+			// 1.0.156: WooCommerce's own cart checks (minimum order, plugin limits) run against the temporary cart and
+			// session. An error means the order cannot be placed, so no delivered total is quoted for it.
+			$cart_errors = self::run_cart_checks( $temp_cart, $previous_cart );
+			if ( $cart_errors ) {
+				return self::unknown( 'cart_not_orderable' ) + [ 'cart_errors' => $cart_errors ];
+			}
 			$calculated_contents = $temp_cart->get_cart();
-			if ( count( $calculated_contents ) !== count( $contents ) || $temp_cart->get_applied_coupons() ) {
+			if ( $temp_cart->get_applied_coupons() ) {
+				return self::unknown( 'cart_lines_changed' );
+			}
+			// Lines the shop adds itself (mandatory charges, gifts) are part of what the buyer pays: they stay in the
+			// total and are declared in added_lines. The requested lines must be unchanged.
+			$added_keys = array_values( array_diff( array_keys( $calculated_contents ), array_keys( $contents ) ) );
+			if ( count( $added_keys ) > self::MAX_ITEMS ) {
 				return self::unknown( 'cart_lines_changed' );
 			}
 			foreach ( $contents as $key => $expected ) {
@@ -406,15 +464,14 @@ final class KaliCart_Bridge_Quote {
 				if ( $selected_rate instanceof WC_Shipping_Rate ) { $selected_rate_ids[] = $selected_rate->get_id(); }
 			}
 			$quoted_lines = [];
-			foreach ( $temp_cart->get_cart() as $item ) {
-				$quoted_lines[] = [
-					'product_id' => (int) $item['product_id'],
-					'variation_id' => (int) $item['variation_id'],
-					'quantity' => (int) $item['quantity'],
-					'line_subtotal' => wc_format_decimal( $item['line_subtotal'], wc_get_price_decimals() ),
-					'line_total' => wc_format_decimal( $item['line_total'], wc_get_price_decimals() ),
-					'line_tax' => wc_format_decimal( $item['line_tax'], wc_get_price_decimals() ),
-				];
+			foreach ( array_keys( $contents ) as $key ) {
+				$quoted_lines[] = self::quoted_line( $calculated_contents[ $key ] );
+			}
+			$added_lines = [];
+			foreach ( $added_keys as $key ) {
+				$item = $calculated_contents[ $key ];
+				$name = isset( $item['data'] ) && $item['data'] instanceof WC_Product ? $item['data']->get_name() : '';
+				$added_lines[] = self::quoted_line( $item ) + [ 'name' => mb_substr( wp_strip_all_tags( (string) $name ), 0, 120 ) ];
 			}
 			$fees = [];
 			foreach ( $temp_cart->get_fees() as $fee ) {
@@ -427,7 +484,7 @@ final class KaliCart_Bridge_Quote {
 			return [
 				'status' => 'quoted', 'currency' => get_woocommerce_currency(),
 				'destination' => [ 'country' => $country, 'state' => $state, 'postcode' => $postcode, 'city' => $city ],
-				'lines' => $quoted_lines, 'fees' => $fees,
+				'lines' => $quoted_lines, 'added_lines' => $added_lines, 'fees' => $fees,
 				'subtotal' => wc_format_decimal( $temp_cart->get_subtotal(), wc_get_price_decimals() ),
 				'shipping' => wc_format_decimal( $temp_cart->get_shipping_total(), wc_get_price_decimals() ),
 				'tax' => wc_format_decimal( $temp_cart->get_total_tax(), wc_get_price_decimals() ),
