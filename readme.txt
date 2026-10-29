@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.155
+Stable tag: 1.0.156
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,13 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.156 =
+**Basket quotes respect WooCommerce's own cart rules and the lines a shop adds itself.**
+
+* Before a delivered total is quoted, WooCommerce's cart checks run on the temporary cart (for example a minimum order amount set by the shop or by a plugin). If WooCommerce would refuse the order, the quote says so with the reason the shop shows to any visitor, instead of returning a total for an order that cannot be placed.
+* Lines the shop adds to every cart by itself (for example a fixed handling charge or a gift) no longer block the quote: they are included in the total, as at checkout, and listed separately as lines added by the shop. If a plugin changes the requested products or quantities, the quote still declines.
+* The shopper's own cart and session are never checked or changed by a quote.
 
 = 1.0.155 =
 **Basket quotes work alongside pricing and discount plugins that use the WooCommerce session.**

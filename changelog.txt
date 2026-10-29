@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-29 - version 1.0.156
+
+* Before a delivered total is quoted, WooCommerce's cart checks run on the temporary cart (for example a minimum order amount set by the shop or by a plugin). If WooCommerce would refuse the order, the quote says so with the reason the shop shows to any visitor, instead of returning a total for an order that cannot be placed.
+* Lines the shop adds to every cart by itself (for example a fixed handling charge or a gift) no longer block the quote: they are included in the total, as at checkout, and listed separately as lines added by the shop. If a plugin changes the requested products or quantities, the quote still declines.
+* The shopper's own cart and session are never checked or changed by a quote.
+
+
 2026-10-28 - version 1.0.155
 
 * The temporary cart used for a quote now has the full WooCommerce session interface, kept in memory only: nothing is saved, no cookie is set and the customer's real session is untouched. Plugins that read or write session data while prices are calculated (for example dynamic pricing and discount rules) now produce a quote instead of an error.
