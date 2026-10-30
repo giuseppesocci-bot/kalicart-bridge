@@ -3,7 +3,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * KaliCart_Bridge_Snapshot — static, signed snapshot of the public catalog
- * (1.0.139). Contract: CONTRATTO-1.0.139-SNAPSHOT (closed 2026-09-28; §15 > §14 > rest).
+ * (1.0.139).
  *
  * Why: some storefronts put an anti-bot challenge in front of dynamic PHP paths
  * (REST) while serving static files. KaliCart Global can then read the same
@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * - Only with Federated Catalog consent, an installation key, production, root
  *   install and WooCommerce. Revoke / deactivate / uninstall delete everything.
- * - Partition id-range-v1 (contract §16.1): bucket = floor(parent id / 1024),
+ * - Partition id-range-v1: bucket = floor(parent id / 1024),
  *   invariant ranges, queried by primary-key range. A change marks only its
  *   bucket dirty (token); only dirty buckets are rebuilt; unchanged shards keep
  *   their name and hash, so KaliCart Global downloads only what changed.
@@ -153,7 +153,7 @@ class KaliCart_Bridge_Snapshot {
 	}
 
 	/*
-	 * Concurrency (contract §16.4, token revision after collaudo ChatGPT 08:19).
+	 * Concurrency.
 	 * The main option is written ONLY by the build step, under the lock (and by
 	 * delete_all, which is terminal). Change events never touch it: each dirty
 	 * bucket is its own options row (DIRTY_PREFIX.<bucket>, value = random opaque
@@ -246,8 +246,7 @@ class KaliCart_Bridge_Snapshot {
 	/**
 	 * Enqueues a build step. Deduplicates on PENDING actions only: while a build
 	 * step runs, its own action is "running", and as_has_scheduled_action() /
-	 * the unique flag would see it and refuse the continuation (collaudo
-	 * ChatGPT 07:05). Concurrent steps are prevented by the lock in build().
+	 * the unique flag would see it and refuse the continuation. Concurrent steps are prevented by the lock in build().
 	 */
 	public static function schedule_build( $delay = 5 ): void {
 		$delay = is_numeric( $delay ) ? max( 0, (int) $delay ) : 5;

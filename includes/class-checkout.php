@@ -188,11 +188,11 @@ class KaliCart_Bridge_Checkout {
 			}
         }
 
-        // Supporta sia array di prodotti che singolo prodotto
+        // Accepts either an array of products or a single product
         if ( isset( $body['items'] ) && is_array( $body['items'] ) ) {
             $raw_items = $body['items'];
         } elseif ( isset( $body['product_id'] ) ) {
-            // Retrocompatibilità — singolo prodotto
+            // Backward compatibility — single product
             $raw_items = [ [
                 'product_id'   => $body['product_id'],
                 'quantity'     => $body['quantity'] ?? 1,
@@ -213,7 +213,7 @@ class KaliCart_Bridge_Checkout {
 			}
 		}
 
-        // Valida e normalizza ogni item
+        // Validate and normalize every item
         $items                = [];
         $line_total           = 0.0;
         $requested_quantities = [];
@@ -362,9 +362,9 @@ class KaliCart_Bridge_Checkout {
         $session_id  = bin2hex( random_bytes( 16 ) );
         $currency    = get_woocommerce_currency();
 
-        // Costruisci query string multi-prodotto per WC
-        // WC accetta: ?add-to-cart=ID&quantity=Q per singoli
-        // Per multi: usiamo il nostro handler via session_id
+        // Build a multi-product query string for WooCommerce
+        // WooCommerce accepts ?add-to-cart=ID&quantity=Q for single products
+        // Multi-product: use our own handler via session_id
         $base_args   = [ 'kalicart_session' => $session_id ];
         $cart_url     = add_query_arg( array_merge( $base_args, [ 'kalicart_dest' => 'cart' ] ),     home_url( '/' ) );
         $checkout_url = add_query_arg( array_merge( $base_args, [ 'kalicart_dest' => 'checkout' ] ), home_url( '/' ) );
@@ -430,7 +430,7 @@ class KaliCart_Bridge_Checkout {
     // ── SESSION REDIRECT ──────────────────────────────────────────────────────
     //
     // Gestisce ?kalicart_session=ID&kalicart_dest=cart|checkout
-    // Aggiunge tutti i prodotti della sessione al carrello WC e redirige.
+    // Adds every product of the session to the WooCommerce cart and redirects.
 
     /**
      * Validate the session token format: exactly 32 hexadecimal chars (md5).
@@ -510,7 +510,7 @@ class KaliCart_Bridge_Checkout {
         // while this handler performs its own controlled cart replacement.
         self::clear_attribution_marker();
 
-        // Svuota il carrello corrente e aggiungi tutti gli item della sessione
+        // Empty the current cart and add every item of the session
         WC()->cart->empty_cart();
 
         $fully_loaded = true;

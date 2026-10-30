@@ -10,8 +10,8 @@
   --kb-border:    rgba(0,0,0,.08);
   --kb-border2:   rgba(0,0,0,.14);
   --kb-text:      #111116;
-  /* 1.0.146: testo secondario allineato a --kb-text per leggibilita' (richiesta Giuseppe 20/10).
-     Le due variabili colorano solo testo (verificato): bordi e sfondi non cambiano. */
+  /* 1.0.146: secondary text aligned to --kb-text for readability.
+     The two variables colour only text (verified): borders and backgrounds do not change. */
   --kb-muted:     var(--kb-text);
   --kb-muted2:    var(--kb-text);
   --kb-green:     #1a7f3c;
@@ -279,8 +279,8 @@
 }
 .kali-issue:hover { border-color: var(--kb-border2); }
 .kali-issue:focus { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
-/* 1.0.146: le card di "Problemi del catalogo" e le stat cliccabili devono SEMBRARE cliccabili
-   (sono gia' role=button + tabindex + Invio/Spazio in initIssueClicks/makeClickable). Solo affordance, nessun testo. */
+/* 1.0.146: the catalog issue cards and the clickable stats must LOOK clickable
+   (they already are role=button + tabindex + Enter/Space in initIssueClicks/makeClickable). Affordance only, no text. */
 .kali-issue:hover, .kali-issue:focus-visible { background: var(--kb-surface2); border-color: var(--kb-acc); }
 .kali-issue:hover .kali-issue__label, .kali-issue:focus-visible .kali-issue__label { color: var(--kb-acc-s); text-decoration: underline; text-underline-offset: 2px; }
 .kali-issue::after { content: "\203A"; content: "\203A" / ""; margin-left: auto; font-size: 20px; line-height: 1; color: var(--kb-acc-s); }
@@ -354,7 +354,7 @@
   margin-bottom: 2px;
 }
 .kali-suggestion__detail { font-size: 13px; color: var(--kb-text); }
-/* 1.0.146: card suggerimento cliccabile per intero (button). Solo affordance, nessun testo nuovo. */
+/* 1.0.146: suggestion card clickable as a whole (button). Affordance only, no new text. */
 .kali-suggestion--link { width: 100%; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .kali-suggestion--link .kali-suggestion__content,
 .kali-suggestion--link .kali-suggestion__label,
@@ -745,7 +745,7 @@
 .kali-endpoint__preview::-webkit-scrollbar-track { background: transparent; }
 .kali-endpoint__preview::-webkit-scrollbar-thumb { background: var(--kb-border2); border-radius: 99px; }
 
-/* ── Coverage (legacy, mantenuta per compatibilità) ───────────────────────── */
+/* ── Coverage (legacy, kept for compatibility) ───────────────────────────── */
 .kali-coverage-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -906,9 +906,9 @@
 .kali-acp-row__info strong { display: block; font-size: 14px; font-weight: 600; color: var(--kb-text); margin-bottom: 2px; }
 .kali-acp-row__info span { font-size: 13px; color: var(--kb-muted); }
 .kali-acp-row__status, .kali-acp-row__actions { flex-shrink: 0; display: flex; gap: 8px; align-items: center; }
-/* 1.0.146: azione nella riga del riepilogo (icona + testo, mai solo icona) */
+/* 1.0.146: action in the summary row (icon + text, never icon only) */
 .kali-acp-row__status { flex-wrap: wrap; justify-content: flex-end; }
-/* 1.0.146: stato della riga leggibile anche senza pill (contrasto AA >= 4.5:1 su #fff e su hover #f3f3f5) */
+/* 1.0.146: row status readable even without the pill (AA contrast >= 4.5:1 on #fff and on hover #f3f3f5) */
 .kali-acp-row--ok     .kali-acp-row__info strong { color: #0f6f3c; }   /* 6.3:1 */
 .kali-acp-row--info   .kali-acp-row__info strong { color: var(--kb-text); }
 .kali-acp-row--check  { box-shadow: inset 3px 0 0 #b07a00; }
@@ -987,16 +987,16 @@
   color: #475569;
 }
 
-/* Il blocco .kali-agents__* / .kali-legend__* / .kali-confirmed e' stato RIMOSSO
-   nella 1.0.130: la tabella a colonne affiancate che serviva e' stata sostituita
-   dai due blocchi indipendenti nella 1.0.129, e quelle classi non avevano piu'
-   alcun uso in admin-page.php (verificato: 0 occorrenze). */
+/* The .kali-agents__* / .kali-legend__* / .kali-confirmed block was REMOVED
+   in 1.0.130: the side-by-side column table it served was replaced
+   by the two independent blocks in 1.0.129, and those classes had no
+   use left in admin-page.php (verified: 0 occurrences). */
 
-/* ── Blocchi assistenti (1.0.129) ──────────────────────────────────────────
-   Due misure indipendenti, ognuna con la propria fonte dichiarata. NESSUN
-   colore semantico: la tabella precedente usava verde/arancio/grigio per
-   dichiarare livelli di prova, ma separati i blocchi un colore tornerebbe a
-   suggerire il legame che la struttura serve a negare. */
+/* ── Assistant blocks (1.0.129) ────────────────────────────────────────────
+   Two independent measures, each with its own declared source. NO
+   semantic colour: the previous table used green/orange/grey to
+   declare levels of proof, but with the blocks separated a colour would again
+   suggest the link the structure exists to deny. */
 .kali-blocks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin: 12px 0 0; }
 .kali-block {
   border: 1px solid var(--kb-border); border-radius: var(--kb-radius);
@@ -1224,13 +1224,13 @@
 .kali-consent-details summary .dashicons { color: var(--kb-text, #111116); font-size: 18px; width: 18px; height: 18px; }
 .kali-provider-consent__current .kali-consent-summary { margin-top: 10px; }
 .kali-provider-consent__revoke { margin: 14px 0 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-/* 1.0.146: "Dettagli e prova" = stesso stile del bottone Revoca; il pannello si apre sotto la riga a tutta larghezza. */
+/* 1.0.146: "Details and proof" = same style as the Revoke button; the panel opens below the row at full width. */
 .kali-consent-details__toggle .dashicons { font-size: 16px; width: 16px; height: 16px; }
 .kali-consent-details__toggle:focus-visible, #providerConsentRevokeBtn:focus-visible { outline: 2px solid var(--kb-acc); outline-offset: 2px; }
 .kali-consent-details[hidden] { display: none; }
 
-/* Le tab restavano in orizzontale e sforavano su schermi stretti: .kali-tabs
-   era flex con width:fit-content e nessuna media query in tutto il file. */
+/* The tabs stayed horizontal and overflowed on narrow screens: .kali-tabs
+   was flex with width:fit-content and no media query in the whole file. */
 @media (max-width: 782px) {
   .kali-blocks { grid-template-columns: 1fr; }
   .kali-provider-consent__head { flex-direction: column; gap: 4px; }

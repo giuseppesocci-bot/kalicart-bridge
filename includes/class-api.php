@@ -4,7 +4,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * KaliCart_Bridge_API
  *
- * REST API — struttura discovery identica al contratto Kalicart agent-bridge.
+ * REST API — agent-facing catalog discovery and read endpoints.
  * Namespace: /wp-json/kalicart/v1/
  */
 class KaliCart_Bridge_API {
@@ -685,10 +685,10 @@ class KaliCart_Bridge_API {
                         'regular'         => [ 'type' => [ 'number', 'null' ] ],
                         'sale'            => [ 'type' => [ 'number', 'null' ] ],
                         'current'         => [ 'type' => [ 'number', 'null' ] ],
-                        // PRICE-INTERVAL-v1: su type=range `current` e' l'estremo BASSO
-                        // dei prezzi attivi e `max_current` quello alto. Su type=fixed
-                        // i due estremi coincidono e max_current non viene emesso.
-                        // `type` e' gia' dichiarato in testa a queste properties.
+                        // PRICE-INTERVAL-v1: with type=range `current` is the LOW end
+                        // of the active prices and `max_current` the high end. With type=fixed
+                        // the two ends coincide and max_current is not emitted.
+                        // `type` is already declared at the top of these properties.
                         'max_current'     => [ 'type' => [ 'number', 'null' ] ],
                         'min_regular'     => [ 'type' => [ 'number', 'null' ] ],
                         'max_regular'     => [ 'type' => [ 'number', 'null' ] ],
@@ -888,9 +888,9 @@ class KaliCart_Bridge_API {
         self::add_price_query_interpretation( $result, $args );
 
         if ( (int) ( $result['total'] ?? 0 ) > 0 && $args['fields'] === 'summary' ) {
-            // Non sovrascrivere una guidance gia' emessa dal motore: la triage di
-            // summary e' un consiglio di navigazione, NO_CONFIRMED_GENDER_MATCHES
-            // e' un fatto sul risultato e vale di piu'.
+            // Do not overwrite guidance already emitted by the engine: the summary
+            // triage is navigation advice, NO_CONFIRMED_GENDER_MATCHES
+            // is a fact about the result and weighs more.
             if ( empty( $result['result_guidance'] ) ) {
                 $result['result_guidance'] = self::summary_triage_guidance();
             }
@@ -934,9 +934,9 @@ class KaliCart_Bridge_API {
             return $engine_error;
         }
         if ( (int) ( $result['total'] ?? 0 ) > 0 && $args['fields'] === 'summary' ) {
-            // Non sovrascrivere una guidance gia' emessa dal motore: la triage di
-            // summary e' un consiglio di navigazione, NO_CONFIRMED_GENDER_MATCHES
-            // e' un fatto sul risultato e vale di piu'.
+            // Do not overwrite guidance already emitted by the engine: the summary
+            // triage is navigation advice, NO_CONFIRMED_GENDER_MATCHES
+            // is a fact about the result and weighs more.
             if ( empty( $result['result_guidance'] ) ) {
                 $result['result_guidance'] = self::summary_triage_guidance();
             }
@@ -989,17 +989,17 @@ class KaliCart_Bridge_API {
             return self::error( 'Product not found.', 404 );
         }
 
-        // CATALOG-VISIBILITY-v1 — un prodotto che il merchant ha messo su "Nascosto"
-        // non esiste per un agente, nemmeno chiedendolo per ID: altrimenti basterebbe
-        // conoscere il numero per aggirare la scelta del merchant. Gli altri due stati
-        // NON sono esclusioni: "solo catalogo" e "solo ricerca" limitano DOVE si trova
-        // il prodotto, non se si puo' verificare quello che si e' gia' trovato, e la
-        // verifica per ID e' per definizione un accesso a colpo sicuro.
-        // "Nascosto" non si verifica nemmeno per ID: e' l'unico stato in cui il
-        // merchant dice "questo non si mostra", e conoscere il numero non deve
-        // bastare per aggirarlo. Gli altri due limitano DOVE si trova il prodotto,
-        // non se esiste: la verifica per ID arriva sempre dopo che lo si e' gia'
-        // trovato, quindi li' non toglie nulla a nessuno.
+        // CATALOG-VISIBILITY-v1 — a product the merchant set to "Hidden"
+        // does not exist for an agent, not even when asked by ID: otherwise knowing
+        // the number would be enough to bypass the merchant's choice. The other two states
+        // are NOT exclusions: "catalog only" and "search only" limit WHERE the
+        // product is found, not whether something already found can be verified, and
+        // verification by ID is by definition a direct access.
+        // "Hidden" is not verifiable even by ID: it is the only state in which the
+        // merchant says "do not show this", and knowing the number must not
+        // be enough to bypass it. The other two limit WHERE the product is found,
+        // not whether it exists: verification by ID always comes after it was
+        // already found, so there it takes nothing away from anyone.
         if ( 'hidden' === $p->get_catalog_visibility() ) {
             return self::error( 'Product not found.', 404 );
         }
@@ -1154,19 +1154,19 @@ class KaliCart_Bridge_API {
                 'min' => $price_range && $price_range->min_price !== null ? (float) $price_range->min_price : null,
                 'max' => $price_range && $price_range->max_price !== null ? (float) $price_range->max_price : null,
             ],
-            // 1.0.130 — DUE VOCABOLARI DISTINTI, e non vanno resi uguali.
-            //   accepted_values  : il contratto. Stabile, decide la validita'.
-            //   available_values : la fotografia di QUESTO catalogo. Informativa,
-            //                      non decide mai: e' aggiornata al massimo ogni
-            //                      12 ore dal cron dei facet, e rifiutare su un
-            //                      dato vecchio mezza giornata negherebbe una
-            //                      ricerca legittima su un prodotto appena
-            //                      pubblicato.
-            // Gli ALIAS sono stati RIMOSSI: lo schema li prometteva e il runtime
-            // li rifiutava. E tradurre `uomo`->`male` o `azzurro`->`blue`
-            // significherebbe mettere nel Bridge un'interpretazione che sta
-            // nell'agente, e obbligare noi a scegliere fra `blue` e `light_blue`.
-            // `q` resta linguaggio naturale; i facet sono linguaggio macchina.
+            // 1.0.130 — TWO DISTINCT VOCABULARIES, and they must not be made equal.
+            //   accepted_values  : the contract. Stable, decides validity.
+            //   available_values : the snapshot of THIS catalog. Informative,
+            //                      never decides: it is refreshed at most every
+            //                      12 hours by the facet cron, and rejecting on
+            //                      data half a day old would deny a
+            //                      legitimate search for a product just
+            //                      published.
+            // ALIASES were REMOVED: the schema promised them and the runtime
+            // rejected them. Translating `uomo`->`male` or `azzurro`->`blue`
+            // would put into the Bridge an interpretation that belongs
+            // to the agent, and force us to choose between `blue` and `light_blue`.
+            // `q` stays natural language; facets are machine language.
             'filter_vocabulary' => [
                 'normalization' => 'Formal only: input is trimmed and lowercased. No translation, no aliases, no fuzzy matching.',
                 'validation'    => 'Exact membership in accepted_values. A value outside it is rejected with INVALID_FILTER_VALUE and search_executed:false — no search is run.',
@@ -1396,8 +1396,8 @@ class KaliCart_Bridge_API {
             'per_page'  => min( 100, max( 1, absint( $req->get_param( 'per_page' ) ?? 20 ) ) ),
             'page'      => max( 1, absint( $req->get_param( 'page' ) ?? 1 ) ),
             'orderby'   => in_array( $req->get_param( 'orderby' ), [ 'date', 'price', 'title', 'popularity', 'id' ], true ) ? $req->get_param( 'orderby' ) : 'date',
-            // CAMMINATA-STABILE-v1 (1.0.135) — soglia, non puntatore: "dammi
-            // quelli dopo il numero N". Vedi il commento in query_products().
+            // CAMMINATA-STABILE-v1 (1.0.135) — a threshold, not a pointer: "give me
+            // the ones after number N". See the comment in query_products().
             'after_id'  => $req->get_param( 'after_id' ) !== null ? absint( $req->get_param( 'after_id' ) ) : null,
             'order'     => strtoupper( $req->get_param( 'order' ) ?? 'DESC' ) === 'ASC' ? 'ASC' : 'DESC',
             'in_stock'  => $req->get_param( 'in_stock' ) !== null ? filter_var( $req->get_param( 'in_stock' ), FILTER_VALIDATE_BOOLEAN ) : null,
@@ -1433,12 +1433,12 @@ class KaliCart_Bridge_API {
         $short_text = static fn( $value ): bool => is_scalar( $value ) && strlen( (string) $value ) <= 200;
         $facet_text = static fn( $value ): bool => is_scalar( $value ) && strlen( (string) $value ) <= 64;
         $facet_norm = static fn( $value ): string => KaliCart_Bridge_Catalog_Engine::normalize_facet_value( substr( (string) sanitize_text_field( (string) $value ), 0, 64 ) );
-        // Si restituisce un WP_Error invece di false: `rest_invalid_param` dice
-        // soltanto che qualcosa non va, e costringe l'agente a indovinare cosa.
-        // L'errore strutturato porta gia' accepted_values, cosi' si corregge al
-        // primo colpo senza una chiamata informativa aggiuntiva. `search_executed`
-        // e' parte sostanziale del contratto, non messaggistica: un filtro non
-        // valido non deve MAI produrre risultati.
+        // A WP_Error is returned instead of false: `rest_invalid_param` only says
+        // that something is wrong, and forces the agent to guess what.
+        // The structured error already carries accepted_values, so the call is fixed
+        // on the first try without an extra informational call. `search_executed`
+        // is a substantive part of the response, not messaging: an invalid
+        // filter must NEVER produce results.
         $facet_valid = static function ( $value, $request, $param ) {
             $err = KaliCart_Bridge_Catalog_Engine::validate_facet_value( (string) $param, $value );
             if ( null === $err ) {
@@ -1463,12 +1463,12 @@ class KaliCart_Bridge_API {
             'on_sale'   => [ 'default' => null ],
             'min_price' => [ 'default' => null, 'validate_callback' => static fn( $v ): bool => $v === null || ( is_numeric( $v ) && is_finite( (float) $v ) ) ],
             'max_price' => [ 'default' => null, 'validate_callback' => static fn( $v ): bool => $v === null || ( is_numeric( $v ) && is_finite( (float) $v ) ) ],
-            // 1.0.130 — i facet sono linguaggio macchina e vanno validati contro il
-            // vocabolario canonico, non solo per lunghezza. Prima un valore
-            // inesistente come `gender=inventato` passava e restituiva 96 prodotti
-            // a genere sconosciuto: un risultato plausibile e sbagliato, che un
-            // agente non ha modo di riconoscere. La normalizzazione (trim +
-            // lowercase) avviene nel sanitize, la validita' nel validate.
+            // 1.0.130 — facets are machine language and are validated against the
+            // canonical vocabulary, not only by length. Before, a non-existent
+            // value such as `gender=inventato` passed and returned 96 products
+            // of unknown gender: a plausible and wrong result, which an
+            // agent has no way to recognize. Normalization (trim +
+            // lowercase) happens in sanitize, validity in validate.
             'gender'    => [ 'default' => '', 'sanitize_callback' => $facet_norm, 'validate_callback' => $facet_valid ],
             'color'     => [ 'default' => '', 'sanitize_callback' => $facet_norm, 'validate_callback' => $facet_valid ],
             // Incremental sync: federated indexers pass an ISO-8601 timestamp to fetch
@@ -1864,13 +1864,13 @@ class KaliCart_Bridge_API {
             return array_filter( [
                 'currency'        => $price['currency'] ?? null,
                 'encoding'        => $price['encoding'] ?? 'decimal_major_units',
-                // PRICE-INTERVAL-v1 — vedi class-catalog-engine.php: su un variabile
-                // `current` e' l'estremo basso. `type` e `max_current` lo dichiarano.
+                // PRICE-INTERVAL-v1 — see class-catalog-engine.php: on a variable product
+                // `current` is the low end. `type` and `max_current` declare it.
                 'type'            => $price['type'] ?? null,
-                // `range_over` dice se gli estremi sono variazioni (se ne sceglie
-                // UNA) o componenti di un gruppo (si comprano uno per uno). Senza,
-                // i due intervalli sono indistinguibili e `current` viene letto
-                // come "il prezzo" in entrambi i casi.
+                // `range_over` says whether the ends are variations (you choose
+                // ONE) or components of a group (bought one by one). Without it,
+                // the two intervals are indistinguishable and `current` is read
+                // as "the price" in both cases.
                 'range_over'      => $price['range_over'] ?? null,
                 'current'         => $price['current'] ?? null,
                 'max_current'     => $price['max_current'] ?? null,
@@ -1941,11 +1941,11 @@ class KaliCart_Bridge_API {
             'price'              => $compact_price( $product['price'] ?? [] ),
             'stock'              => $compact_stock( $product['stock'] ?? [] ),
             'attributes'         => $product['attributes'] ?? [],
-            // La proiezione di verifica elencava le condizioni di spedizione SEMPRE,
-            // con `?? null`: anche quando il motore aveva gia' smesso di emetterle
-            // perche' il prodotto non si spedisce, qui rientravano dalla finestra e
-            // l'agente rileggeva la contraddizione. Si sceglie il blocco, non i
-            // singoli campi.
+            // The verification projection ALWAYS listed the shipping conditions,
+            // with `?? null`: even when the engine had already stopped emitting them
+            // because the product does not ship, they came back in through the window and
+            // the agent read the contradiction again. The whole block is chosen, not the
+            // single fields.
             'shipping'           => ( ( $shipping['shipping_required'] ?? null ) === false )
                 ? [
                     'shipping_required'      => false,
@@ -1972,10 +1972,10 @@ class KaliCart_Bridge_API {
             ],
             'active_coupons'     => $coupons,
             'purchase_readiness' => $product['purchase_readiness'] ?? null,
-            // `null` per chi gruppo non e'. Su un gruppo e' il solo posto in cui
-            // l'agente legge COSA sta comprando: per un `grouped` i variants sono
-            // vuoti per costruzione (non c'e' un pezzo unico da comprare) e senza
-            // questo blocco la verifica non direbbe nulla del contenuto.
+            // `null` for anything that is not a group. On a group it is the only place where
+            // the agent reads WHAT it is buying: for a `grouped` product the variants are
+            // empty by construction (there is no single piece to buy) and without
+            // this block the verification would say nothing about the content.
             'group'              => $product['group'] ?? null,
             'variants'           => $variants,
             'updated_at'         => $product['updated_at'] ?? null,

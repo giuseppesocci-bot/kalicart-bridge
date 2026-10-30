@@ -804,7 +804,7 @@ class KaliCart_Bridge_ACP_Feed {
 				? KaliCart_Bridge_Quarantine::cached_issue_ids( 'NO_SKU' )
 				: ( KaliCart_Bridge_Quarantine::get_report()['issue_product_ids'][ $report_map[ $what ] ] ?? [] );
 			$query->set( 'post__in', $ids ? array_map( 'intval', $ids ) : [ 0 ] );
-			$query->set( 'orderby', 'post__in' ); // recenti prima, come in tab
+			$query->set( 'orderby', 'post__in' ); // most recent first, as in the tab
 			return;
 		}
 		if ( ! in_array( $what, [ 'brand', 'image' ], true ) ) {
@@ -971,7 +971,7 @@ class KaliCart_Bridge_ACP_Feed {
 			set_transient( KaliCart_Bridge_Quarantine::LIVE_GAPS_CACHE, $live_counts, 5 * MINUTE_IN_SECONDS );
 		}
 
-		// 1.0.146: one action per row, next to the status (decision 2026-10-20).
+		// 1.0.146: one action per row, next to the status.
 		$kb_ok_stats  = $stats && empty( $stats['error'] );
 		$kb_feed_src  = $kb_ok_stats ? sprintf( /* translators: %s: date and time of the last feed generation */ __( 'Last feed generation: %s', 'kalicart-bridge' ), self::feed_date( $stats ) ) : '';
 		$kb_settings  = admin_url( 'admin.php?page=kalicart-bridge&tab=settings#returnPolicyBlock' );

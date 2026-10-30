@@ -25,7 +25,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
     <span class="kali-header__tagline"><?php esc_html_e( 'Agent-readable catalog', 'kalicart-bridge' ); ?></span>
   </div>
 
-  <!-- FEDERATION (sempre visibile, sotto l'header): announce + revoca consensuale -->
+  <!-- FEDERATION (always visible, below the header): announce + consensual revocation -->
   <div class="kali-federation-block">
     <?php $kalicart_bridge_is_federated = (bool) get_option( 'kalicart_bridge_federation_registered_at', '' ); ?>
     <strong class="kali-federation-block__title"><?php
@@ -51,10 +51,10 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       <?php endif; ?>
     </p>
     <?php
-    // 1.0.139 (contratto §9, §14.6; debito voce 8): il testo federated-catalog-1.1 e'
-    // mostrato PER INTERO prima del clic (la ricevuta ne registra l'hash). Sotto, il canale
-    // OpenAI come casella NON spuntata con il suo testo commerce-consent-1.0 invariato:
-    // un solo flusso, due atti e due ricevute separate; nessun canale senza la casella.
+    // 1.0.139: the federated-catalog-1.1 text is
+    // shown IN FULL before the click (the receipt records its hash). Below it, the OpenAI
+    // channel as an UNCHECKED box with its commerce-consent-1.0 text unchanged:
+    // one flow, two acts and two separate receipts; no channel without the box.
     ?>
     <div id="federationConsentPanel" style="display:none">
       <p id="federationConsentText" class="kali-federation-consent-text"><?php echo esc_html( KaliCart_Bridge_Federation_Consent::localized_text() ); ?></p>
@@ -97,7 +97,7 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
       <div id="externalVisibilityResult" class="kali-external-visibility__result" aria-live="polite"></div>
     </div>
 
-    <!-- Filtro revoca a due step (stile plugin: kali-warn-alert). Nascosto finche' non si clicca Revoke. -->
+    <!-- Two-step revocation filter (plugin style: kali-warn-alert). Hidden until Revoke is clicked. -->
     <div id="federationRevokeConfirm" class="kali-warn-alert" style="display:none;margin-top:12px">
       <strong>&#9888; <?php esc_html_e( 'Heads up', 'kalicart-bridge' ); ?></strong>
       <span><?php esc_html_e( 'Revoking removes your catalog from KaliCart Global federated search. Agents using the federated index will no longer discover your products there. Your data is parked, not deleted, and restored if you re-activate.', 'kalicart-bridge' ); ?></span>
@@ -159,14 +159,14 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
         <button type="button" class="kali-btn kali-btn--secondary kali-consent-details__toggle" id="providerConsentDetailsBtn" aria-expanded="false" aria-controls="providerConsentDetails"><span class="dashicons dashicons-editor-alignleft" aria-hidden="true"></span><?php esc_html_e( 'Authorization details and proof', 'kalicart-bridge' ); ?></button>
       </div>
       <?php
-      // AVVISO-DOPO-LA-RICHIESTA-v1 (1.0.136): il consenso non basta a entrare
-      // nell'indice per OpenAI, e il Global non ha un canale per dirlo al
-      // plugin. Si dice qui, DOPO la richiesta, perche' il testo firmato
-      // (localized_consent_text) e' quello di cui ogni ricevuta porta l'impronta
-      // sotto commerce-consent-1.0: cambiarlo romperebbe la verifica di chi ha
-      // gia' autorizzato. Il blocco resta visibile anche dopo una REVOCA ("Revocato
-      // il ..."): li' la nota sarebbe falsa, quindi admin.js la mostra solo se il
-      // canale e' autorizzato adesso.
+      // AVVISO-DOPO-LA-RICHIESTA-v1 (1.0.136): consent is not enough to enter
+      // the OpenAI index, and Global has no channel to tell the
+      // plugin. It is said here, AFTER the request, because the signed text
+      // (localized_consent_text) is the one whose fingerprint every receipt carries
+      // under commerce-consent-1.0: changing it would break the verification of those who
+      // already authorized. The block stays visible even after a REVOCATION ("Revoked
+      // on ..."): there the note would be false, so admin.js shows it only if the
+      // channel is authorized right now.
       ?>
       <div id="providerConsentDetails" class="kali-consent-details">
         <p id="providerConsentPilotNotice" class="kali-provider-consent__notice"><?php esc_html_e( 'Your request has been recorded. Inclusion in the index built for OpenAI is not automatic: products or categories that OpenAI\'s commerce policies do not allow may keep your store out of that index. Your participation in the Federated Catalog does not change.', 'kalicart-bridge' ); ?></p>
@@ -513,13 +513,13 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
   <!-- TAB: STATS -->
   <div id="kali-tab-stats" class="kali-panel" style="display:<?php echo 'stats' === $kalicart_bridge_active_tab ? 'block' : 'none'; ?>">
     <?php
-    // ── Assistenti AI ─────────────────────────────────────────────────────────
-    // DUE BLOCCHI INDIPENDENTI, non una tabella. Tre colonne affiancate
-    // costruivano visivamente una sequenza crawler -> visita -> ordine, mentre i
-    // numeri vengono da popolazioni che non condividono alcun identificativo.
-    // Ogni blocco dichiara la propria FONTE, e sotto un terzo blocco dice a
-    // chiare lettere cio' che non sappiamo. Nessun colore: struttura e
-    // intestazioni bastano, e un colore qui tornerebbe a suggerire un legame.
+    // ── AI assistants ─────────────────────────────────────────────────────────
+    // TWO INDEPENDENT BLOCKS, not a table. Three side-by-side columns
+    // visually built a crawler -> visit -> order sequence, while the
+    // numbers come from populations that share no identifier.
+    // Each block declares its own SOURCE, and below a third block says
+    // plainly what we do not know. No colour: structure and
+    // headings are enough, and a colour here would again suggest a link.
     $kalicart_bridge_view = class_exists( 'KaliCart_Bridge_Signals' ) ? KaliCart_Bridge_Signals::get_panel_view( 30 ) : null;
     if ( $kalicart_bridge_view ) :
       $kalicart_bridge_b = $kalicart_bridge_view['bridge'];
@@ -546,9 +546,9 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
             <span class="kali-block__src"><?php esc_html_e( 'Recorded by KaliCart', 'kalicart-bridge' ); ?></span>
           </div>
 
-          <?php // Catalogo PRIMA: e' cio' che esiste grazie al plugin. Le pagine
-                // restano visibili — nasconderle sarebbe selettivita' — ma sotto,
-                // in ordine di pertinenza e non di grandezza. ?>
+          <?php // Catalog FIRST: it is what exists thanks to the plugin. Pages
+                // stay visible — hiding them would be selective — but below,
+                // in order of relevance and not of size.?>
           <div class="kali-block__figure">
             <span class="kali-block__num"><?php echo esc_html( number_format_i18n( $kalicart_bridge_b['catalog_total'] ) ); ?></span>
             <span class="kali-block__label"><?php esc_html_e( 'requests to the KaliCart structured catalog', 'kalicart-bridge' ); ?></span>
@@ -572,9 +572,9 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
               }
               echo esc_html( implode( ' · ', $kalicart_bridge_parts ) ); ?></p>
           <?php else : ?>
-            <?php // Condizionale al periodo E al negozio: su tre negozi e' zero, ma
-                  // tre negozi non sono la popolazione, e la frase risulterebbe
-                  // falsa il giorno in cui un agente-utente chiama il catalogo. ?>
+            <?php // Conditional on the period AND the store: on three stores it is zero, but
+                  // three stores are not the population, and the sentence would become
+                  // false the day a user agent calls the catalog.?>
             <p class="kali-block__detail kali-block__detail--muted"><?php esc_html_e( 'In the selected period, on this store, no catalog lookups were observed while a person was using an assistant.', 'kalicart-bridge' ); ?></p>
           <?php endif; ?>
 
@@ -627,11 +627,11 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
         </div>
       </div>
 
-      <?php // Spiegazione metodologica NEUTRA: non un errore, non un avviso, non
-            // una valutazione negativa del plugin. E' il confine entro cui tutti
-            // gli altri numeri conservano credibilita'. Sempre visibile:
-            // nasconderlo non rimuove il limite, lascia solo che il merchant
-            // costruisca da solo il nesso suggerito dalla vicinanza dei numeri. ?>
+      <?php // NEUTRAL methodological explanation: not an error, not a warning, not
+            // a negative assessment of the plugin. It is the boundary within which all
+            // the other numbers keep their credibility. Always visible:
+            // hiding it does not remove the limit, it only lets the merchant
+            // build on their own the link suggested by the numbers sitting side by side.?>
       <div class="kali-block kali-block--note">
         <div class="kali-block__head">
           <span class="kali-block__title"><?php esc_html_e( 'KaliCart\'s impact on sales', 'kalicart-bridge' ); ?></span>
@@ -647,22 +647,22 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
 
     <?php
     $kalicart_bridge_funnel = class_exists( 'KaliCart_Bridge_Checkout' ) ? KaliCart_Bridge_Checkout::get_funnel_report() : null;
-    // Il checkout agentico completo — l'agente che costruisce il carrello e paga
-    // da solo — non e' ancora una pratica diffusa: su quasi tutti i negozi questi
-    // quattro contatori sono a zero. Mostrare quattro zeri fa concludere che il
-    // plugin non funzioni, mentre le sezioni sopra dimostrano il contrario. Si
-    // mostra la griglia SOLO quando c'e' qualcosa dentro; altrimenti una riga che
-    // spiega cosa comparira'. Stesso principio della riga "Confermato".
-    // Soglia: VALORE NETTO PAGATO, non sessioni ne' carrelli. Una sessione aperta
-    // senza carrello e senza ordine non e' attivita' — la prima versione di questa
-    // guardia sommava i tre contatori e su un negozio reale ha lasciato passare la
-    // griglia per 1 sessione, 0, 0, 0,00 €: esattamente cio' che doveva impedire.
-    // Questa sezione esiste per dimostrare che un agente ha COMPRATO, quindi
-    // l'unica soglia coerente e' il denaro effettivamente incassato.
-    // Conseguenza accettata: un ordine agentico collegato ma non ancora pagato
-    // (bonifico, contrassegno) resta nascosto finche' il pagamento non e'
-    // confermato. Meglio mostrare tardi che mostrare un valore che il merchant
-    // potrebbe leggere come incassato.
+    // Full agentic checkout — the agent that builds the cart and pays
+    // on its own — is not yet a widespread practice: on almost every store these
+    // four counters are zero. Showing four zeros makes people conclude that the
+    // plugin does not work, while the sections above prove the opposite. The
+    // grid is shown ONLY when there is something in it; otherwise a line that
+    // explains what will appear. Same principle as the "Confirmed" line.
+    // Threshold: NET PAID VALUE, not sessions or carts. A session opened
+    // without a cart and without an order is not activity — the first version of this
+    // guard summed the three counters and on a real store let the
+    // grid through for 1 session, 0, 0, 0,00 €: exactly what it had to prevent.
+    // This section exists to prove that an agent BOUGHT, so
+    // the only coherent threshold is money actually collected.
+    // Accepted consequence: a linked agentic order not yet paid
+    // (bank transfer, cash on delivery) stays hidden until the payment is
+    // confirmed. Better to show late than to show a value the merchant
+    // might read as collected.
     $kalicart_bridge_funnel_active = $kalicart_bridge_funnel
       && (float) ( $kalicart_bridge_funnel['net_paid_value'] ?? 0 ) > 0;
     if ( ! $kalicart_bridge_funnel_active ) : ?>

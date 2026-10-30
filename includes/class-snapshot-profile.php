@@ -3,7 +3,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * KaliCart_Bridge_Snapshot_Profile — byte-exact profile of the static catalog
- * snapshot (1.0.139). Contract: CONTRATTO-1.0.139-SNAPSHOT §4, §14.3, §15.
+ * snapshot (1.0.139).
  *
  * - Every product line is the JCS (RFC 8785) canonical JSON of the projected
  *   product, UTF-8. The line written to the shard IS the canonical form, so
@@ -38,7 +38,7 @@ class KaliCart_Bridge_Snapshot_Profile {
 			return self::number( $v );
 		}
 		if ( is_string( $v ) ) {
-			// U+2028/U+2029 literal as in ECMAScript JSON.stringify (collaudo ChatGPT 06:27).
+			// U+2028/U+2029 literal as in ECMAScript JSON.stringify.
 			$s = json_encode( $v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_LINE_TERMINATORS );
 			if ( false === $s ) {
 				throw new InvalidArgumentException( 'invalid UTF-8 string' );
@@ -67,7 +67,7 @@ class KaliCart_Bridge_Snapshot_Profile {
 	private static function object( array $v ): string {
 		$keys = array_map( 'strval', array_keys( $v ) );
 		// RFC 8785: members sorted by UTF-16 code units. Pure PHP: no mbstring/iconv
-		// dependency (both are optional extensions; collaudo ChatGPT 06:34).
+		// dependency (both are optional extensions).
 		$units = [];
 		foreach ( $keys as $k ) {
 			$units[ $k ] = self::utf16_units( $k );

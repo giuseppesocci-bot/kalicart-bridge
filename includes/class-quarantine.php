@@ -4,8 +4,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * KaliCart_Bridge_Quarantine
  *
- * Catalog health — query SQL dirette, niente loop su wc_get_product().
- * Overview stats: veloci. Quarantine list: paginata, lazy.
+ * Catalog health — direct SQL queries, no loop over wc_get_product().
+ * Overview stats: fast. Quarantine list: paginated, lazy.
  */
 class KaliCart_Bridge_Quarantine {
     private const MIN_TITLE_WORDS = 3;
@@ -69,7 +69,7 @@ class KaliCart_Bridge_Quarantine {
     private static function build_report(): array {
         global $wpdb;
 
-        // ── Totale prodotti pubblicati ────────────────────────────────────────
+        // ── Total published products ──────────────────────────────────────────
         $total = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type='product' AND post_status='publish'"
         );
@@ -85,7 +85,7 @@ class KaliCart_Bridge_Quarantine {
             self::MIN_TITLE_WORDS
         ) );
 
-        // ── Senza immagine (thumbnail) ────────────────────────────────────────
+        // ── No image (thumbnail) ──────────────────────────────────────────────
         $no_image = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT COUNT(*) FROM {$wpdb->posts} p
              LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_thumbnail_id'
@@ -93,7 +93,7 @@ class KaliCart_Bridge_Quarantine {
              AND (pm.meta_value IS NULL OR pm.meta_value='')"
         );
 
-        // ── Senza descrizione (né lunga né corta) ─────────────────────────────
+        // ── No description (neither long nor short) ───────────────────────────
         $no_desc = (int) $wpdb->get_var( $wpdb->prepare(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT COUNT(*) FROM {$wpdb->posts}
              WHERE post_type='product' AND post_status='publish'
@@ -101,10 +101,10 @@ class KaliCart_Bridge_Quarantine {
             self::MIN_DESCRIPTION_LENGTH
         ) );
 
-        // ── Senza categoria (solo Uncategorized) ──────────────────────────────
+        // ── No category (only Uncategorized) ──────────────────────────────────
         $uncategorized_id = (int) get_option( 'default_product_cat', 0 );
-        // prodotti che hanno SOLO la categoria default o nessuna
-        // Prodotti che NON hanno nessuna categoria reale (escludendo Uncategorized)
+        // products that have ONLY the default category or none
+        // Products with NO real category (Uncategorized excluded)
         $no_cat = (int) $wpdb->get_var( $wpdb->prepare(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
              WHERE p.post_type='product' AND p.post_status='publish'
@@ -117,11 +117,11 @@ class KaliCart_Bridge_Quarantine {
             $uncategorized_id
         ) );
 
-        // ── Prezzo mancante ───────────────────────────────────────────────────
-        // PREZZO-MANCANTE-v2 (1.0.136): un prezzo a zero e' un omaggio, e si
-        // compra; senza prezzo non si compra. Fino alla 1.0.135 questo pannello
-        // li contava insieme, mentre il payload del catalogo (PRICE_MISSING nel
-        // motore) li distingueva gia': stesso prodotto, 100 nel payload e 85 qui.
+        // ── Missing price ─────────────────────────────────────────────────────
+        // PREZZO-MANCANTE-v2 (1.0.136): a zero price is a free item and can be
+        // bought; without a price nothing can be bought. Up to 1.0.135 this panel
+        // counted them together, while the catalog payload (PRICE_MISSING in the
+        // engine) already told them apart: same product, 100 in the payload and 85 here.
         $no_price = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT COUNT(*) FROM {$wpdb->posts} p
              LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_price'
@@ -129,7 +129,7 @@ class KaliCart_Bridge_Quarantine {
              AND (pm.meta_value IS NULL OR pm.meta_value='')"
         );
 
-        // ── Senza SKU ─────────────────────────────────────────────────────────
+        // ── No SKU ────────────────────────────────────────────────────────────
         $no_sku = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT COUNT(*) FROM {$wpdb->posts} p
              LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_sku'
@@ -137,9 +137,9 @@ class KaliCart_Bridge_Quarantine {
              AND (pm.meta_value IS NULL OR pm.meta_value='')"
         );
 
-        // ── Senza brand (stesse tassonomie di KaliCart_Bridge_Catalog_Engine::resolve_brand) ──
-        // Non e' un difetto del catalogo (score NON toccato): serve solo alla
-        // suggestion sul feed ChatGPT, dove la spec richiede il brand.
+        // ── No brand (same taxonomies as KaliCart_Bridge_Catalog_Engine::resolve_brand) ──
+        // Not a catalog defect (score NOT affected): it only feeds the
+        // suggestion for the ChatGPT feed, whose spec requires the brand.
         $no_brand = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT COUNT(*) FROM {$wpdb->posts} p
              WHERE p.post_type='product' AND p.post_status='publish'
@@ -161,7 +161,7 @@ class KaliCart_Bridge_Quarantine {
 
         // ── Score qualità globale ─────────────────────────────────────────────
         // Quarantine reasons weigh more than improvement-only signals.
-        // Un prodotto invendibile pesa piu' di uno scritto male: 40, sopra descrizione e categoria.
+        // An unsellable product weighs more than a badly written one: 40, above description and category.
         $issues_weighted = ( $bad_title * 25 + $no_desc * 30 + $no_cat * 30 + $no_price * 40 + $no_image * 8 + $no_sku * 4 );
         $max_weighted    = $total * 137;
         $avg_score       = $total > 0 ? max( 0, (int) round( 100 - ( $issues_weighted / max( 1, $max_weighted ) ) * 100 ) ) : 100;
@@ -170,7 +170,7 @@ class KaliCart_Bridge_Quarantine {
             $avg_score = max( 0, $avg_score - 10 );
         }
 
-        // ── Prodotti segnalati per issue ─────────────────────────────────────
+        // ── Products flagged per issue ────────────────────────────────────────
         $issue_product_ids = self::get_issue_product_ids( $wpdb, $uncategorized_id );
         $quarantine_ids = array_values( array_unique( array_merge(
             $issue_product_ids['TITLE_TOO_SHORT'],
@@ -178,20 +178,20 @@ class KaliCart_Bridge_Quarantine {
             $issue_product_ids['NO_CATEGORY'],
             $issue_product_ids['ZERO_PRICE']
         ) ) );
-        rsort( $quarantine_ids ); // recenti prima, coerente con le liste per-issue
+        rsort( $quarantine_ids ); // most recent first, consistent with the per-issue lists
         $quarantine_count = count( $quarantine_ids );
 
-        // ── Quarantine list (dettaglio, campione max 100 - i conteggi restano pieni) ──
-        // La UI dichiara il taglio ("primi 100 di N"); il lavoro in massa passa
-        // dai filtri sulla lista prodotti nativa, non da questa tab.
+        // ── Quarantine list (detail, sample of at most 100 - counts stay complete) ──
+        // The UI states the cut ("first 100 of N"); bulk work goes through
+        // the filters of the native product list, not through this tab.
         $quarantined_products = self::build_quarantine_list( array_slice( $quarantine_ids, 0, 100 ), $uncategorized_id );
         $out_of_stock_products = self::build_out_of_stock_list( 100 );
         $issue_products = [
             'NO_IMAGE' => self::build_issue_list( array_slice( $issue_product_ids['NO_IMAGE'], 0, 100 ), 'NO_IMAGE', 'No image', 'image' ),
             'NO_SKU'   => self::build_issue_list( array_slice( $issue_product_ids['NO_SKU'], 0, 100 ), 'NO_SKU', 'No SKU', 'sku' ),
-            // 1.0.146: NO_BRAND aveva conteggio e suggestion ma nessuna lista
-            // (vista vuota con 113). Stesso predicato e ambito del conteggio;
-            // severity 'info' = nessuna deduzione: il brand non tocca lo score.
+            // 1.0.146: NO_BRAND had a count and a suggestion but no list
+            // (empty view with 113). Same predicate and scope as the count;
+            // severity 'info' = no deduction: the brand does not affect the score.
             'NO_BRAND' => self::build_issue_list( array_slice( $issue_product_ids['NO_BRAND'], 0, 100 ), 'NO_BRAND', __( 'No brand (ChatGPT feed only)', 'kalicart-bridge' ), 'info' ),
         ];
 
@@ -213,7 +213,7 @@ class KaliCart_Bridge_Quarantine {
                 'no_category' => $no_cat,
                 'zero_price'  => $no_price,
                 'no_sku'      => $no_sku,
-                'no_brand'    => $no_brand, // 1.0.146: totale vero della vista NO_BRAND (non entra nello score)
+                'no_brand'    => $no_brand, // 1.0.146: true total of the NO_BRAND view (not part of the score)
             ],
             'suggestions'          => $suggestions,
             'quarantined_products' => $quarantined_products,
@@ -223,7 +223,7 @@ class KaliCart_Bridge_Quarantine {
         ];
     }
 
-    // ── IDs dei prodotti con almeno un flag ───────────────────────────────────
+    // ── IDs of products with at least one flag ────────────────────────────────
 
     private static function get_issue_product_ids( $wpdb, int $uncategorized_id ): array {
         // Titolo troppo corto o non parlante
@@ -237,12 +237,12 @@ class KaliCart_Bridge_Quarantine {
             self::MIN_TITLE_WORDS
         ) );
 
-        // Senza immagine / senza SKU / senza brand: 1.0.146 bounded at the DB
+        // No image / no SKU / no brand: 1.0.146 bounded at the DB
         // (first ISSUE_LIST_CAP, ID DESC = same order as the former rsort). The
         // true totals come from the separate COUNT queries in build_report().
         $no_image = self::issue_ids( 'NO_IMAGE', self::ISSUE_LIST_CAP );
 
-        // Senza descrizione
+        // No description
         $no_desc = $wpdb->get_col( $wpdb->prepare(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT ID FROM {$wpdb->posts}
              WHERE post_type='product' AND post_status='publish'
@@ -250,7 +250,7 @@ class KaliCart_Bridge_Quarantine {
             self::MIN_DESCRIPTION_LENGTH
         ) );
 
-        // Senza categoria reale
+        // No real category
         $no_cat = $wpdb->get_col( $wpdb->prepare(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT DISTINCT p.ID FROM {$wpdb->posts} p
              WHERE p.post_type='product' AND p.post_status='publish'
@@ -263,7 +263,7 @@ class KaliCart_Bridge_Quarantine {
             $uncategorized_id
         ) );
 
-        // Prezzo mancante (non zero: vedi PREZZO-MANCANTE-v2 sopra)
+        // Missing price (not zero: see PREZZO-MANCANTE-v2 above)
         $no_price = $wpdb->get_col(  // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- intentional, cached via transient
             "SELECT p.ID FROM {$wpdb->posts} p
              LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_price'
@@ -283,8 +283,8 @@ class KaliCart_Bridge_Quarantine {
             'NO_SKU'         => array_map( 'intval', $no_sku ),
             'NO_BRAND'       => array_map( 'intval', $no_brand ),
         ];
-        // Recenti prima: il campione mostrato in tab deve pescare i prodotti
-        // su cui il merchant sta lavorando ora, non i piu' vecchi per ID.
+        // Most recent first: the sample shown in the tab must pick the products
+        // the merchant is working on now, not the oldest by ID.
         foreach ( $lists as &$l ) {
             rsort( $l );
         }
@@ -296,7 +296,7 @@ class KaliCart_Bridge_Quarantine {
      * 1.0.146: one SQL per improvement signal, shared by the report (bounded,
      * $limit > 0) and by the native Products filter (unbounded, $limit = 0),
      * so both use the same predicate by construction. ORDER BY ID DESC =
-     * "recenti prima", the order the report always used.
+     * "most recent first", the order the report always used.
      */
     public static function issue_ids( string $code, int $limit = 0 ): array {
         global $wpdb;
@@ -347,7 +347,7 @@ class KaliCart_Bridge_Quarantine {
                                                                    $flags[] = [ 'code' => 'NO_DESCRIPTION', 'severity' => 'high',   'label' => __( 'Description too short', 'kalicart-bridge' ) ];
             if ( ! self::product_has_real_category( (int) $row->ID, $uncategorized_id ) )
                                                                    $flags[] = [ 'code' => 'NO_CATEGORY',    'severity' => 'high',   'label' => __( 'No category', 'kalicart-bridge' ) ];
-            // `empty('0')` e' TRUE in PHP: un omaggio veniva preso due volte. Solo l'assenza conta.
+            // `empty('0')` is TRUE in PHP: a free item was counted twice. Only absence counts.
             if ( $row->price === null || $row->price === '' ) $flags[] = [ 'code' => 'ZERO_PRICE',    'severity' => 'blocking', 'label' => __( 'No price set: the product cannot be purchased', 'kalicart-bridge' ) ];
 
             $deductions = 0;
@@ -461,8 +461,8 @@ class KaliCart_Bridge_Quarantine {
         if ( $no_price > 0 )  $s[] = [ 'priority' => 'high',   'code' => 'ZERO_PRICE',     'label' => __( 'Set a price on products that have none', 'kalicart-bridge' ),  'detail' => __( 'A product with no price cannot be purchased. A price of zero is different: it is a free product and stays purchasable.', 'kalicart-bridge' ),  'affected' => $no_price, 'admin_url' => $admin_url ];
         if ( $no_sku > 0 )    $s[] = [ 'priority' => 'low',    'code' => 'NO_SKU',         'label' => __( 'Add SKU codes', 'kalicart-bridge' ),            'detail' => __( 'SKUs enable precise product identification and deduplication by agents.', 'kalicart-bridge' ),'affected' => $no_sku,   'admin_url' => $admin_url ];
 
-        // Brand: non richiesto dal catalogo (nessun impatto su score/quarantena),
-        // richiesto dalla spec del feed ChatGPT. Educare alla distinzione.
+        // Brand: not required by the catalog (no impact on score/quarantine),
+        // required by the ChatGPT feed spec. Teach the distinction.
         if ( $no_brand > 0 ) {
             $s[] = [
                 'priority'  => 'low',

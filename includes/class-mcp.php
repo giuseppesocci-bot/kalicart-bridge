@@ -261,7 +261,7 @@ class KaliCart_Bridge_MCP {
 		return $resp;
 	}
 
-	// ── telemetry (chi usa il server MCP e con che risultati) ────────────────────
+	// ── telemetry (who uses the MCP server and with what results) ────────────────────
 
 	/** clientInfo from initialize — the client's own declared identity. */
 	private static function client_label( array $params ): string {
@@ -448,9 +448,9 @@ class KaliCart_Bridge_MCP {
 	// ── tools/call ────────────────────────────────────────────────────────────────
 
 	/**
-	 * @return null|string|array null se valido; string per gli errori legacy;
-	 *                          array per l'errore strutturato dei facet (1.0.130),
-	 *                          che arriva intatto all'agente con accepted_values.
+	 * @return null|string|array null when valid; string for legacy errors;
+	 *                          array for the structured facet error (1.0.130),
+	 *                          which reaches the agent intact with accepted_values.
 	 */
 	private static function validate_tool_arguments( string $name, array $args ) {
 		$filter_types = array(
@@ -509,10 +509,10 @@ class KaliCart_Bridge_MCP {
 		if ( isset( $args['page'] ) && ( $args['page'] < 1 || $args['page'] > $max_page ) ) {
 			return 'page is outside the safe catalog pagination range';
 		}
-		// 1.0.130 — stesso vocabolario e stessa normalizzazione del REST. Prima
-		// le due superfici divergevano sullo stesso input: l'MCP rifiutava con
-		// enum, il REST accettava e restituiva risultati. La validazione formale
-		// (trim + lowercase) avviene in normalize_tool_facets() prima di qui.
+		// 1.0.130 — same vocabulary and same normalization as REST. Before,
+		// the two surfaces diverged on the same input: MCP rejected with
+		// enum, REST accepted and returned results. Formal validation
+		// (trim + lowercase) happens in normalize_tool_facets() before this point.
 		foreach ( array( 'gender', 'color' ) as $kc_facet ) {
 			if ( ! isset( $args[ $kc_facet ] ) || '' === $args[ $kc_facet ] ) {
 				continue;
@@ -552,9 +552,9 @@ class KaliCart_Bridge_MCP {
 			self::track( array( 'method' => 'tools/call', 'tool' => '(invalid)', 'outcome' => 'error' ) );
 			return self::rpc_error( $id, -32602, 'Unknown tool: ' . $name );
 		}
-		// Normalizzazione SOLO formale prima di validare: `MALE ` e `male` sono lo
-		// stesso valore scritto diversamente. Nessuna traduzione — `uomo` resta
-		// una parola diversa e viene respinta.
+		// Formal normalization ONLY before validating: `MALE ` and `male` are the
+		// same value written differently. No translation — `uomo` stays
+		// a different word and is rejected.
 		foreach ( array( 'gender', 'color' ) as $kc_facet ) {
 			if ( isset( $args[ $kc_facet ] ) ) {
 				$args[ $kc_facet ] = KaliCart_Bridge_Catalog_Engine::normalize_facet_value( $args[ $kc_facet ] );
@@ -563,9 +563,9 @@ class KaliCart_Bridge_MCP {
 		$argument_error = self::validate_tool_arguments( $name, $args );
 		if ( null !== $argument_error ) {
 			self::track( array( 'method' => 'tools/call', 'tool' => $name, 'outcome' => 'error' ) );
-			// Un errore strutturato (array) arriva intatto all'agente: porta
-			// received, normalized, accepted_values e search_executed, cosi' si
-			// corregge al primo colpo. Gli errori legacy restano stringhe.
+			// A structured error (array) reaches the agent intact: it carries
+			// received, normalized, accepted_values and search_executed, so the agent
+			// fixes the call on the first try. Legacy errors stay strings.
 			$kc_payload = is_array( $argument_error )
 				? $argument_error
 				: array( 'error' => 'Invalid tool arguments: ' . $argument_error, 'search_executed' => false );
@@ -619,23 +619,23 @@ class KaliCart_Bridge_MCP {
 
 			case 'get_product':
 				$req = new WP_REST_Request( 'GET' );
-				// ID-NEL-PERCORSO-v1 (1.0.135) — `id` e' un pezzo del PERCORSO
-				// (/catalog/product/{id}), non un parametro di query, e va messo
-				// dove il router lo metterebbe. Con `set_param()` finiva nel
-				// secchio GET, e catalog_product(), che legge
-				// `get_query_params()` per rifiutare i parametri sconosciuti, lo
-				// vedeva come intruso: `get_product` rispondeva
-				// KALICART_UNKNOWN_QUERY_PARAMETERS e NON tornava mai un
-				// prodotto. Provato il 2026-09-18 su illpumpyouup.com con la
-				// 1.0.134 in produzione: stesso errore, quindi valeva per ogni
-				// merchant della federazione.
+				// ID-NEL-PERCORSO-v1 (1.0.135) — `id` is part of the PATH
+				// (/catalog/product/{id}), not a query parameter, and must go
+				// where the router would put it. With `set_param()` it ended up in
+				// the GET bucket,
+				// and catalog_product(), which reads
+				// `get_query_params()` to reject unknown parameters, saw it
+				// as an intruder: `get_product` answered
+				// KALICART_UNKNOWN_QUERY_PARAMETERS and NEVER returned a
+				// product. Reproduced in production on 1.0.134:
+				// the same error applied to every merchant of the federation.
 				//
-				// Non si allarga l'elenco dei parametri accettati per far passare
-				// `id`: sarebbe una toppa che apre davvero
-				// `/catalog/product/489?id=7` sull'HTTP pubblico. Si mette il
-				// valore nel secchio giusto, e la chiamata interna torna identica
-				// a quella che arriva dalla rete — che e' il presupposto
-				// dichiarato di run_tool().
+				// The list of accepted parameters is not widened to let `id`
+				// through: that would be a patch that really opens
+				// `/catalog/product/489?id=7` on public HTTP. The value goes into
+				// the right bucket, so the internal call is identical
+				// to the one coming from the network — which is the stated
+				// premise of run_tool().
 				$req->set_url_params( array( 'id' => isset( $args['id'] ) ? absint( $args['id'] ) : 0 ) );
 				$req->set_param( 'fields', 'verification' );
 				return self::unwrap( self::call_catalog_api( 'catalog_product', $req ) );
@@ -685,7 +685,7 @@ class KaliCart_Bridge_MCP {
 	// ── tools/list definitions ─────────────────────────────────────────────────────
 
 	private static function tool_definitions(): array {
-		// 1.0.130 — vocabolario dal motore, non piu' duplicato qui.
+		// 1.0.130 — vocabulary from the engine, no longer duplicated here.
 		$gender_enum = KaliCart_Bridge_Catalog_Engine::accepted_facet_values( 'gender' );
 		$color_enum  = KaliCart_Bridge_Catalog_Engine::accepted_facet_values( 'color' );
 		$orderby     = KaliCart_Bridge_Catalog_Engine::accepted_facet_values( 'orderby' );
@@ -695,15 +695,15 @@ class KaliCart_Bridge_MCP {
 				'type'        => 'string',
 				'description' => 'WooCommerce category slug (e.g. "scarpe-uomo"). Enumerate valid slugs via list_categories or get_meta.',
 			),
-			// SCHEMA `string`, NON `enum`. Un client MCP conforme valida l'enum
-			// PRIMA di chiamare: `MALE ` verrebbe bloccato sul client e non
-			// raggiungerebbe mai il server, quindi la tolleranza formale (trim +
-			// lowercase) non si applicherebbe e l'errore strutturato non
-			// arriverebbe all'agente. Il costo e' la minore scopribilita': si
-			// recupera elencando i canonici nella descrizione.
-			// E soprattutto: NESSUN alias. La descrizione prometteva
-			// `uomo`/`donna` mentre l'enum accettava solo i canonici — l'agente
-			// leggeva una cosa e ne otteneva un'altra.
+			// SCHEMA `string`, NOT `enum`. A compliant MCP client validates the enum
+			// BEFORE calling: `MALE ` would be blocked on the client and would
+			// never reach the server, so the formal tolerance (trim +
+			// lowercase) would not apply and the structured error would not
+			// reach the agent. The cost is lower discoverability: it is
+			// recovered by listing the canonical values in the description.
+			// Above all: NO aliases. The description promised
+			// `uomo`/`donna` while the enum accepted only canonical values — the agent
+			// read one thing and got another.
 			'gender'    => array(
 				'type'        => 'string',
 				'description' => 'Gender facet. Canonical values only: ' . implode( ', ', $gender_enum ) . '. Input is trimmed and lowercased; no translation is performed. See get_meta for the values actually present in this store.',

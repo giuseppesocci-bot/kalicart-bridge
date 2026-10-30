@@ -358,10 +358,10 @@ class KaliCart_Bridge_Admin {
         check_ajax_referer( 'kalicart_bridge', 'nonce' );
         if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'Forbidden', 403 );
 
-        // Il click su Attiva E' l'atto di consenso esplicito e informato: il testo
-        // federated-catalog-1.1 e' mostrato per intero sopra il bottone. 1.0.139: l'atto si
-        // registra (ricevuta locale append-only) PRIMA di accendere il consenso, che a sua
-        // volta precede l'announce, cosi' il discovery JSON pubblica ON quando il probe arriva.
+        // Clicking Activate is the explicit, informed act of consent: the full
+        // federated-catalog-1.1 text is shown above the button. Since 1.0.139 the act is
+        // recorded (local append-only receipt) BEFORE the consent is switched on, which in
+        // turn precedes the announce, so the discovery JSON already says ON when the probe arrives.
         try {
             KaliCart_Bridge_Federation_Consent::record( 'granted', get_current_user_id() );
         } catch ( \Throwable $e ) {
@@ -442,13 +442,13 @@ class KaliCart_Bridge_Admin {
         check_ajax_referer( 'kalicart_bridge', 'nonce' );
         if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'Forbidden', 403 );
 
-        // (1) spegni il consenso PRIMA: il discovery JSON pubblica OFF da subito.
+        // (1) switch the consent off FIRST: the discovery JSON says OFF immediately.
         update_option( 'kalicart_bridge_global_consent', false );
-        // 1.0.139: la revoca e' un atto registrato come l'attivazione (mai bloccante).
+        // Since 1.0.139 revocation is recorded like activation (never blocking).
         try {
             KaliCart_Bridge_Federation_Consent::record( 'revoked', get_current_user_id() );
         } catch ( \Throwable $e ) {
-            // la revoca vale comunque: il consenso e' gia' spento
+            // the revocation stands anyway: the consent is already off
         }
         // 1.0.138: signed consent=false heartbeat, best effort (never blocks the revoke).
         if ( class_exists( 'KaliCart_Bridge_Identity' ) ) {
@@ -459,7 +459,7 @@ class KaliCart_Bridge_Admin {
             KaliCart_Bridge_Snapshot::delete_all();
         }
 
-        // (2) push di deregister per il parcheggio immediato (best-effort).
+        // (2) deregister push for immediate parking (best effort).
         $site_url = trailingslashit( get_site_url() );
         $resp = wp_remote_post( KALICART_BRIDGE_GLOBAL . '/v1/bridge/deregister', [
             'timeout'   => 8,
@@ -469,7 +469,7 @@ class KaliCart_Bridge_Admin {
         ] );
         delete_option( 'kalicart_bridge_federation_registered_at' );
 
-        // Il consenso e' gia' OFF: anche se il push fallisce, la revoca e' garantita al probe.
+        // The consent is already OFF: even if the push fails, the probe sees the revocation.
         $pushed = ! is_wp_error( $resp ) && wp_remote_retrieve_response_code( $resp ) < 300;
         wp_send_json_success( [ 'consent' => false, 'pushed' => $pushed ] );
     }

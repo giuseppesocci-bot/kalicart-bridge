@@ -5,7 +5,6 @@ defined( 'ABSPATH' ) || exit;
  * KaliCart_Bridge_Federation_Consent — local, append-only evidence of the
  * Federated Catalog consent (consent A), 1.0.139.
  *
- * Contract: CONTRATTO-1.0.139-SNAPSHOT §9, §14.6.
  * - Text federated-catalog-1.1 applies to NEW activations. Each activation and
  *   revocation appends one record: text id, action, UTC time, WordPress user,
  *   locale, SHA-256 of the canonical English text and of the localized text the

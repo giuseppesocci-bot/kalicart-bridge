@@ -4,7 +4,6 @@ defined( 'ABSPATH' ) || exit;
 /**
  * KaliCart_Bridge_Identity — signed installation identity (1.0.138).
  *
- * Contract: KaliCart CONTRATTO identita'/push, REVISIONE 2 (2026-09-27).
  * - One Ed25519 key per installation (sodium, bundled with WordPress). The
  *   private key is stored in wp_options encrypted with a key derived from
  *   AUTH_KEY (domain-separated); if AUTH_KEY changes the key is treated as lost
@@ -148,7 +147,7 @@ class KaliCart_Bridge_Identity {
 	/**
 	 * 1.0.139: KaliCart Global's clock as learned from its signed responses
 	 * (server_time). Returns [unix time, known]. When the offset was never learned
-	 * the local clock is returned with known=false (collaudo ChatGPT 06:35).
+	 * the local clock is returned with known=false.
 	 */
 	public static function server_now(): array {
 		$s = self::state();

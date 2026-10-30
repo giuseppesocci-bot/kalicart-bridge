@@ -4,12 +4,12 @@ defined( 'ABSPATH' ) || exit;
 /**
  * KaliCart_Bridge_Signals
  *
- * Agent-discoverability signals — tutto via WP hooks, zero file fisici.
+ * Agent-discoverability signals — all through WP hooks, zero physical files.
  *
  *  1. <link rel="kalicart-agent"> in <head>
  *  2. HTML speaking badge (position configurable)
- *  3. robots_txt filter (WP gestisce robots.txt, noi aggiungiamo il blocco)
- *  4. sitemap-agentic-bridge.xml servita via rewrite WP + registrata nel sitemap index
+ *  3. robots_txt filter (WP manages robots.txt, we append our block)
+ *  4. sitemap-agentic-bridge.xml served through a WP rewrite + registered in the sitemap index
  */
 class KaliCart_Bridge_Signals {
 
@@ -88,39 +88,39 @@ class KaliCart_Bridge_Signals {
 
     /** Known branded AI crawler / agent user-agent tokens. First match wins. */
     /**
-     * Mappa assistente -> [bot che leggono, domini di provenienza degli ordini].
+     * Map assistant -> [bots that read, referrer domains of orders].
      *
-     * Le due colonne rispondono a domande diverse e sono ASIMMETRICHE di proposito:
-     *  - 'bots'    : chi legge il sito. Viene dal contatore ai_traffic.
-     *  - 'origins' : da dove arriva chi compra. Viene dall'attribuzione ordini di
-     *                WooCommerce, che e' sourcebuster.js lato browser: registra il
-     *                referrer di una PERSONA con un browser, mai di un agente.
+     * The two columns answer different questions and are ASYMMETRIC on purpose:
+     *  - 'bots'    : who reads the site. Comes from the ai_traffic counter.
+     *  - 'origins' : where buyers come from. Comes from WooCommerce order
+     *                attribution, which is browser-side sourcebuster.js: it records the
+     *                referrer of a PERSON with a browser, never of an agent.
      *
-     * Asimmetrie volute, non dimenticanze:
-     *  - Amazon e Apple leggono ma non mandano traffico a negozi terzi -> no origins.
-     *    Siri in particolare apre Safari senza referrer: l'ordine risulta 'diretto'
-     *    e non e' distinguibile da chi digita l'indirizzo. Gli assistenti integrati
-     *    nel sistema operativo restano invisibili nella colonna ordini.
-     *  - Copilot non ha un crawler proprio (usa l'indice Bing) -> no bots.
-     *  - duckduckgo.com NON e' fra le origins: e' anche un motore di ricerca
-     *    normale, e conterebbe ricerche ordinarie come conversioni da assistente.
+     * Intended asymmetries, not omissions:
+     *  - Amazon and Apple read but send no traffic to third-party shops -> no origins.
+     *    Siri in particular opens Safari without a referrer: the order shows as 'direct'
+     *    and cannot be told apart from someone typing the address. Assistants built
+     *    into the operating system stay invisible in the orders column.
+     *  - Copilot has no crawler of its own (it uses the Bing index) -> no bots.
+     *  - duckduckgo.com is NOT among the origins: it is also an ordinary search
+     *    engine, and would count ordinary searches as assistant conversions.
      */
     /**
-     * Bot che agiscono PER CONTO DI UN UTENTE in quel momento, distinti da quelli
-     * che indicizzano per conto proprio.
+     * Bots acting ON BEHALF OF A USER at that moment, as distinct from those
+     * indexing on their own behalf.
      *
-     * La distinzione non e' cosmetica: sono le uniche due cose che il pannello
-     * puo' affermare, e hanno valore diverso. Un indicizzatore lavora una volta e
-     * lascia qualcosa nell'indice del fornitore; un agente-utente sta rispondendo
-     * a una persona mentre chiama. Misurato su tre negozi (project2209, possedoni,
-     * duinshop): il catalogo lo hanno chiesto SOLO indicizzatori, gli agenti-utente
-     * mai. Raggruppare i due sotto un nome solo faceva scrivere al pannello
-     * "ChatGPT ha chiesto il tuo catalogo 17 volte" quando ChatGPT-User non lo
-     * aveva toccato nemmeno una volta: vero alla lettera, falso nella sostanza.
+     * The distinction is not cosmetic: they are the only two things the panel
+     * can state, and they carry different value. An indexer works once and
+     * leaves something in the provider's index; a user agent is answering
+     * a person while it calls. Measured on three stores: only indexers
+     * requested the catalog, user agents never did. Grouping the two under one
+     * name made the panel write "ChatGPT requested your catalog 17 times"
+     * when ChatGPT-User had not touched it even once: literally true, false in
+     * substance.
      *
-     * Elenco esplicito e non euristica sul suffisso `-User`: il suffisso oggi
-     * regge, ma un fornitore puo' nominare diversamente e un'euristica
-     * sbaglierebbe in silenzio.
+     * An explicit list and not a heuristic on the `-User` suffix: the suffix holds
+     * today, but a provider can name things differently and a heuristic
+     * would fail silently.
      */
     public static function user_agent_bots(): array {
         return (array) apply_filters( 'kalicart_bridge_user_agent_bots', [
@@ -128,7 +128,7 @@ class KaliCart_Bridge_Signals {
         ] );
     }
 
-    /** true se il bot agisce per conto di un utente, false se indicizza. */
+    /** true if the bot acts on behalf of a user, false if it indexes. */
     public static function is_user_agent_bot( string $bot ): bool {
         return in_array( $bot, self::user_agent_bots(), true );
     }
@@ -158,18 +158,18 @@ class KaliCart_Bridge_Signals {
     }
 
     /**
-     * Report per il pannello Stats. Aggrega gli ultimi $days bucket di
-     * kalicart_bridge_ai_traffic in due sole colonne leggibili da un merchant:
+     * Report for the Stats panel. Aggregates the last $days buckets of
+     * kalicart_bridge_ai_traffic into just two columns a merchant can read:
      *
-     *   pages   = superficie 'html'   -> pagine che esisterebbero comunque
-     *   catalog = superfici 'api'+'mcp' -> rotte che esistono SOLO col Bridge
+     *   pages   = 'html' surface        -> pages that would exist anyway
+     *   catalog = 'api'+'mcp' surfaces  -> routes that exist ONLY with the Bridge
      *
-     * Sul catalogo si contano TUTTE le richieste, non i soli bot riconosciuti:
-     * la superficie mcp e' quasi tutta 'other'/'anonymous_programmatic' perche'
-     * le armature di agenti custom spesso non mandano user-agent. Filtrare per
-     * nome li cancellerebbe proprio mentre fanno la cosa che conta di piu'.
-     * Le visite HTML invece si contano solo se branded: li' il traffico non
-     * riconosciuto e' il proprietario del sito, non un agente.
+     * On the catalog ALL requests are counted, not only recognized bots:
+     * the mcp surface is almost entirely 'other'/'anonymous_programmatic' because
+     * custom agent harnesses often send no user-agent. Filtering by
+     * name would erase them exactly while they do what matters most.
+     * HTML visits instead count only when branded: there, unrecognized
+     * traffic is the site owner, not an agent.
      *
      * @return array{days_covered:int,pages:array,catalog:array,catalog_total:int,unnamed_catalog:int}
      */
@@ -201,11 +201,11 @@ class KaliCart_Bridge_Signals {
                     }
                     continue;
                 }
-                // api + mcp: il catalogo computabile.
-                // Si contano SOLO le classi plausibilmente agentiche. 'browser'
-                // sul catalogo e' il proprietario del sito o uno strumento di
-                // test: presentarlo come "agente anonimo" sarebbe una bugia
-                // proprio nella colonna che deve reggere meglio di tutte.
+                // api + mcp: the computable catalog.
+                // Only plausibly agentic classes are counted. 'browser'
+                // on the catalog is the site owner or a testing
+                // tool: presenting it as an "anonymous agent" would be a lie
+                // exactly in the column that must hold up best of all.
                 $classes = is_array( $v['class'] ?? null ) ? $v['class'] : [];
                 $agentic = (int) ( $classes['anonymous_programmatic'] ?? 0 )
                          + (int) ( $classes['generic_client'] ?? 0 )
@@ -225,27 +225,27 @@ class KaliCart_Bridge_Signals {
             'pages'           => $pages,
             'catalog'         => $catalog,
             'catalog_total'   => $catalog_total,
-            // Richieste al catalogo senza un agente riconoscibile: agenti custom
-            // senza user-agent, piu' il traffico del sito stesso. Si mostra come
-            // aggregato, mai attribuito a un nome.
+            // Catalog requests without a recognizable agent: custom agents
+            // without a user-agent, plus the site's own traffic. Shown as an
+            // aggregate, never attributed to a name.
             'unnamed_catalog' => max( 0, $catalog_total - $named_catalog ),
         ];
     }
 
     /**
-     * Vista del pannello: due misure INDIPENDENTI, mai fuse.
+     * Panel view: two INDEPENDENT measures, never merged.
      *
-     * Struttura deliberata. La tabella a tre colonne affiancate costruiva
-     * visivamente una sequenza crawler -> visita -> ordine, mentre i tre numeri
-     * vengono da popolazioni che NON condividono alcun identificativo: il bot
-     * interroga dai server del fornitore, la persona compra dal proprio browser
-     * giorni dopo. Nessuna legenda elimina quella lettura, quindi la struttura
-     * separa cio' che il dato separa.
+     * Deliberate structure. The three-column side-by-side table visually built
+     * a crawler -> visit -> order sequence, while the three numbers come
+     * from populations that share NO identifier: the bot queries
+     * from the provider's servers, the person buys from their own browser
+     * days later. No legend removes that reading, so the structure
+     * separates what the data separates.
      *
-     *   'bridge'  -> attivita' osservata sul sito, fonte: contatore KaliCart
-     *   'orders'  -> ordini, fonte: attribuzione nativa WooCommerce
+     *   'bridge'  -> activity observed on the site, source: KaliCart counter
+     *   'orders'  -> orders, source: native WooCommerce attribution
      *
-     * Non calcolare mai un rapporto fra i due, e non presentarli come stadi.
+     * Never compute a ratio between the two, and never present them as stages.
      */
     public static function get_panel_view( int $days = 30 ): array {
         $rep = self::get_agent_report( $days );
@@ -288,24 +288,24 @@ class KaliCart_Bridge_Signals {
     }
 
     /**
-     * Righe del pannello, UNA PER ASSISTENTE e non per bot.
+     * Panel rows, ONE PER ASSISTANT and not per bot.
      *
-     * Necessario perche' le tre colonne hanno chiavi diverse: pagine e catalogo
-     * sono per user-agent ('ChatGPT-User', 'OAI-SearchBot', 'GPTBot'), gli ordini
-     * sono per dominio di provenienza ('chatgpt.com'). Solo la mappa assistente
-     * tiene insieme le due cose, quindi l'aggregazione avviene qui e non nella
-     * vista. Per il merchant conta l'assistente, non quale dei tre crawler.
+     * Needed because the three columns have different keys: pages and catalog
+     * are per user-agent ('ChatGPT-User', 'OAI-SearchBot', 'GPTBot'), orders
+     * are per referrer domain ('chatgpt.com'). Only the assistant map
+     * holds the two together, so aggregation happens here and not in the
+     * view. For the merchant the assistant matters, not which of the three crawlers.
      *
-     * I bot che non stanno nella mappa restano come riga a se': meglio un nome
-     * sconosciuto mostrato che un passaggio taciuto.
+     * Bots that are not in the map stay as a row of their own: better an unknown
+     * name shown than a visit kept silent.
      */
     /**
-     * NON USATA DALLA VISTA dal 2026-09-11 (1.0.129), quando la tabella a colonne
-     * affiancate e' stata sostituita da due blocchi indipendenti: aggregava le
-     * tre misure in una riga per assistente, che e' esattamente la forma che
-     * suggeriva una sequenza crawler -> visita -> ordine fra popolazioni non
-     * collegabili. Conservata perche' l'aggregazione per assistente resta utile
-     * se un giorno servira' un export, ma NON va riusata per la vista.
+     * NOT USED BY THE VIEW since 2026-09-11 (1.0.129), when the side-by-side
+     * column table was replaced by two independent blocks: it aggregated the
+     * three measures into one row per assistant, which is exactly the shape that
+     * suggested a crawler -> visit -> order sequence between populations that
+     * cannot be linked. Kept because per-assistant aggregation stays useful
+     * if an export is ever needed, but it must NOT be reused for the view.
      */
     public static function get_panel_rows( int $days = 30 ): array {
         $rep    = self::get_agent_report( $days );
@@ -338,16 +338,16 @@ class KaliCart_Bridge_Signals {
                 'bots'    => $found,
                 'pages'   => $pages,
                 'catalog' => $cat,
-                // Tre grandezze DISTINTE, mai sommate fra loro: un ordine con
-                // provenienza registrata non e' un incasso finche' non ha una data
-                // di pagamento, e il valore e' al netto dei rimborsi.
+                // Three DISTINCT quantities, never summed together: an order with
+                // a recorded origin is not revenue until it has a payment
+                // date, and the value is net of refunds.
                 'orders'      => (int) $o['orders'],
                 'paid_orders' => (int) ( $o['paid_orders'] ?? 0 ),
                 'net_paid'    => (float) ( $o['net_paid'] ?? 0 ),
             ];
         }
 
-        // Bot osservati ma non presenti nella mappa: si mostrano comunque.
+        // Bots observed but missing from the map: shown anyway.
         foreach ( array_merge( array_keys( $rep['pages'] ), array_keys( $rep['catalog'] ) ) as $bot ) {
             if ( isset( $seen[ $bot ] ) ) {
                 continue;
@@ -364,9 +364,9 @@ class KaliCart_Bridge_Signals {
         }
 
         usort( $rows, static function ( $a, $b ) {
-            // Ordine: prima chi ha portato ordini, poi chi ha letto il catalogo,
-            // poi il volume sulle pagine. Le righe che dimostrano di piu' stanno
-            // in alto anche quando i numeri assoluti sono piccoli.
+            // Order: first who brought orders, then who read the catalog,
+            // then the volume on pages. The rows that prove the most stay
+            // at the top even when the absolute numbers are small.
             return [ $b['orders'], $b['catalog'], $b['pages'] ] <=> [ $a['orders'], $a['catalog'], $a['pages'] ];
         } );
 
@@ -382,18 +382,18 @@ class KaliCart_Bridge_Signals {
     }
 
     /**
-     * Ordini arrivati da un assistente AI negli ultimi $days giorni.
+     * Orders that came from an AI assistant in the last $days days.
      *
-     * Sorgente: attribuzione ordini nativa di WooCommerce (sourcebuster.js).
-     * IMPLICAZIONE DA NON DIMENTICARE: e' JavaScript lato browser, quindi
-     * registra il referrer di una PERSONA che ha cliccato un link dentro un
-     * assistente. Un agente headless non produce questo dato — quello, se
-     * comprera' davvero, passera' dal marker di sessione Bridge e finira' nel
-     * funnel checkout, che e' un contatore separato. I due non vanno sommati.
+     * Source: native WooCommerce order attribution (sourcebuster.js).
+     * IMPLICATION NOT TO FORGET: it is browser-side JavaScript, so it
+     * records the referrer of a PERSON who clicked a link inside an
+     * assistant. A headless agent does not produce this data — that, if it
+     * ever buys, will go through the Bridge session marker and end up in the
+     * checkout funnel, which is a separate counter. The two must not be summed.
      *
-     * Si usa wc_get_orders e non una query diretta: le chiavi stanno in
-     * wp_wc_orders_meta con HPOS attivo e in wp_postmeta senza, e una query
-     * sulla tabella si romperebbe sulla meta' dei merchant.
+     * wc_get_orders is used and not a direct query: the keys live in
+     * wp_wc_orders_meta with HPOS active and in wp_postmeta without it, and a query
+     * on the table would break on half of the merchants.
      *
      * @return array{orders:int,paid_orders:int,net_paid:float,by_assistant:array,currency:string}
      */
@@ -413,8 +413,8 @@ class KaliCart_Bridge_Signals {
             return $cache;
         }
 
-        // host -> assistente. Si confrontano HOST NORMALIZZATI, mai sottostringhe:
-        // con strpos un referrer come `notchatgpt.com.evil.example` matchava.
+        // host -> assistant. NORMALIZED HOSTS are compared, never substrings:
+        // with strpos a referrer like `notchatgpt.com.evil.example` matched.
         $lookup = [];
         foreach ( self::assistant_map() as $name => $def ) {
             foreach ( (array) ( $def['origins'] ?? [] ) as $origin ) {
@@ -426,9 +426,9 @@ class KaliCart_Bridge_Signals {
             return $empty;
         }
 
-        // Paginazione completa: il limite fisso a 500 falsava il conteggio sui
-        // negozi con volume, e lo falsava in silenzio. Stesso schema del funnel
-        // checkout in class-checkout.php.
+        // Full pagination: the fixed limit of 500 skewed the count on
+        // high-volume stores, and skewed it silently. Same scheme as the
+        // checkout funnel in class-checkout.php.
         $query_args = [
             'date_created' => '>' . ( time() - ( max( 1, $days ) * DAY_IN_SECONDS ) ),
             'status'       => array_keys( wc_get_order_statuses() ),
@@ -469,12 +469,12 @@ class KaliCart_Bridge_Signals {
                 $n++;
                 $by[ $name ]['orders']++;
 
-                // Uno stato "pagante" NON e' prova di pagamento: contrassegno,
-                // bonifico e assegno raggiungono 'processing' con date_paid ancora
-                // NULL. Viceversa un ordine rimborsato conserva una data di
-                // pagamento reale e deve contribuire col suo netto, spesso zero.
-                // Criterio identico al funnel checkout, per non avere due verita'
-                // diverse nello stesso pannello.
+                // A "paying" status is NOT proof of payment: cash on delivery,
+                // bank transfer and cheque reach 'processing' with date_paid still
+                // NULL. Conversely a refunded order keeps a real payment
+                // date and must contribute its net amount, often zero.
+                // Same criterion as the checkout funnel, so as not to have two different
+                // truths in the same panel.
                 if ( ! $order->get_date_paid() ) {
                     continue;
                 }
@@ -499,10 +499,10 @@ class KaliCart_Bridge_Signals {
     }
 
     /**
-     * Host in forma confrontabile: minuscolo, senza schema, porta, www e path.
-     * WooCommerce valorizza utm_source col dominio nudo ma il fallback referrer
-     * e' una URL completa, quindi vanno ridotti alla stessa forma prima del
-     * confronto.
+     * Host in comparable form: lowercase, without scheme, port, www and path.
+     * WooCommerce fills utm_source with the bare domain but the referrer fallback
+     * is a full URL, so both must be reduced to the same form before the
+     * comparison.
      */
     private static function normalize_host( string $value ): string {
         $value = strtolower( trim( $value ) );
@@ -519,23 +519,23 @@ class KaliCart_Bridge_Signals {
     }
 
     /**
-     * Incrocio: assistenti che hanno interrogato il catalogo Bridge E hanno
-     * portato clienti che hanno comprato, nella stessa finestra.
+     * Cross-check: assistants that queried the Bridge catalog AND
+     * brought customers who bought, in the same window.
      *
-     * LIMITE DICHIARATO: il contatore e' giornaliero e anonimo, l'attribuzione
-     * ordini e' per-ordine. Non esiste alcun identificativo condiviso, quindi
-     * questo NON dimostra che una lettura abbia causato quell'ordine. Dice che
-     * lo stesso assistente ha fatto entrambe le cose nel periodo. La frase
-     * mostrata all'utente deve restare a questo livello di pretesa.
+     * STATED LIMIT: the counter is daily and anonymous, order attribution
+     * is per order. There is no shared identifier, so this
+     * does NOT prove that a read caused that order. It says that
+     * the same assistant did both things in the period. The sentence
+     * shown to the user must stay at this level of claim.
      */
     /**
-     * NON USATA DALLA VISTA dal 2026-09-10, quando il banner "Confermato" e' stato
-     * rimosso: affermava un legame che non e' dimostrabile con i dati attuali.
-     * Si conserva perche' e' la base su cui poggera' la categoria "provati", il
-     * giorno in cui il Bridge firmera' gli URL consegnati agli agenti e l'ordine
-     * portera' quella firma. A quel punto il criterio non sara' piu' "stesso
-     * periodo" ma "l'ordine porta la traccia", e questa funzione va riscritta di
-     * conseguenza, non riusata com'e'.
+     * NOT USED BY THE VIEW since 2026-09-10, when the "Confirmed" banner was
+     * removed: it claimed a link that cannot be proven with the current data.
+     * Kept because it is the base for the "proven" category, the
+     * day the Bridge signs the URLs handed to agents and the order
+     * carries that signature. At that point the criterion will no longer be "same
+     * period" but "the order carries the trace", and this function must be rewritten
+     * accordingly, not reused as it is.
      */
     public static function get_confirmed_assistants( int $days = 30 ): array {
         $report = self::get_agent_report( $days );
@@ -564,10 +564,10 @@ class KaliCart_Bridge_Signals {
             'PerplexityBot', 'Perplexity-User',
             'Google-Extended', 'Bytespider', 'Amazonbot',
             'meta-externalagent', 'cohere-ai',
-            // ORDINE SIGNIFICATIVO: il ciclo restituisce il primo match, e
-            // 'Applebot' e' sottostringa di 'Applebot-Extended'. Extended (uso
-            // per addestramento) va valutato PRIMA di Applebot (indicizzazione
-            // per Siri/Spotlight), altrimenti i due diventano indistinguibili.
+            // ORDER MATTERS: the loop returns the first match, and
+            // 'Applebot' is a substring of 'Applebot-Extended'. Extended (used
+            // for training) must be evaluated BEFORE Applebot (indexing
+            // for Siri/Spotlight), otherwise the two become indistinguishable.
             'Applebot-Extended', 'Applebot',
             'DuckAssistBot', 'MistralAI',
         ];
@@ -953,9 +953,9 @@ class KaliCart_Bridge_Signals {
 
     // ── 3. ROBOTS.TXT ─────────────────────────────────────────────────────────
     //
-    // WP genera robots.txt dinamicamente via wp-includes/functions.php
-    // get_robots_txt(). Il filtro robots_txt è il modo corretto e ufficiale
-    // per modificarlo. Nessun file fisico coinvolto.
+    // WP generates robots.txt dynamically via wp-includes/functions.php
+    // get_robots_txt(). The robots_txt filter is the correct, official way
+    // to modify it. No physical file involved.
 
     public static function filter_robots_txt( string $output, bool $public ): string {
         if ( ! $public ) return $output;
@@ -978,8 +978,8 @@ class KaliCart_Bridge_Signals {
 
     // ── 4. SITEMAP-AGENTIC-BRIDGE.XML ─────────────────────────────────────────
     //
-    // Servita via rewrite WP → index.php?kalicart_sitemap=1 → template_redirect.
-    // Registrata anche nel WP sitemap index. Zero file fisici.
+    // Served through a WP rewrite → index.php?kalicart_sitemap=1 → template_redirect.
+    // Also registered in the WP sitemap index. Zero physical files.
 
     /**
      * Writes physical .well-known/kalicart-bridge and .well-known/agent.json files.
@@ -1331,7 +1331,7 @@ class KaliCart_Bridge_Signals {
 
         header( 'Content-Type: application/xml; charset=utf-8' );
         header( 'X-Robots-Tag: noindex' );
-        // Cache 1 ora lato client/CDN
+        // 1-hour cache on the client/CDN
         header( 'Cache-Control: public, max-age=3600' );
 
         echo self::build_sitemap_xml(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- XML output, not HTML

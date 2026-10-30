@@ -164,7 +164,7 @@
     setText( 'statOutStock',   data.out_of_stock_count ?? 0 );
     setText( 'statNoSku',      data.issues?.no_sku ?? 0 );
 
-    // Issues breakdown — colora in rosso se > 0
+    // Issues breakdown — red when > 0
     const issues = data.issues ?? {};
     setIssue( 'issueBadTitle', issues.bad_title );
     setIssue( 'issueNoImage', issues.no_image );
@@ -180,7 +180,7 @@
         ? `<div class="kali-empty">&#x1F389; ${ STR.no_issues }</div>`
         : sug.map( s => ( s.affected != null && Number( s.affected ) > 0 )
           // 1.0.146: the WHOLE card is the control (one real <button>, no nested
-          // interactive element); same destination the "N prodotti" pill had.
+          // interactive element); same destination the old "N products" pill had.
           ? `
           <button type="button" class="kali-suggestion kali-suggestion--link" data-issue-code="${ esc( s.code ) }" data-view-issue="${ esc( s.code ) }">
             <span class="kali-suggestion__dot kali-suggestion__dot--${ esc( s.priority ) }" aria-hidden="true"></span>
@@ -225,7 +225,7 @@
   const ISSUE_COUNT_KEY = {
     TITLE_TOO_SHORT: 'bad_title', NO_DESCRIPTION: 'no_description', NO_CATEGORY: 'no_category',
     ZERO_PRICE: 'zero_price', NO_IMAGE: 'no_image', NO_SKU: 'no_sku',
-    NO_BRAND: 'no_brand', // 1.0.146: totale vero della vista NO_BRAND ("primi 100 di N")
+    NO_BRAND: 'no_brand', // 1.0.146: true total of the NO_BRAND view ("first 100 of N")
   };
 
   function qualityFilterBtn( label, count, url ) {
@@ -233,8 +233,8 @@
     return `<a class="kali-btn kali-btn--ghost kali-q-filter-btn" href="${ esc( url ) }">${ label } <span class="kali-q-filter-count">${ count }</span></a>`;
   }
 
-  // Due file: segnali critici (ragioni di quality signal) e migliorie.
-  // Ogni bottone lavora UN problema nella lista prodotti nativa (bulk/quick edit gratis).
+  // Two rows: critical signals (quality signal reasons) and improvements.
+  // Each button works ONE problem in the native product list (free bulk/quick edit).
   function renderQualityFilters( data ) {
     const i = data.issues ?? {};
     const base = KaliBridge.productsUrl;
@@ -275,8 +275,8 @@
 
     const issueIntro = activeIssueFilter ? renderIssueIntro( activeIssueFilter ) : '';
     if ( items.length === 0 ) {
-      // Anche a lista vuota i bottoni-filtro restano: altri problemi (immagini,
-      // SKU, stock) possono avere conteggi > 0 pur senza segnali critici.
+      // Even with an empty list the filter buttons stay: other problems (images,
+      // SKU, stock) can have counts > 0 even without critical signals.
       container.innerHTML = issueIntro + ( activeIssueFilter
         ? `<div class="kali-empty">&#x2713; ${ STR.no_products_for } ${ esc( activeIssueFilter ) }.</div>`
         : `<div class="kali-empty">&#x2713; ${ STR.no_products_quarantine }</div>` ) + renderQualityFilters( data );
@@ -485,7 +485,7 @@
     $( 'btnSaveCoupons' )?.addEventListener( 'click', saveSettings );
     $( 'returnPolicySlug' )?.addEventListener( 'input', updateReturnPolicyBlock );
 
-    // Alert gialli su toggle critici
+    // Yellow alerts on critical toggles
     const WARNINGS = {
       toggleBadge:      STR.warn_badge,
       toggleRobots:     STR.warn_robots,
@@ -557,7 +557,7 @@
     const hintEl   = $( 'federationHint' );
     if ( ! actBtn ) return;
     const confirmBox = $( 'federationRevokeConfirm' );
-    if ( confirmBox ) confirmBox.style.display = 'none'; // ogni render parte pulito
+    if ( confirmBox ) confirmBox.style.display = 'none'; // every render starts clean
     const consentPanel = $( 'federationConsentPanel' );
     const versionEl    = $( 'federationConsentVersion' );
     if ( consentPanel ) consentPanel.style.display = regAt ? 'none' : '';
@@ -574,7 +574,7 @@
     }
 
     if ( regAt ) {
-      // gia registrato: mostra stato + revoca, nascondi attiva
+      // already registered: show status + revoke, hide activate
       actBtn.style.display = 'none';
       revBtn.style.display = '';
       hintEl.style.display = 'none';
@@ -583,7 +583,7 @@
       const when = isNaN( d ) ? regAt : d.toLocaleDateString();
       statusEl.textContent = ( KaliBridge.i18n?.federation_registered || 'Registered on' ) + ' ' + when;
     } else {
-      // non registrato: il click su Attiva E' l'atto di consenso (un gesto). Sempre abilitato.
+      // not registered: clicking Activate IS the act of consent (one gesture). Always enabled.
       actBtn.style.display = '';
       revBtn.style.display = 'none';
       statusEl.style.display = 'none';
@@ -609,15 +609,15 @@
     const globalActive = Boolean( KaliBridge.provider_global_active );
     const authorized   = state.authorized === true;
     block.classList.toggle( 'kali-provider-consent--active', authorized );
-    // 1.0.139: prima dell'attivazione il canale si autorizza nella casella del flusso di
-    // attivazione (sopra); qui la sezione serve a chi e' gia' attivo o ha uno storico.
+    // 1.0.139: before activation the channel is authorized in the box of the
+    // activation flow (above); here the section serves stores already active or with a history.
     block.style.display = ( ! globalActive && ! state.consent_id ) ? 'none' : '';
     if ( required ) required.style.display = globalActive ? 'none' : '';
     if ( grantPanel ) grantPanel.style.display = authorized ? 'none' : '';
     if ( checkbox ) checkbox.disabled = ! globalActive;
     if ( grantBtn ) grantBtn.disabled = ! globalActive || ! checkbox?.checked;
     if ( revokeBtn ) revokeBtn.style.display = authorized ? '' : 'none';
-    // L'avviso sul pilot riguarda una richiesta in corso: dopo una revoca non vale.
+    // The pilot notice concerns a pending request: after a revocation it does not apply.
     const pilotNotice = $( 'providerConsentPilotNotice' );
     if ( pilotNotice ) pilotNotice.style.display = authorized ? '' : 'none';
     if ( confirmBox ) confirmBox.style.display = 'none';
@@ -831,9 +831,9 @@
           const detected  = d.bridge_detected ? yes
             : ( isLimited ? ( T.external_check_detected_unknown || 'Unknown (the check was blocked)' ) : no );
 
-          // Eta' relativa + soglia di staleness a 7 giorni (stesso valore che Global usa
-          // internamente, LIVENESS_STALE_DAYS, per decidere quando un merchant e' "sospeso"
-          // per staleness - qui solo per avvisare, non per nascondere il dato).
+          // Relative age + staleness threshold at 7 days (same value Global uses
+          // internally, LIVENESS_STALE_DAYS, to decide when a merchant is "suspended"
+          // for staleness - here only to warn, not to hide the data).
           let ago = '—', isStale = false;
           if ( d.last_probed_at ) {
             const ms = Date.now() - new Date( d.last_probed_at ).getTime();
@@ -922,7 +922,7 @@
 
     renderFederation();
     actBtn.addEventListener( 'click', () => {
-      // Il click E' il consenso: niente guardia, il server accende il consenso e annuncia.
+      // The click IS the consent: no guard, the server switches the consent on and announces.
       actBtn.disabled = true;
       const fd = new FormData();
       fd.append( 'action', 'kalicart_federation_activate' );
@@ -937,8 +937,8 @@
             if ( res.data.consent ) KaliBridge.federation_consent = res.data.consent;
             renderFederation();
             renderProviderConsent();
-            // Canale OpenAI: SOLO se la casella separata e' spuntata, come atto distinto
-            // con la sua ricevuta commerce-consent-1.0 (stesso endpoint del pannello sotto).
+            // OpenAI channel: ONLY if the separate box is ticked, as a distinct act
+            // with its own commerce-consent-1.0 receipt (same endpoint as the panel below).
             const channelBox = $( 'federationChannelCheckbox' );
             const resultBox  = $( 'federationChannelResult' );
             if ( channelBox && channelBox.checked ) {
@@ -966,21 +966,21 @@
         .catch( () => { actBtn.disabled = false; } );
     } );
 
-    // Filtro a due step: il click su "Revoke" NON revoca, mostra la conferma.
+    // Two-step filter: clicking "Revoke" does NOT revoke, it shows the confirmation.
     revBtn.addEventListener( 'click', () => {
       const confirmBox = $( 'federationRevokeConfirm' );
       if ( confirmBox ) confirmBox.style.display = '';
       revBtn.style.display = 'none';
     } );
 
-    // "Keep my catalog federated": annulla, torna allo stato registrato.
+    // "Keep my catalog federated": cancel, go back to the registered state.
     $( 'federationRevokeCancelBtn' )?.addEventListener( 'click', () => {
       const confirmBox = $( 'federationRevokeConfirm' );
       if ( confirmBox ) confirmBox.style.display = 'none';
       renderFederation();
     } );
 
-    // "Yes, revoke consent": solo QUI avviene la revoca reale.
+    // "Yes, revoke consent": the real revocation happens ONLY HERE.
     $( 'federationRevokeConfirmBtn' )?.addEventListener( 'click', () => {
       const confirmBtn = $( 'federationRevokeConfirmBtn' );
       confirmBtn.disabled = true;
@@ -1107,8 +1107,8 @@
   }
 } )();
 
-/* Agent Commerce: la generazione e' sincrona (secondi su cataloghi grandi):
-   feedback immediato, bottone disabilitato, spinner attivo fino al reload. */
+/* Agent Commerce: generation is synchronous (seconds on large catalogs):
+   immediate feedback, button disabled, spinner active until the reload. */
 (function () {
   var form = document.getElementById('kb-acp-form');
   if (!form) return;

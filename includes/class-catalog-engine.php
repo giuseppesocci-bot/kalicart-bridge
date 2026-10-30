@@ -132,9 +132,9 @@ class KaliCart_Bridge_Catalog_Engine {
             'modified_after' => '',
             'physical_only'  => null,
             'fields'         => 'full',
-            // CAMMINATA-STABILE-v1 (1.0.135) — vedi map_orderby() e
-            // apply_after_id_clause(): soglia per riprendere una lettura a pagine
-            // senza che le pagine gia' lette si spostino sotto chi legge.
+            // CAMMINATA-STABILE-v1 (1.0.135) — see map_orderby() and
+            // apply_after_id_clause(): a threshold to resume a paged read
+            // without the pages already read shifting under the reader.
             'after_id'       => null,
         ];
         $args = wp_parse_args( $args, $defaults );
@@ -176,29 +176,29 @@ class KaliCart_Bridge_Catalog_Engine {
             'order'          => $order,
         ];
 
-        // CAMMINATA-STABILE-v1 (1.0.135) — percorrere un catalogo a pagine con
-        // `orderby=date` non e' ripetibile. Attenzione al motivo, che non e' quello
-        // che verrebbe da dire: WP_Query ordina per `post_date`, la data di
-        // PUBBLICAZIONE, quindi modificare un prodotto non lo sposta. Sposta tutto
-        // invece **pubblicarne uno nuovo**: con `order=DESC` entra in testa e fa
-        // scorrere di una posizione ogni pagina successiva, cosi' chi sta leggendo
-        // la quinta rilegge un prodotto e ne salta un altro. Stesso effetto per un
-        // prodotto ripescato dal cestino o con la data di pubblicazione cambiata a
-        // mano. L'ID invece non cambia mai, e un prodotto nuovo
-        // ne prende uno piu' alto: quindi finisce in fondo, dove il lettore non e'
-        // ancora arrivato, senza spostare nulla di gia' letto. Verificato il
-        // 2026-09-18 su due negozi il cui ordine per ID NON coincide con l'ordine
-        // di creazione (illpumpyouup 1.104 discordanze su 1.231, residuo di una
-        // migrazione): anche li' i prodotti piu' recenti hanno gli ID piu' alti.
+        // CAMMINATA-STABILE-v1 (1.0.135) — walking a catalog in pages with
+        // `orderby=date` is not repeatable. Mind the reason, which is not the
+        // obvious one: WP_Query sorts by `post_date`, the PUBLICATION
+        // date, so editing a product does not move it. What moves everything
+        // is **publishing a new one**: with `order=DESC` it enters at the top and
+        // shifts every following page by one position, so whoever is reading
+        // page five reads one product again and skips another. Same effect for a
+        // product restored from the trash or with its publication date changed
+        // by hand. The ID instead never changes, and a new product
+        // gets a higher one: so it ends up at the bottom, where the reader has not
+        // arrived yet, without moving anything already read. Verified on
+        // 2026-09-18 on two stores whose ID order does NOT match the order
+        // of creation (one with 1,104 mismatches out of 1,231, left over from a
+        // migration): there too the most recent products have the highest IDs.
         //
-        // `after_id` e' una SOGLIA, non un puntatore: si chiede "quelli dopo il
-        // numero N". Se il prodotto N nel frattempo e' stato cancellato, `ID > N`
-        // continua a funzionare, e la domanda "cosa rispondi se il cursore punta a
-        // un prodotto che non c'e' piu'" non si pone.
+        // `after_id` is a THRESHOLD, not a pointer: it asks for "the ones after
+        // number N". If product N was deleted in the meantime, `ID > N`
+        // keeps working, and the question "what do you answer if the cursor points to
+        // a product that no longer exists" does not arise.
         //
-        // Limite noto: un prodotto che RIENTRA con un ID gia' superato (ripescato
-        // dal cestino, o reimportato con ID esplicito) viene saltato fino alla
-        // lettura completa successiva. Errore limitato e che si sana da solo.
+        // Known limit: a product that COMES BACK with an ID already passed (restored
+        // from the trash, or reimported with an explicit ID) is skipped until the
+        // next full read. A bounded error that heals by itself.
         $after_id = $args['after_id'] === null ? null : (int) $args['after_id'];
         if ( $after_id !== null && $after_id > 0 ) {
             $query_args['kalicart_bridge_after_id'] = $after_id;
@@ -228,24 +228,24 @@ class KaliCart_Bridge_Catalog_Engine {
             $query_args['s'] = sanitize_text_field( $args['search'] );
         }
 
-        // CATALOG-VISIBILITY-v1 — il catalogo agentico e' lo SPECCHIO del negozio.
-        // Fino alla 1.0.133 qui si filtrava solo `post_status`, quindi un prodotto
-        // messo su "Nascosto" veniva servito lo stesso: una scelta esplicita del
-        // merchant ignorata in silenzio.
+        // CATALOG-VISIBILITY-v1 — the agentic catalog is the MIRROR of the store.
+        // Up to 1.0.133 only `post_status` was filtered here, so a product
+        // set to "Hidden" was served anyway: an explicit choice of the
+        // merchant ignored silently.
         //
-        // Si rispettano i due termini di WooCommerce uno a uno, che e' anche il modo
-        // piu' semplice di scriverlo: in navigazione cade chi e' escluso dal
-        // catalogo, nella ricerca testuale chi e' escluso dalla ricerca. Ne segue da
-        // solo che "Nascosto" (entrambi i termini) sparisce da tutto, "Solo negozio"
-        // vive negli scaffali e "Solo risultati di ricerca" lo trova chi lo cerca —
-        // esattamente come sul sito del merchant. Se su WooCommerce il prodotto
-        // esiste e si vende, il Bridge lo mostra dove il negozio lo mostrerebbe.
+        // The two WooCommerce terms are respected one by one, which is also the
+        // simplest way to write it: browsing drops what is excluded from the
+        // catalog, text search drops what is excluded from search. It follows
+        // by itself that "Hidden" (both terms) disappears from everything, "Shop only"
+        // lives on the shelves and "Search results only" is found by whoever searches for it —
+        // exactly as on the merchant's site. If the product exists and sells
+        // on WooCommerce, the Bridge shows it where the store would show it.
         //
-        // Non si va oltre finche' non si sa PERCHE' un merchant declassa un prodotto
-        // (ricambio fuori vetrina? articolo linkato da una campagna? fondo di
-        // magazzino?). Oggi quel dato non esiste: 0 prodotti su 5.373 federati lo
-        // portano, perche' il Bridge non lo ha mai inviato. Da questa versione lo
-        // invia, cosi' la domanda avra' una risposta misurata e non una supposizione.
+        // We go no further until we know WHY a merchant demotes a product
+        // (spare part off the shop window? item linked from a campaign? old
+        // stock?). Today that data does not exist: 0 products out of 5,373 federated
+        // carry it, because the Bridge never sent it. From this version it
+        // sends it, so the question will get a measured answer and not a guess.
         $query_args['tax_query'][] = [
             'taxonomy' => 'product_visibility',
             'field'    => 'name',
@@ -424,21 +424,21 @@ class KaliCart_Bridge_Catalog_Engine {
                 'total_pages' => (int) ceil( $filtered_total / $per_page ),
             ];
 
-            // `gender` e' l'UNICO filtro morbido del Bridge: un genere diverso
-            // esclude, un genere ignoto CONSERVA il prodotto come candidato.
-            // Difendibile (i generi si inferiscono male, escluderli perderebbe
-            // troppo) ma finora invisibile: su un catalogo dove 96 prodotti su 109
-            // non hanno genere rilevato, qualunque valore sembrava filtrare.
-            // color, stock, promozioni e prezzi restano rigidi: senza evidenza il
-            // prodotto esce. L'asimmetria e' dichiarata, non subita.
+            // `gender` is the ONLY soft filter of the Bridge: a different gender
+            // excludes, an unknown gender KEEPS the product as a candidate.
+            // Defensible (genders are inferred poorly, excluding them would lose
+            // too much) but invisible until now: on a catalog where 96 products out of 109
+            // have no detected gender, any value seemed to filter.
+            // color, stock, promotions and prices stay strict: without evidence the
+            // product is out. The asymmetry is declared, not suffered.
             if ( ! empty( $args['gender'] ) ) {
-                // Il ciclo sopra NON si ferma a pagina piena: attraversa tutti i
-                // candidati per calcolare $filtered_total. Quindi i conteggi sono
-                // sull'intero insieme e result_set_evaluation_complete e' true.
-                // Se un giorno il ciclo dovesse interrompersi in anticipo, questo
-                // flag va messo a false e i due conteggi globali a null — MAI a
-                // zero, e mai stimati: un numero parziale che sembra completo e'
-                // peggio di un numero assente.
+                // The loop above does NOT stop at a full page: it goes through all the
+                // candidates to compute $filtered_total. So the counts are
+                // over the whole set and result_set_evaluation_complete is true.
+                // If one day the loop had to stop early, this
+                // flag must be set to false and the two global counts to null — NEVER to
+                // zero, and never estimated: a partial number that looks complete is
+                // worse than a missing number.
                 $result['gender_summary'] = [
                     'requested'                         => (string) $args['gender'],
                     'mode'                              => 'soft',
@@ -612,10 +612,10 @@ class KaliCart_Bridge_Catalog_Engine {
         }
 
 		if ( $args['min_price'] !== null || $args['max_price'] !== null ) {
-			// Il prezzo di un prodotto e' un INTERVALLO: per un semplice i due estremi
-			// coincidono, per un variabile no. Si tiene il prodotto se il suo intervallo
-			// tocca quello richiesto — stessa semantica di sovrapposizione gia' dichiarata
-			// dal prefiltro SQL, che altrimenti veniva annullata qui.
+			// The price of a product is an INTERVAL: for a simple product the two ends
+			// coincide, for a variable one they do not. The product is kept if its interval
+			// touches the requested one — the same overlap semantics already declared
+			// by the SQL prefilter, which would otherwise be cancelled here.
 			$price_data = self::compute_price( $product );
 			$lo = $price_data['current'] ?? null;
 			$hi = $price_data['max_current'] ?? $lo;
@@ -815,17 +815,17 @@ class KaliCart_Bridge_Catalog_Engine {
                 $gender           = self::infer_gender( $p, $category_records, $tags, $attributes );
             }
 
-            // PRICE-INTERVAL-v1 — `current` e' il prezzo ATTIVO PIU' BASSO e `regular`
-            // cade su `min_regular` sui variabili: entrambi sono ESTREMI, non "il
-            // prezzo". Senza `type` e `max_current` l'agente non puo' saperlo dal
-            // summary, ed e' proprio da qui che le agent_instructions gli dicono di
-            // classificare; l'intervallo restava leggibile solo dentro la stringa
-            // `display`, che non e' computabile. Gli estremi alti si AGGIUNGONO solo
-            // su type=range: su un prezzo fisso ripeterebbero current/regular per ogni
-            // prodotto del catalogo, e fields=summary esiste per pesare poco. Stessa
-            // scelta della card del global, che li omette sui fixed.
+            // PRICE-INTERVAL-v1 — `current` is the LOWEST ACTIVE price and `regular`
+            // falls on `min_regular` for variable products: both are ENDS, not "the
+            // price". Without `type` and `max_current` the agent cannot tell from the
+            // summary, and it is exactly here that agent_instructions tell it to
+            // triage; the interval was readable only inside the `display`
+            // string, which is not computable. The high ends are ADDED only
+            // on type=range: on a fixed price they would repeat current/regular for every
+            // product of the catalog, and fields=summary exists to stay light. Same
+            // choice as the Global card, which omits them on fixed prices.
             $price_type  = $price['type'] ?? 'fixed';
-            $group_raw   = self::group_raw( $p );   // lettura a costo zero: id e minimi, nessun prodotto caricato
+            $group_raw   = self::group_raw( $p );   // zero-cost read: ids and minimums, no product loaded
             $price_block = [
                 'currency' => get_woocommerce_currency(),
                 'encoding' => 'decimal_major_units',
@@ -837,10 +837,10 @@ class KaliCart_Bridge_Catalog_Engine {
                 'tax_enabled' => $price['tax_enabled'] ?? null,
             ];
             if ( 'range' === $price_type ) {
-                // `range_over` distingue i due intervalli che il summary puo'
-                // portare: su un variabile se ne sceglie UNO, su un grouped si
-                // comprano i componenti uno per uno. Senza, gli estremi sono
-                // identici e il triage non puo' sapere cosa sta confrontando.
+                // `range_over` tells apart the two intervals the summary can
+                // carry: on a variable product you choose ONE, on a grouped one you
+                // buy the components one by one. Without it, the ends are
+                // identical and triage cannot know what it is comparing.
                 $price_block['range_over']  = $price['range_over'] ?? 'variants';
                 $price_block['max_current'] = $price['max_current'] ?? null;
                 $price_block['max_regular'] = $price['max_regular'] ?? null;
@@ -863,42 +863,42 @@ class KaliCart_Bridge_Catalog_Engine {
                 'url'        => get_permalink( $p->get_id() ),
                 'price'      => $price_block,
                 'stock'      => [ 'in_stock' => $p->is_in_stock() ],
-                // SHIPPING-REQUIRED-v1 — dice se WooCommerce chiederebbe un indirizzo di
-                // spedizione, e SOLO quello: non e' "fisico contro digitale". Uno
-                // scaricabile che si spedisce comunque resta true, e il ritiro in negozio
-                // non lo distingue affatto, perche' Woo lo modella come metodo di
-                // spedizione e non come proprieta' del prodotto. Per le tre risposte che
-                // servono davvero c'e' `fulfilment`. E' la ONE shipping
+                // SHIPPING-REQUIRED-v1 — says whether WooCommerce would ask for a shipping
+                // address, and ONLY that: it is not "physical versus digital". A
+                // downloadable product that ships anyway stays true, and store pickup
+                // does not distinguish it at all, because Woo models it as a shipping
+                // method and not as a property of the product. For the three answers that
+                // are really needed there is `fulfilment`. It is the ONE shipping
                 // fact the summary carries: the quote, zones and thresholds stay in
                 // /catalog/product/{id}. Without it an agent that must reason about
                 // physical goods has to open every candidate one by one to find out.
                 'shipping_required' => $delivery['shipping_required'],
-                // FULFILMENT-v1 — come si ottiene: shipped | downloadable | virtual | pickup_only.
-                // Il catalogo e' lo specchio del negozio, quindi non nasconde un
-                // prodotto perche' non si spedisce: dice cosa arriva a casa, cosa si
-                // scarica e cosa si ritira in sede. Sta nel summary perche' e' li'
-                // che l'agente sceglie, e scegliere senza questo significa proporre
-                // una consegna che non esiste.
+                // FULFILMENT-v1 — how it is obtained: shipped | downloadable | virtual | pickup_only.
+                // The catalog is the mirror of the store, so it does not hide a
+                // product because it does not ship: it says what arrives at home, what is
+                // downloaded and what is picked up on site. It is in the summary because that is
+                // where the agent chooses, and choosing without it means proposing
+                // a delivery that does not exist.
                 'fulfilment' => $delivery['fulfilment'],
-                // SOURCE-DELIVERY-v1 (1.0.136) — i due fatti di WooCommerce da cui
-                // `fulfilment` e' dedotto, cosi' come il merchant li ha spuntati.
-                // `fulfilment` risponde a "come lo ottieni" e per farlo deve
-                // riassumere: un prodotto scaricabile ma non virtuale diventa
-                // `shipped`, perche' WooCommerce lo spedisce. Senza i due flag, chi
-                // legge non puo' accorgersi che quel `shipped` porta con se' un
-                // download — un gioco in scatola con bonus digitale, oppure un
-                // gioco digitale a cui manca la spunta "virtuale" (il caso che ha
-                // aperto questa voce, 2026-09-21). Il Bridge non decide quale dei
-                // due: lo espone, e chi lo legge decide.
+                // SOURCE-DELIVERY-v1 (1.0.136) — the two WooCommerce facts from which
+                // `fulfilment` is derived, exactly as the merchant ticked them.
+                // `fulfilment` answers "how do you get it" and to do so it must
+                // summarize: a downloadable but not virtual product becomes
+                // `shipped`, because WooCommerce ships it. Without the two flags, a
+                // reader cannot notice that this `shipped` carries a
+                // download — a boxed game with a digital bonus, or a
+                // digital game missing the "virtual" tick (the case that
+                // opened this item, 2026-09-21). The Bridge does not decide which of the
+                // two: it exposes it, and the reader decides.
                 'virtual'      => $delivery['virtual'],
                 'downloadable' => $delivery['downloadable'],
-                // DISCOVERY-SCOPE-v1 — il Bridge AFFERMA quel che afferma il negozio.
-                // Un prodotto fuori dal catalogo ma in ricerca non deve essere dedotto
-                // dall'assenza altrove: un agente che non lo vede navigando non puo'
-                // sapere se non esiste, se e' esaurito o se il merchant lo ha tolto
-                // dalla vetrina. Sono tre conclusioni diverse e solo una e' vera.
-                // I due booleani sono i due termini di WooCommerce resi leggibili,
-                // uno a uno, senza aggiungere significato.
+                // DISCOVERY-SCOPE-v1 — the Bridge STATES what the store states.
+                // A product outside the catalog but in search must not be inferred
+                // from its absence elsewhere: an agent that does not see it while browsing cannot
+                // know whether it does not exist, is sold out or the merchant removed it
+                // from the shop window. They are three different conclusions and only one is true.
+                // The two booleans are the two WooCommerce terms made readable,
+                // one by one, without adding meaning.
                 'discovery' => [
                     'in_catalog' => self::product_in_catalog( $p ),
                     'in_search'  => self::product_in_search( $p ),
@@ -906,15 +906,15 @@ class KaliCart_Bridge_Catalog_Engine {
                 'categories' => $categories,
                 'gender'     => $gender,
                 'type'       => $p->get_type(),
-                // SCELTA-RICHIESTA-v1 (1.0.135) — era `is_type('variable')`, cioe'
-                // una sola delle tre ragioni per cui non si compra al volo. Sul
-                // grouped #489 il summary diceva selection_required=false accanto a
-                // un prezzo che era il minimo di 73-797: un agente in triage lo
-                // prendeva per un acquisto da un clic a 73 €. Le altre due ragioni
-                // sono i componenti da scegliere (bundle con opzionali) e i gruppi
-                // venduti pezzo per pezzo, che qui si leggono senza caricare nulla:
-                // il minimo sta gia' nel meta, e l'intervallo l'abbiamo appena
-                // calcolato. Il summary resta leggero e smette di mentire.
+                // SCELTA-RICHIESTA-v1 (1.0.135) — it was `is_type('variable')`, that is
+                // only one of the three reasons why a product cannot be bought straight away. On
+                // grouped #489 the summary said selection_required=false next to
+                // a price that was the minimum of 73-797: an agent in triage
+                // took it for a one-click purchase at 73 €. The other two reasons
+                // are components to choose (bundles with optional items) and groups
+                // sold piece by piece, which are read here without loading anything:
+                // the minimum is already in the meta, and we just computed
+                // the interval. The summary stays light and stops lying.
                 'selection_required' => 'range' === $price_type
                     || ( $group_raw !== null && ! empty( $group_raw['has_optional'] ) ),
                 'updated_at' => $p->get_date_modified() ? $p->get_date_modified()->date( 'c' ) : null,
@@ -937,23 +937,23 @@ class KaliCart_Bridge_Catalog_Engine {
         $stock              = self::compute_stock( $p );           // computed once
         $purchase_readiness = self::compute_purchase_readiness( $p ); // computed once
         $barcodes           = self::get_barcodes( $p );            // computed once
-        $group              = self::group_components( $p, $context ); // null se non e' un gruppo
+        $group              = self::group_components( $p, $context ); // null when it is not a group
         // variations only in detail context — avoids N×get_variations() queries in list/search
         $variations = ( $context === 'detail' && $type === 'variable' ) ? self::get_variations( $p ) : null;
 
         // variants[] — detail: full list; list: lightweight single entry, empty array for variable (UCP: always an array)
         //
-        // RIGA-SINTETICA-v1 (1.0.135) — la voce unica con `variation_id === id` e'
-        // la promessa che esiste UNA cosa comprabile a UN prezzo. Sul grouped #489
-        // era falsa due volte: la cosa comprabile non c'e' (si comprano i tre
-        // componenti) e il prezzo era il minimo di un intervallo 73-797. Un agente
-        // che legge variants[0].price prendeva 73 € per un articolo da 797.
+        // RIGA-SINTETICA-v1 (1.0.135) — the single entry with `variation_id === id` is
+        // the promise that there is ONE purchasable thing at ONE price. On grouped #489
+        // it was false twice: the purchasable thing does not exist (you buy the three
+        // components) and the price was the minimum of a 73-797 interval. An agent
+        // reading variants[0].price took 73 € for an item worth 797.
         //
-        // La condizione non e' sul tipo — sarebbe l'ennesima toppa, e domani
-        // arriva il tipo che non abbiamo previsto — ma sul prezzo che abbiamo
-        // appena calcolato: la riga si emette dove il prezzo e' UNO. Dove e' un
-        // intervallo, variants resta [] e la verita' sta in `group.components`
-        // (gruppi) o in `variations` (variabili, contesto detail).
+        // The condition is not on the type — that would be yet another patch, and tomorrow
+        // the type we did not foresee arrives — but on the price we
+        // just computed: the row is emitted where the price is ONE. Where it is an
+        // interval, variants stays [] and the truth is in `group.components`
+        // (groups) or in `variations` (variable products, detail context).
         $single_priced = ( $price_data['type'] ?? 'fixed' ) === 'fixed';
 
         if ( $context === 'detail' ) {
@@ -1019,9 +1019,9 @@ class KaliCart_Bridge_Catalog_Engine {
             'slug'            => $p->get_slug(),
             'url'             => get_permalink( $id ),
             'status'          => $p->get_status(),
-            // La superficie espone, non interpreta: Global riceve lo stato di
-            // visibilita' cosi' com'e' e potra' decidere con i dati invece che per
-            // deduzione. Oggi 0 prodotti su 5.373 federati lo portano.
+            // The surface exposes, it does not interpret: Global receives the visibility
+            // state as it is and can decide with data instead of by
+            // deduction. Today 0 products out of 5,373 federated carry it.
             'catalog_visibility' => $p->get_catalog_visibility(),
             'discovery' => [
                 'in_catalog' => self::product_in_catalog( $p ),
@@ -1055,10 +1055,10 @@ class KaliCart_Bridge_Catalog_Engine {
             ],
             'quarantine'         => $quarantine,
             'purchase_readiness' => $purchase_readiness,
-            // I GRUPPI, DETTI PER QUELLO CHE SONO (1.0.135) — `null` per chi gruppo
-            // non e'. Prima di questa versione nel payload non esisteva la parola
-            // "componente": un bundle era un prodotto qualunque con un prezzo e
-            // nessun contenuto, e chi comprava non sapeva cosa stesse comprando.
+            // GROUPS, NAMED FOR WHAT THEY ARE (1.0.135) — `null` for anything that is not
+            // a group. Before this version the payload did not contain the word
+            // "component": a bundle was an ordinary product with a price and
+            // no content, and the buyer did not know what they were buying.
             'group'              => $group,
             'barcodes'           => $barcodes,
             'metadata'           => [
@@ -1127,25 +1127,25 @@ class KaliCart_Bridge_Catalog_Engine {
                     'enabled' => true,
                 ];
                 if ( $method_id === 'free_shipping' ) {
-                    // SOGLIA VERA O NIENTE (1.0.135) — qui si raccoglieva ogni
-                    // `min_amount` non nullo, zero compreso, e si ignorava
-                    // `requires`. Due conseguenze misurate il 2026-09-18 su
-                    // illpumpyouup.com, che ha DUE metodi free_shipping:
-                    //   requires='coupon'      min_amount=0   -> soglia "0"
-                    //   requires='min_amount'  min_amount=99  -> soglia 99
-                    // Quello zero entrava nell'elenco e rendeva ogni prodotto
-                    // "gia' idoneo per prezzo", mentre accanto restava scritto
-                    // quanto mancava ai 99. Risultato: 1.207 prodotti, il 22% della
-                    // federazione, che dicevano insieme "hai diritto alla spedizione
-                    // gratis" e "ti mancano 96,01".
+                    // REAL THRESHOLD OR NOTHING (1.0.135) — here every non-null
+                    // `min_amount` was collected, zero included, and
+                    // `requires` was ignored. Two consequences measured on 2026-09-18 on
+                    // a store that has TWO free_shipping methods:
+                    //   requires='coupon'      min_amount=0   -> threshold "0"
+                    //   requires='min_amount'  min_amount=99  -> threshold 99
+                    // That zero entered the list and made every product
+                    // "already eligible by price", while next to it the text still said
+                    // how much was missing to 99. Result: 1,207 products, 22% of the
+                    // federation, saying at the same time "you are entitled to free
+                    // shipping" and "you are 96.01 short".
                     //
-                    // E il difetto vero non e' lo zero: e' che quel metodo chiede un
-                    // COUPON. Annunciarlo come gratuito per prezzo e' dire a un
-                    // agente una cosa che il negozio non concede.
+                    // And the real defect is not the zero: it is that this method requires a
+                    // COUPON. Announcing it as free by price tells an
+                    // agent something the store does not grant.
                     //
-                    // `requires` vale: '' o 'min_amount' -> il prezzo basta;
-                    // 'either' -> coupon OPPURE minimo, quindi il prezzo basta;
-                    // 'coupon' o 'both' -> il prezzo da solo non basta mai.
+                    // `requires` means: '' or 'min_amount' -> the price is enough;
+                    // 'either' -> coupon OR minimum, so the price is enough;
+                    // 'coupon' or 'both' -> the price alone is never enough.
                     $min = isset( $method->min_amount ) && $method->min_amount !== '' ? (float) $method->min_amount : null;
                     $requires = (string) ( $method->requires ?? '' );
                     $row['requires'] = $method->requires ?? null;
@@ -1155,8 +1155,8 @@ class KaliCart_Bridge_Catalog_Engine {
                         $free_thresholds[] = $min;
                     }
                     if ( $price_alone_suffices && ( $min === null || $min <= 0 ) ) {
-                        // Nessun minimo da raggiungere: non e' una soglia zero, e'
-                        // spedizione gratuita senza condizioni di importo.
+                        // No minimum to reach: it is not a zero threshold, it is
+                        // free shipping with no amount condition.
                         $free_shipping_unconditional = true;
                     }
                     if ( in_array( $requires, [ 'coupon', 'both' ], true ) ) {
@@ -1282,52 +1282,52 @@ class KaliCart_Bridge_Catalog_Engine {
         return $out;
     }
 
-    /** Il prodotto compare negli scaffali del negozio (navigazione e categorie). */
+    /** The product appears on the store's shelves (browsing and categories). */
     private static function product_in_catalog( WC_Product $p ): bool {
         return ! in_array( $p->get_catalog_visibility(), [ 'search', 'hidden' ], true );
     }
 
-    /** Il prodotto e' trovabile cercandolo. */
+    /** The product can be found by searching for it. */
     private static function product_in_search( WC_Product $p ): bool {
         return ! in_array( $p->get_catalog_visibility(), [ 'catalog', 'hidden' ], true );
     }
 
     /**
-     * Come si ottiene il prodotto, deciso dal PRODOTTO e non dal negozio.
+     * How the product is obtained, decided by the PRODUCT and not by the store.
      *
-     *   shipped       WooCommerce lo spedisce (needs_shipping)
-     *   downloadable  non si spedisce e si scarica
-     *   virtual       non si spedisce, non si scarica, ed e' VIRTUALE: una chiave,
-     *                 un accesso, un servizio, un corso
-     *   pickup_only   non si spedisce, non si scarica e NON e' virtuale: WooCommerce
-     *                 dice che non va spedito un oggetto che esiste — lo si ritira
+     *   shipped       WooCommerce ships it (needs_shipping)
+     *   downloadable  not shipped, downloaded
+     *   virtual       not shipped, not downloaded, and VIRTUAL: a key,
+     *                 an access, a service, a course
+     *   pickup_only   not shipped, not downloaded and NOT virtual: WooCommerce
+     *                 says an object that exists is not to be shipped — it is picked up
      *
-     * CONSEGNA-VIRTUALE-v1 (1.0.136). Fino alla 1.0.135 il terzo caso non
-     * esisteva: tutto cio' che non si spediva e non si scaricava era `pickup_only`,
-     * "oggetto fisico da ritirare in sede". Il ragionamento ("altrimenti cosa
-     * ritira?") valeva per un oggetto, ma per WooCommerce "virtuale" vuol dire
-     * INTANGIBILE. Misurato il 2026-09-22: su avalon-natureart.de 476 prodotti
-     * `pickup_only` erano corsi e consulenze; e una chiave Steam — il modo piu'
-     * comune di vendere un gioco digitale — e' virtuale e non scaricabile, quindi
-     * veniva descritta come una scatola da ritirare. Un oggetto che si ritira in
-     * negozio non e' virtuale: e' un prodotto fisico con il ritiro fra i metodi
-     * di spedizione, e WooCommerce lo spedisce (`shipped`, con il ritiro elencato
-     * nei metodi). `pickup_only` resta per l'unico caso in cui e' vero.
+     * CONSEGNA-VIRTUALE-v1 (1.0.136). Up to 1.0.135 the third case did not
+     * exist: everything that was neither shipped nor downloaded was `pickup_only`,
+     * "physical object to pick up on site". The reasoning ("otherwise what would
+     * you pick up?") held for an object, but for WooCommerce "virtual" means
+     * INTANGIBLE. Measured on 2026-09-22: on one store 476 `pickup_only` products
+     * were courses and consultations; and a Steam key — the most
+     * common way to sell a digital game — is virtual and not downloadable, so
+     * it was described as a box to pick up. An object picked up in
+     * store is not virtual: it is a physical product with pickup among the shipping
+     * methods, and WooCommerce ships it (`shipped`, with pickup listed
+     * among the methods). `pickup_only` remains for the only case where it is true.
      *
-     * `virtual` e `downloadable` sono i flag del merchant, letti con
-     * `is_virtual()` / `is_downloadable()`, NON dedotti da `needs_shipping()`: un
-     * filtro su `woocommerce_product_needs_shipping` li separa, ed e' proprio
-     * quando si separano che servono.
+     * `virtual` and `downloadable` are the merchant's flags, read with
+     * `is_virtual()` / `is_downloadable()`, NOT derived from `needs_shipping()`: a
+     * filter on `woocommerce_product_needs_shipping` separates them, and it is exactly
+     * when they separate that they are needed.
      *
-     * Su un variabile decidono le varianti: il parent dice sempre "fisico" (vedi
-     * product_needs_shipping()) e mai "scaricabile" — WC_Product_Variable::
-     * get_downloadable() ritorna false incondizionatamente dalla Woo 11.1.0:
-     * si spedisce se una qualsiasi si spedisce; e' virtuale / scaricabile solo se
-     * lo sono tutte. Il giro si ferma appena le tre risposte sono decise, quindi un
-     * variabile fisico ordinario costa UN caricamento di variante, come prima;
-     * paga il giro intero solo il prodotto interamente digitale. Ignoto -> fisico:
-     * senza varianti leggibili il prodotto e' `shipped`, mai nascosto per un errore
-     * di lettura.
+     * On a variable product the variations decide: the parent always says "physical" (see
+     * product_needs_shipping()) and never "downloadable" — WC_Product_Variable::
+     * get_downloadable() returns false unconditionally since Woo 11.1.0:
+     * it ships if any variation ships; it is virtual / downloadable only if
+     * all of them are. The walk stops as soon as the three answers are decided, so an
+     * ordinary physical variable product costs ONE variation load, as before;
+     * only an entirely digital product pays for the full walk. Unknown -> physical:
+     * without readable variations the product is `shipped`, never hidden because of a
+     * read error.
      */
     private static function product_delivery( WC_Product $p ): array {
         if ( ! $p->is_type( 'variable' ) ) {
@@ -1374,9 +1374,9 @@ class KaliCart_Bridge_Catalog_Engine {
 
 
     /**
-     * I metodi di ritiro in negozio configurati dal merchant, se ce ne sono.
-     * Le zone il Bridge le raccoglie gia'; qui si estrae solo il ritiro, che e'
-     * l'unico modo documentato di ottenere un prodotto che non viene spedito.
+     * The store pickup methods configured by the merchant, if any.
+     * The Bridge already collects the zones; here only pickup is extracted, which is
+     * the only documented way to obtain a product that is not shipped.
      */
     private static function local_pickup_methods(): array {
         $out = [];
@@ -1395,21 +1395,21 @@ class KaliCart_Bridge_Catalog_Engine {
     }
 
     private static function product_shipping_policy( WC_Product $p, array $price_data ): array {
-        // FULFILMENT-COHERENCE-v1 — un prodotto che non si spedisce non puo'
-        // portarsi dietro le condizioni di spedizione del negozio. Prima di questa
-        // versione il blocco diceva `shipping_required: false` e nella riga dopo
-        // `free_shipping_available: true` con quanto mancava alla soglia: due fatti
-        // che si contraddicono nello stesso oggetto, e un agente che legge il
-        // secondo conclude l'opposto del primo. La policy del negozio vale per
-        // cio' che il negozio spedisce; per il resto si dice come lo si ottiene.
+        // FULFILMENT-COHERENCE-v1 — a product that does not ship cannot
+        // carry the store's shipping conditions. Before this
+        // version the block said `shipping_required: false` and on the next line
+        // `free_shipping_available: true` with the amount missing to the threshold: two facts
+        // contradicting each other in the same object, and an agent reading the
+        // second concludes the opposite of the first. The store policy applies to
+        // what the store ships; for the rest it says how the product is obtained.
         $delivery = self::product_delivery( $p );
         if ( ! $delivery['shipping_required'] ) {
             $fulfilment  = $delivery['fulfilment'];
             $is_download = 'downloadable' === $fulfilment;
             $is_virtual  = 'virtual' === $fulfilment;
-            // Il ritiro in negozio riguarda solo cio' che esiste fisicamente: a un
-            // download o a una chiave non si applica, e nominarlo farebbe credere
-            // che ci sia qualcosa da andare a prendere.
+            // Store pickup concerns only what exists physically: it does not apply
+            // to a download or a key, and naming it would suggest
+            // that there is something to go and collect.
             $pickup      = ( $is_download || $is_virtual ) ? [] : self::local_pickup_methods();
             return [
                 'shipping_required' => false,
@@ -1451,10 +1451,10 @@ class KaliCart_Bridge_Catalog_Engine {
             'weight_unit' => get_option( 'woocommerce_weight_unit', 'kg' ),
             'free_shipping_available' => (bool) ( $policy['free_shipping_available'] ?? false ),
             'free_shipping_thresholds' => $thresholds,
-            // Le soglie ora contengono solo minimi VERI e raggiungibili col solo
-            // prezzo (vedi merchant_shipping_policy). I due casi che prima ci si
-            // nascondevano dentro travestiti da zero hanno un campo proprio: il
-            // blocco dichiara quale condizione vale, non riempie i campi di null.
+            // Thresholds now contain only REAL minimums reachable by price
+            // alone (see merchant_shipping_policy). The two cases that used to hide
+            // in there disguised as zero have a field of their own: the
+            // block states which condition applies, it does not fill the fields with null.
             'free_shipping_unconditional' => (bool) ( $policy['free_shipping_unconditional'] ?? false ),
             'free_shipping_requires_coupon' => (bool) ( $policy['free_shipping_requires_coupon'] ?? false ),
             'free_shipping_eligible_by_product_price' => ! empty( $policy['free_shipping_unconditional'] )
@@ -1651,35 +1651,35 @@ class KaliCart_Bridge_Catalog_Engine {
     }
 
     /**
-     * UN GRUPPO E' UN GRUPPO (1.0.135) — WooCommerce modella piu' prodotti venduti
-     * insieme, e il Bridge non lo modellava affatto: li schiacciava nella forma dei
-     * variabili, che significa l'opposto. Su un variabile `variants` vuol dire
-     * "scegline uno"; su un gruppo vorrebbe dire "li prendi tutti". Stessa chiave,
-     * significato rovesciato, e nessun segnale per distinguerli.
+     * A GROUP IS A GROUP (1.0.135) — WooCommerce models several products sold
+     * together, and the Bridge did not model it at all: it squeezed them into the shape of
+     * variable products, which means the opposite. On a variable product `variants` means
+     * "pick one"; on a group it would mean "you take them all". Same key,
+     * reversed meaning, and no signal to tell them apart.
      *
-     * Misurato il 2026-09-17 su grouped #489 e woosb #5623 di project2209: la voce
-     * fantasma in `variants` aveva `variation_id` UGUALE all'id del prodotto e
-     * `attributes` vuoto, `variation_summary` era null, e i componenti non
-     * comparivano da nessuna parte. Un agente leggeva "Offerta back to winter,
-     * 245,10 €" senza sapere che sono quattro prodotti, ne' quali.
+     * Measured on 2026-09-17 on a grouped product and a WPC bundle of the test store: the
+     * phantom entry in `variants` had `variation_id` EQUAL to the product id and
+     * empty `attributes`, `variation_summary` was null, and the components did not
+     * appear anywhere. An agent read a bundle at 245,10 € without knowing
+     * that it is four products, nor which ones.
      *
-     * LA VIA DI LETTURA NON E' UNA SOLA e non puo' esserlo: il `grouped` nativo
-     * tiene i figli in get_children(), WPC Product Bundles nel meta `woosb_ids`,
-     * WooCommerce Product Bundles nella propria API. Sono lettori dichiarati e
-     * stretti — non toppe — perche' la forma ESPOSTA resta una: questo blocco.
+     * THERE IS NOT A SINGLE READ PATH and there cannot be: native `grouped`
+     * keeps the children in get_children(), WPC Product Bundles in the `woosb_ids` meta,
+     * WooCommerce Product Bundles in its own API. They are declared, narrow
+     * readers — not patches — because the EXPOSED shape stays one: this block.
      *
-     * Del terzo tipo conosciamo il nome ma non abbiamo il plugin (a pagamento) e
-     * quindi non possiamo provarlo: lo si dichiara gruppo con `resolved: false`
-     * invece di indovinarne il formato. Il payload dice cio' che sappiamo, e dice
-     * anche cosa non sa.
+     * Of the third type we know the name but do not have the plugin (paid) and
+     * so we cannot test it: it is declared a group with `resolved: false`
+     * instead of guessing its format. The payload says what we know, and also
+     * says what it does not know.
      */
     /**
-     * LETTURA GREZZA — chi sono i componenti, senza caricarne nemmeno uno.
+     * RAW READ — who the components are, without loading even one.
      *
-     * Serve dove il costo conta (fields=summary gira su ogni riga di catalogo):
-     * gli id, le quantita' e i minimi stanno gia' nel meta o in get_children(),
-     * quindi sapere SE una scelta e' richiesta non deve costare N wc_get_product.
-     * Il caricamento vero resta in group_components(), che chiama questa.
+     * Used where cost matters (fields=summary runs on every catalog row):
+     * ids, quantities and minimums are already in the meta or in get_children(),
+     * so knowing WHETHER a choice is required must not cost N wc_get_product calls.
+     * The real load stays in group_components(), which calls this.
      */
     private static function group_raw( WC_Product $p ): ?array {
         static $memo = [];
@@ -1724,24 +1724,24 @@ class KaliCart_Bridge_Catalog_Engine {
     }
 
     /**
-     * SCONTO DEL GRUPPO — quello che il gruppo toglie DI SUO, sopra i componenti.
+     * GROUP DISCOUNT — what the group takes off ON ITS OWN, on top of the components.
      *
-     * Punto 8 del debito. Sul woosb #5623 di project2209 la catena e' 266 -> 258
-     * -> 245,10: il listino dei componenti, la somma dei loro prezzi di oggi (sono
-     * scontati singolarmente), e infine il 5% che il bundle toglie in piu'. Il
-     * payload pubblicava solo gli estremi, cioe' un 7,9% unico, e il 258 di mezzo
-     * spariva. Un agente non poteva rispondere alla domanda che conta — conviene
-     * il bundle o comprarli separati? — perche' i due sconti erano fusi in uno.
-     * Qui si legge il solo termine che manca; gli altri due li da' gia'
-     * group_components(). La superficie espone i tre numeri, non la conclusione.
+     * On a WPC bundle of the test store the chain is 266 -> 258
+     * -> 245,10: the components' list price, the sum of their current prices (they are
+     * discounted individually), and finally the 5% the bundle takes off on top. The
+     * payload published only the ends, that is a single 7.9%, and the 258 in the middle
+     * disappeared. An agent could not answer the question that matters — is
+     * the bundle worth it or is buying them separately? — because the two discounts were merged into one.
+     * Here only the missing term is read; the other two are already given by
+     * group_components(). The surface exposes the three numbers, not the conclusion.
      */
     private static function group_own_discount( WC_Product $p, string $group_type ): ?array {
         if ( $group_type !== 'woosb' ) {
             return null;
         }
         if ( get_post_meta( $p->get_id(), 'woosb_disable_auto_price', true ) === 'on' ) {
-            // Il prezzo del bundle e' scritto a mano: non c'e' uno sconto da
-            // dichiarare, c'e' un prezzo. Sta gia' in price.current.
+            // The bundle price is written by hand: there is no discount to
+            // declare, there is a price. It is already in price.current.
             return null;
         }
         $pct = get_post_meta( $p->get_id(), 'woosb_discount', true );
@@ -1775,11 +1775,11 @@ class KaliCart_Bridge_Catalog_Engine {
             return $memo[ $key ] = null;
         }
 
-        // Il terzo tipo: conosciamo il nome, non il formato, e il plugin e' a
-        // pagamento — non possiamo provarlo. Si dichiara gruppo con
-        // `resolved: false` invece di indovinare. Le chiavi restano le stesse del
-        // caso risolto: chi legge non deve ramificare sulla presenza dei campi,
-        // gli basta `resolved` per sapere di quali fidarsi.
+        // The third type: we know the name, not the format, and the plugin is
+        // paid — we cannot test it. It is declared a group with
+        // `resolved: false` instead of guessing. The keys stay the same as in the
+        // resolved case: a reader must not branch on the presence of fields,
+        // `resolved` is enough to know which ones to trust.
         if ( ! $raw['resolved'] ) {
             return $memo[ $key ] = [
                 'group_type'               => $raw['group_type'],
@@ -1844,20 +1844,20 @@ class KaliCart_Bridge_Catalog_Engine {
     private static function compute_purchase_readiness( WC_Product $p ): array {
         $type = $p->get_type();
 
-        // ESAURITO-E-ESAURITO-v1 (1.0.135) — questo controllo stava DUE volte, nel
-        // ramo dei variabili e in quello dei gruppi, identico parola per parola, e
-        // non c'era nel ramo dei semplici. Cosi' lo stesso fatto usciva con due
-        // vocabolari diversi: misurato il 2026-09-18 su project2209, il #426 e' un
-        // `simple` esaurito e riceveva `requires_product_page` con la motivazione
-        // "external product, or not purchasable in its current state" — vaga dove
-        // ne esisteva una esatta, e per giunta falsa: non e' un external, e il
-        // prodotto e' acquistabile. E' finito. Un variabile esaurito, nella stessa
-        // risposta, riceveva `out_of_stock`.
+        // ESAURITO-E-ESAURITO-v1 (1.0.135) — this check was there TWICE, in the
+        // variable branch and in the group branch, identical word for word, and
+        // it was missing from the simple branch. So the same fact came out with two
+        // different vocabularies: measured on 2026-09-18 on the test store, #426 is an
+        // out-of-stock `simple` and received `requires_product_page` with the reason
+        // "external product, or not purchasable in its current state" — vague where
+        // an exact one existed, and false on top of that: it is not external, and the
+        // product is purchasable. It is sold out. An out-of-stock variable, in the same
+        // response, received `out_of_stock`.
         //
-        // "Esaurito" non e' una proprieta' del TIPO di prodotto: e' la prima cosa
-        // vera di qualunque prodotto, e quindi si legge prima di ogni ramo. Due
-        // copie diventano una, e i semplici e gli external ereditano la parola
-        // giusta senza che nessuno debba ricordarsene.
+        // "Out of stock" is not a property of the product TYPE: it is the first true
+        // thing about any product, and so it is read before every branch. Two
+        // copies become one, and simple and external products inherit the right
+        // word without anyone having to remember it.
         if ( ! $p->is_in_stock() ) {
             return [
                 'status'                   => 'out_of_stock',
@@ -1878,23 +1878,23 @@ class KaliCart_Bridge_Catalog_Engine {
             ];
         }
 
-        // I GRUPPI, DETTI PER QUELLO CHE SONO (1.0.135) — prima cadevano tutti nel
-        // ramo finale, che dichiarava `can_add_to_cart_directly: false` con la
-        // motivazione "external, grouped or not purchasable". Sul woosb #5623 di
-        // project2209 era falsa su tutti e tre i punti, e il danno non era la prosa
-        // ma il flag: provato il 2026-09-17, `WC()->cart->add_to_cart(5623,1)`
-        // RIESCE e il carrello chiude a 245,10 €. Dicevamo a un agente che non si
-        // poteva comprare una cosa che si compra: una vendita persa.
+        // GROUPS, NAMED FOR WHAT THEY ARE (1.0.135) — before, they all fell into the
+        // final branch, which declared `can_add_to_cart_directly: false` with the
+        // reason "external, grouped or not purchasable". On a WPC bundle of the
+        // test store it was false on all three counts, and the damage was not the prose
+        // but the flag: tested on 2026-09-17, `WC()->cart->add_to_cart(5623,1)`
+        // SUCCEEDS and the cart closes at 245,10 €. We told an agent that a thing
+        // that can be bought could not be bought: a lost sale.
         //
-        // La regola non e' "i gruppi sono acquistabili" — sarebbe l'errore opposto.
-        // Si legge `is_purchasable()` e si guarda se c'e' davvero una scelta da
-        // fare, invece di dedurre dal tipo.
+        // The rule is not "groups are purchasable" — that would be the opposite mistake.
+        // `is_purchasable()` is read and we check whether there really is a choice to
+        // make, instead of deducing from the type.
         $group = self::group_components( $p );
         if ( $group !== null ) {
             if ( ! $p->is_purchasable() ) {
-                // Il `grouped` nativo: la vetrina di un insieme, dove si compra
-                // ogni pezzo per conto suo. Qui "requires_product_page" e' vero, ed
-                // e' l'unico caso in cui la vecchia frase non mentiva.
+                // Native `grouped`: the shop window of a set, where every piece is
+                // bought on its own. Here "requires_product_page" is true, and
+                // it is the only case in which the old sentence did not lie.
                 return [
                     'status'                   => 'group_components_sold_individually',
                     'blocking_fields'          => [],
@@ -1902,22 +1902,22 @@ class KaliCart_Bridge_Catalog_Engine {
                     'agent_rule'               => 'This is a group of products presented together: it has no single price and is not bought as one item. Each component listed in group.components is purchased on its own.',
                 ];
             }
-            // QUEL-CHE-NON-SAPPIAMO-v1 (1.0.135) — se non abbiamo potuto LEGGERE i
-            // componenti non possiamo nemmeno sapere se c'e' una scelta da fare,
-            // e quindi non possiamo promettere il carrello diretto. Senza questo
-            // ramo il codice cadeva dritto su `direct_cart_possible`: con
-            // `components` vuoto il filtro sugli opzionali non trova niente e
-            // l'assenza di prova diventava prova d'assenza.
+            // QUEL-CHE-NON-SAPPIAMO-v1 (1.0.135) — if we could not READ the
+            // components we cannot even know whether there is a choice to make,
+            // and so we cannot promise the direct cart. Without this
+            // branch the code fell straight onto `direct_cart_possible`: with
+            // empty `components` the filter on optional items finds nothing and
+            // absence of proof became proof of absence.
             //
-            // Non e' teoria: sono i 13 `bundle` di illpumpyouup.com, prodotti veri
-            // che con la 1.0.135 arrivano qui. WooCommerce Product Bundles ha
-            // componenti configurabili; dire a un agente "aggiungilo al carrello"
-            // su una cosa che potrebbe pretendere una configurazione e' lo stesso
-            // errore della 1.0.134 girato al contrario — prima negavamo un
-            // carrello che funziona, qui ne promettevamo uno che puo' fallire.
+            // This is not theory: these are the 13 `bundle` products of a federated store, real products
+            // that with 1.0.135 arrive here. WooCommerce Product Bundles has
+            // configurable components; telling an agent "add it to the cart"
+            // for something that might require a configuration is the same
+            // mistake as 1.0.134 turned around — before we denied a
+            // cart that works, here we promised one that can fail.
             //
-            // `resolved: false` nel blocco `group` dice gia' che non sappiamo.
-            // Qui si smette di dedurre da quel vuoto.
+            // `resolved: false` in the `group` block already says we do not know.
+            // Here we stop deducing from that void.
             if ( empty( $group['resolved'] ) ) {
                 return [
                     'status'                   => 'requires_product_page',
@@ -1952,13 +1952,13 @@ class KaliCart_Bridge_Catalog_Engine {
             ];
         }
 
-        // Il ramo "semplice" sta DOPO quello dei gruppi, e non e' un dettaglio di
-        // stile: e' piu' generico, quindi se viene prima vince su un caso che
-        // conosce meno. Provato il 2026-09-18 con un bundle a componente
-        // opzionale: rispondeva `direct_cart_possible` con blocking_fields vuoto
-        // mentre il summary, che legge i minimi, diceva gia' selection_required.
-        // Due superfici dello stesso prodotto che si contraddicono. Il fatto piu'
-        // specifico si legge per primo.
+        // The "simple" branch comes AFTER the group branch, and it is not a matter of
+        // style: it is more generic, so if it came first it would win over a case it
+        // knows less about. Tested on 2026-09-18 with a bundle with an optional
+        // component: it answered `direct_cart_possible` with empty blocking_fields
+        // while the summary, which reads the minimums, already said selection_required.
+        // Two surfaces of the same product contradicting each other. The more
+        // specific fact is read first.
         if ( self::woo_allows_direct_add( $p ) ) {
             return [
                 'status'                 => 'direct_cart_possible',
@@ -1977,48 +1977,48 @@ class KaliCart_Bridge_Catalog_Engine {
     }
 
     /**
-     * IL-CARRELLO-LO-SA-WOOCOMMERCE-v1 (1.0.136) — se un prodotto si aggiunge al
-     * carrello con un link diretto non lo decidiamo piu' noi dal tipo: lo dice
-     * `WC_Product::add_to_cart_url()`, l'API con cui WooCommerce stessa sceglie,
-     * nel ciclo del negozio, fra "Aggiungi al carrello" e "vai alla scheda". Tiene
-     * conto del tipo, dello stock, dell'acquistabilita' e di cio' che il plugin
-     * del merchant ha configurato su QUEL sito — che da fuori non possiamo sapere.
+     * IL-CARRELLO-LO-SA-WOOCOMMERCE-v1 (1.0.136) — whether a product is added to the
+     * cart with a direct link is no longer decided by us from the type: it is told by
+     * `WC_Product::add_to_cart_url()`, the API WooCommerce itself uses to choose,
+     * in the shop loop, between "Add to cart" and "go to the product page". It takes
+     * into account the type, the stock, purchasability and what the merchant's plugin
+     * configured on THAT site — which we cannot know from outside.
      *
-     * Misurato il 2026-09-18: su phytoactiva.it il woosb #4178 dava
-     * `direct_cart_possible`, ma `?add-to-cart=4178` lasciava il carrello vuoto
-     * (controllo: un semplice dello stesso sito, stessa sessione, entrava). Su
-     * project2209 l'API concordava con la nostra regola su tutti e sei i casi del
-     * banco: cambia solo dove noi sbagliavamo.
+     * Measured on 2026-09-18: on one store a WPC bundle gave
+     * `direct_cart_possible`, but `?add-to-cart=<id>` left the cart empty
+     * (control: a simple product of the same site, same session, went in). On
+     * the test store the API agreed with our rule on all six cases of the
+     * bench: it changes only where we were wrong.
      *
-     * Si legge l'URL, non `supports('ajax_add_to_cart')`: sul #426 esaurito e sul
-     * #444 senza prezzo quel flag e' true mentre l'URL manda alla scheda. L'URL
-     * che WooCommerce restituisce e' RELATIVO quando il prodotto si compra
-     * (`?add-to-cart=N`): qui serve solo come risposta si/no, e il link emesso
-     * resta quello assoluto costruito sotto contro la pagina carrello.
+     * The URL is read, not `supports('ajax_add_to_cart')`: on an out-of-stock product and on
+     * one without a price that flag is true while the URL leads to the product page. The URL
+     * WooCommerce returns is RELATIVE when the product can be bought
+     * (`?add-to-cart=N`): here it serves only as a yes/no answer, and the emitted link
+     * stays the absolute one built below against the cart page.
      *
-     * Sostituisce SOLO l'ultimo passo. Esaurito, gruppi illeggibili, componenti
-     * opzionali e varianti da scegliere restano prima, perche' dicono cose che
-     * l'URL non dice.
+     * It replaces ONLY the last step. Out of stock, unreadable groups, optional
+     * components and variations to choose stay before it, because they say things
+     * the URL does not say.
      */
     private static function woo_allows_direct_add( WC_Product $p ): bool {
         return false !== strpos( (string) $p->add_to_cart_url(), 'add-to-cart=' );
     }
 
     /**
-     * UNA-VERITA-SUL-CARRELLO-v1 (1.0.135) — qui c'era una seconda espressione,
-     * `is_type('simple') && is_purchasable() && is_in_stock()`, che rifaceva a
-     * mano il giudizio che compute_purchase_readiness() aveva gia' dato. Due
-     * calcoli indipendenti della stessa cosa divergono, sempre, prima o poi: il
-     * 2026-09-18, montando un banco per provare i gruppi illeggibili, si e' visto
-     * `can_add_to_cart_directly: false` accanto a un `checkout_url` che puntava
-     * al carrello. Nel caso reale il difetto non si vedeva — ma non si vedeva per
-     * fortuna, non per costruzione.
+     * UNA-VERITA-SUL-CARRELLO-v1 (1.0.135) — there used to be a second expression here,
+     * `is_type('simple') && is_purchasable() && is_in_stock()`, that redid by
+     * hand the judgement compute_purchase_readiness() had already given. Two
+     * independent computations of the same thing always diverge, sooner or later: on
+     * 2026-09-18, setting up a bench to test unreadable groups, we saw
+     * `can_add_to_cart_directly: false` next to a `checkout_url` pointing
+     * to the cart. In the real case the defect did not show — but it did not show by
+     * luck, not by construction.
      *
-     * Ora la domanda si fa una volta sola. `can_add_to_cart_directly` E' la
-     * risposta, e l'URL la segue: se e' vero si va al carrello, altrimenti alla
-     * scheda. Nessun tipo elencato, nessuna condizione ripetuta — e ogni stato
-     * futuro di purchase_readiness eredita l'URL giusto senza che nessuno debba
-     * ricordarsi di aggiornare anche questa riga.
+     * Now the question is asked once only. `can_add_to_cart_directly` IS the
+     * answer, and the URL follows it: if it is true it goes to the cart, otherwise to the
+     * product page. No listed type, no repeated condition — and every future
+     * purchase_readiness state inherits the right URL without anyone having to
+     * remember to update this line too.
      */
     private static function checkout_url_for_product( WC_Product $p ): string {
         $readiness = self::compute_purchase_readiness( $p );
@@ -2277,22 +2277,22 @@ class KaliCart_Bridge_Catalog_Engine {
             ];
         }
 
-        // PREZZO-DI-GRUPPO-v1 (1.0.135) — un `grouped` nativo NON ha un prezzo:
-        // ha i prezzi dei suoi componenti, che si comprano uno per uno. Woo lo
-        // sa e lo scrive ("73,00 € - 797,00 €"); il Bridge invece cadeva nel ramo
-        // a prezzo fisso e pubblicava `current: 73` — il minimo spacciato per IL
-        // prezzo. Misurato sul #489 di project2209 il 2026-09-18:
+        // PREZZO-DI-GRUPPO-v1 (1.0.135) — a native `grouped` product has NO price:
+        // it has the prices of its components, which are bought one by one. Woo
+        // knows it and writes it ("73,00 € - 797,00 €"); the Bridge instead fell into the
+        // fixed-price branch and published `current: 73` — the minimum passed off as THE
+        // price. Measured on a grouped product of the test store on 2026-09-18:
         //     get_regular_price()=''  get_sale_price()=''  get_price()='73'
-        //     figli 412,399,443 -> correnti 73 / 797, listini 75 / 799
-        // Un agente che quotava 73 € sbagliava di dieci volte su due articoli su
-        // tre. La forma giusta esiste gia' ed e' quella dei variabili: un
-        // intervallo. Non si aggiunge un tipo, si sceglie il blocco che c'e'.
+        //     children 412,399,443 -> current 73 / 797, regular 75 / 799
+        // An agent quoting 73 € was off by ten times on two items out of
+        // three. The right shape already exists and it is the one of variable products: an
+        // interval. No type is added, the existing block is chosen.
         //
-        // `range_over` dice su COSA e' costruito l'intervallo, perche' i due casi
-        // non si comprano allo stesso modo: su un variabile se ne sceglie uno, qui
-        // se ne compra quanti se ne vuole. I conteggi tengono i nomi che avevano —
-        // sono i membri dell'intervallo — e il campo nuovo ne dichiara la natura
-        // invece di duplicare il vocabolario.
+        // `range_over` says WHAT the interval is built on, because the two cases
+        // are not bought the same way: on a variable product you choose one, here
+        // you buy as many as you want. The counts keep the names they had —
+        // they are the members of the interval — and the new field declares their nature
+        // instead of duplicating the vocabulary.
         $grouped_raw = self::group_raw( $p );
         if ( $grouped_raw !== null && $grouped_raw['group_type'] === 'grouped' ) {
             $regulars = [];
@@ -2310,7 +2310,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 $currents[] = $c_cur;
                 if ( $c_reg === null || $c_reg <= 0 || $c_cur >= $c_reg ) { continue; }
                 $pct = ( ( $c_reg - $c_cur ) / $c_reg ) * 100;
-                if ( $pct < 1 ) { continue; }   // stessa soglia dell'1% dei variabili
+                if ( $pct < 1 ) { continue; }   // same 1% threshold as variable products
                 $sales[]   = $c_cur;
                 $pcts[]    = $pct;
                 $amounts[] = $c_reg - $c_cur;
@@ -2370,23 +2370,23 @@ class KaliCart_Bridge_Catalog_Engine {
             }
         }
 
-        // SALDO-OTTENIBILE-v1 (1.0.135) — `sale` esiste solo se e' il prezzo che si
-        // paga adesso. Prima si emetteva `get_sale_price()` cosi' com'era: se la
-        // finestra del saldo era chiusa o non ancora aperta, WooCommerce riportava
-        // giustamente `is_on_sale() = false` e `get_price()` al listino, ma il
-        // campo `sale` continuava a pubblicare il prezzo scontato. Misurato il
-        // 2026-09-17: 122 prodotti su 4 merchant, con sconti fino al 67%, cioe'
-        // un prezzo NON ottenibile messo in mano a chi deve comprare.
+        // SALDO-OTTENIBILE-v1 (1.0.135) — `sale` exists only if it is the price paid
+        // now. Before, `get_sale_price()` was emitted as it was: if the
+        // sale window was closed or not yet open, WooCommerce rightly reported
+        // `is_on_sale() = false` and `get_price()` at list price, but the
+        // `sale` field kept publishing the discounted price. Measured on
+        // 2026-09-17: 122 products across 4 merchants, with discounts up to 67%, that is
+        // a price NOT obtainable handed to whoever has to buy.
         //
-        // Il test non e' "il saldo e' attivo" ma "il saldo e' quello che si paga":
-        // se `sale` non coincide con `current`, qualunque ne sia la ragione, non e'
-        // un prezzo di vendita. Cosi' la regola non dipende dalla soglia dell'1%
-        // (vedi punto 9 del debito) e resta vera anche se quella cambia.
+        // The test is not "the sale is active" but "the sale is what is paid":
+        // if `sale` does not match `current`, whatever the reason, it is not
+        // a selling price. So the rule does not depend on the 1% threshold
+        // and stays true even if that changes.
         //
-        // Il fatto che una promozione esista NON si nasconde — sarebbe interpretare
-        // invece che esporre: si dichiara per quello che e', in un blocco suo, con
-        // le sue date. Come la 1.0.134 per la spedizione: si sceglie il blocco, non
-        // si riempiono i campi con null.
+        // The fact that a promotion exists is NOT hidden — that would be interpreting
+        // instead of exposing: it is declared for what it is, in a block of its own, with
+        // its dates. As 1.0.134 did for shipping: the block is chosen, the fields
+        // are not filled with null.
         $promotion = null;
         if ( $sale !== null && $current !== null && abs( $current - $sale ) > 0.0001 ) {
             $from = $p->get_date_on_sale_from();
@@ -2407,9 +2407,9 @@ class KaliCart_Bridge_Catalog_Engine {
             ];
             $sale         = null;
             $on_sale      = false;
-            $discount_pct = null;   // calcolato piu' sopra: senza questo resterebbe
-                                    // uno sconto dichiarato accanto a on_sale=false,
-                                    // cioe' la contraddizione che stiamo togliendo.
+            $discount_pct = null;   // computed above: without this there would remain
+                                    // a declared discount next to on_sale=false,
+                                    // that is the contradiction we are removing.
         }
 
         $vat_included = wc_tax_enabled() && 'incl' === get_option( 'woocommerce_tax_display_shop' );
@@ -2669,8 +2669,8 @@ class KaliCart_Bridge_Catalog_Engine {
                 $scan( $val, 'merchant_attribute' );
             }
         } else {
-            // Il titolo e i tag sono indizi esplorativi, non varianti o attributi
-            // dichiarati dal merchant. La fonte viaggia con ogni famiglia.
+            // Title and tags are exploratory hints, not variations or attributes
+            // declared by the merchant. The source travels with every family.
             $scan( $name, 'inferred_from_title' );
             foreach ( $tags as $tag ) {
                 if ( isset( $tag['name'] ) ) $scan( $tag['name'], 'inferred_from_tag' );
@@ -2772,44 +2772,44 @@ class KaliCart_Bridge_Catalog_Engine {
             $flags[] = [ 'code' => 'NO_CATEGORY', 'severity' => 'high', 'label' => 'No category assigned' ];
         }
 
-        // OMAGGIO != SENZA PREZZO (1.0.135) — qui c'era
+        // OMAGGIO != SENZA PREZZO (1.0.135) — here there used to be
         //     $price = (float) $p->get_price();
         //     if ( $price <= 0 ) -> ZERO_PRICE, severity 'medium'
-        // e faceva due errori in una riga.
+        // and it made two mistakes in one line.
         //
-        // Primo: il cast a float rende `''` identico a `'0.00'`, cioe' confonde un
-        // prodotto SENZA PREZZO con uno in OMAGGIO. WooCommerce invece li
-        // distingue gia', e in modo netto: `is_purchasable()` e' letteralmente
-        // `get_price() !== ''`. Misurato su project2209 il 2026-09-18:
-        //     #486 get_price()='0'  is_purchasable=TRUE   omaggio, si compra
-        //     #444 get_price()=''   is_purchasable=FALSE  non si compra
-        // Col vecchio controllo il #486 finiva in quarantena e restava fuori dalla
-        // federazione: un prodotto regalato, perfettamente vendibile, trattato
-        // come una scheda rotta.
+        // First: the float cast makes `''` identical to `'0.00'`, that is it confuses a
+        // product WITHOUT A PRICE with a FREE one. WooCommerce instead already
+        // tells them apart, sharply: `is_purchasable()` is literally
+        // `get_price() !== ''`. Measured on the test store on 2026-09-18:
+        //     #486 get_price()='0'  is_purchasable=TRUE   free, can be bought
+        //     #444 get_price()=''   is_purchasable=FALSE  cannot be bought
+        // With the old check #486 ended up in quarantine and stayed out of the
+        // federation: a free product, perfectly sellable, treated
+        // as a broken listing.
         //
-        // Secondo: la severita'. 'medium' vale -15, mentre un titolo corto vale
-        // -30. Cosi' il prodotto che NON SI PUO' COMPRARE prendeva 85/100 e quello
-        // scritto male 40/100 — il punteggio invertito proprio dove conta. Un
-        // titolo corto e una descrizione assente dicono quanto bene il prodotto e'
-        // descritto; un prezzo assente dice che non e' vendibile, e non e' una
-        // questione di stile.
+        // Second: the severity. 'medium' is worth -15, while a short title is worth
+        // -30. So the product that CANNOT BE BOUGHT got 85/100 and the badly
+        // written one 40/100 — the score inverted exactly where it matters. A
+        // short title and a missing description say how well the product is
+        // described; a missing price says it is not sellable, and it is not a
+        // matter of style.
         //
-        // Terzo — e questo me lo sono trovato addosso il 2026-09-18, misurando i
-        // gruppi: `is_purchasable()` era la lettura sbagliata. Su project2209 i
-        // prodotti publish non acquistabili erano due, e uno solo era senza prezzo:
-        //     #444  grouped=no   get_price()=''    -> davvero invendibile
-        //     #489  grouped=si   get_price()='73'  -> prezzi 73-797, si vende
-        // Il `grouped` nativo non e' acquistabile COME UN PEZZO perche' i suoi
-        // componenti si comprano uno per uno: non e' un prezzo mancante, e' un
-        // prezzo per ciascuno. Col controllo su is_purchasable() sarebbe finito in
-        // quarantena — fuori dalla federazione — un prodotto con tre articoli in
-        // vendita. La stessa trappola aspettava gli external.
+        // Third — found while measuring groups on 2026-09-18:
+        // `is_purchasable()` was the wrong read. On the test store the
+        // published non-purchasable products were two, and only one had no price:
+        //     #444  grouped=no   get_price()=''    -> really unsellable
+        //     #489  grouped=yes  get_price()='73'  -> prices 73-797, it sells
+        // Native `grouped` is not purchasable AS ONE PIECE because its
+        // components are bought one by one: it is not a missing price, it is a
+        // price for each. With the check on is_purchasable() a product with three items
+        // for sale would have ended up in quarantine — out of the federation.
+        // The same trap was waiting for external products.
         //
-        // La regola non va ristretta caso per caso: va riportata dove appartiene.
-        // La domanda e' "c'e' un prezzo da dire a chi compra?", e quel prezzo lo
-        // calcoliamo gia' una volta sola in compute_price(). Si legge quello. Cosi'
-        // il controllo resta uno, vale per tutti i tipi — presenti e futuri — e non
-        // puo' piu' divergere dal payload, perche' E' il payload.
+        // The rule must not be narrowed case by case: it must be brought back where it belongs.
+        // The question is "is there a price to tell the buyer?", and that price we
+        // already compute once only in compute_price(). That is what is read. So
+        // the check stays one, applies to every type — present and future — and can
+        // no longer diverge from the payload, because it IS the payload.
         $price_data = $price_data ?? self::compute_price( $p );
         if ( ( $price_data['current'] ?? null ) === null && $p->get_status() === 'publish' ) {
             $flags[] = [ 'code' => 'PRICE_MISSING', 'severity' => 'blocking', 'label' => 'No price set: the product cannot be purchased' ];
@@ -2840,9 +2840,9 @@ class KaliCart_Bridge_Catalog_Engine {
         $deductions = 0;
         foreach ( $flags as $flag ) {
             $deductions += match ( $flag['severity'] ) {
-                // 'blocking' non e' un difetto di grado: e' l'impossibilita' di
-                // comprare. Azzera il punteggio invece di scalarlo, perche' nessuna
-                // qualita' di scheda rende vendibile un prodotto senza prezzo.
+                // 'blocking' is not a defect of degree: it is the impossibility of
+                // buying. It zeroes the score instead of scaling it, because no
+                // listing quality makes a product without a price sellable.
                 'blocking' => 100,
                 'high'   => 30,
                 'medium' => 15,
@@ -2921,9 +2921,9 @@ class KaliCart_Bridge_Catalog_Engine {
         // Persist result so meta endpoint can read it without re-computing.
         $option_key = 'kalicart_bridge_catalog_facets_' . ( $lang ?? 'mono' );
         update_option( $option_key, $result, false ); // autoload=false
-        // 1.0.130 — l'eta' del dato fa parte del contratto: get_meta dichiara
-        // computed_at e max_staleness_hours, cosi' un agente sa che
-        // available_values e' una fotografia e non uno stato istantaneo.
+        // 1.0.130 — the age of the data is part of the contract: get_meta declares
+        // computed_at and max_staleness_hours, so an agent knows that
+        // available_values is a snapshot and not an instantaneous state.
         update_option( 'kalicart_bridge_catalog_facets_at_' . ( $lang ?? 'mono' ), time(), false );
 		// A first-request placeholder must disappear as soon as the background build
 		// completes, rather than hiding fresh facets for the full five-minute meta TTL.
@@ -2940,23 +2940,23 @@ class KaliCart_Bridge_Catalog_Engine {
      * @return array|null
      */
     /**
-     * VOCABOLARIO CANONICO — fonte unica per schema, validazione REST, validazione
-     * MCP, get_meta e test. Prima della 1.0.130 gli stessi elenchi erano duplicati
-     * in sei punti fra class-mcp.php e class-api.php, ed e' cosi' che schema e
-     * runtime avevano finito per promettere cose diverse.
+     * CANONICAL VOCABULARY — single source for schema, REST validation, MCP
+     * validation, get_meta and tests. Before 1.0.130 the same lists were duplicated
+     * in six places across class-mcp.php and class-api.php, and that is how schema and
+     * runtime had ended up promising different things.
      *
-     * `accepted_values` e' il CONTRATTO: stabile, decide la validita'.
-     * Da non confondere con `available_values` (get_cached_catalog_facets), che e'
-     * la fotografia di questo catalogo e NON decide mai la validita' di una
-     * richiesta: e' aggiornata al massimo ogni 12 ore dal cron, e rifiutare su un
-     * dato vecchio mezza giornata negherebbe una ricerca legittima su un prodotto
-     * appena pubblicato.
+     * `accepted_values` is the CONTRACT: stable, decides validity.
+     * Not to be confused with `available_values` (get_cached_catalog_facets), which is
+     * the snapshot of this catalog and NEVER decides the validity of a
+     * request: it is refreshed at most every 12 hours by the cron, and rejecting on
+     * data half a day old would deny a legitimate search for a product
+     * just published.
      */
     /**
-     * Esito dell'ultimo prodotto valutato dal filtro gender. Proprieta' statiche e
-     * non valore di ritorno perche' matches_derived_filters() e' un predicato
-     * booleano usato in piu' punti: cambiarne la firma avrebbe toccato percorsi
-     * che non hanno bisogno di questo dato.
+     * Outcome of the last product evaluated by the gender filter. Static properties and
+     * not a return value because matches_derived_filters() is a boolean
+     * predicate used in several places: changing its signature would have touched paths
+     * that do not need this data.
      */
     private static $gender_pass_state = null;
     private static $gender_pass_detected = null;
@@ -2972,16 +2972,16 @@ class KaliCart_Bridge_Catalog_Engine {
     }
 
     /**
-     * Normalizzazione SOLO FORMALE: trim + lowercase ASCII. Nient'altro.
+     * FORMAL normalization ONLY: trim + ASCII lowercase. Nothing else.
      *
-     * Non e' un dettaglio implementativo, e' il confine del contratto. `MALE ` e
-     * `male` sono lo stesso valore scritto diversamente; `uomo` e `male` sono due
-     * parole diverse. Tradurre la seconda coppia significherebbe mettere in
-     * KaliCart un'intelligenza che sta gia' nell'agente — e obbligherebbe noi a
-     * decidere, per esempio, se `azzurro` sia `blue` o `light_blue`.
+     * It is not an implementation detail, it is the boundary of the contract. `MALE ` and
+     * `male` are the same value written differently; `uomo` and `male` are two
+     * different words. Translating the second pair would put into
+     * KaliCart an intelligence that already belongs to the agent — and would force us to
+     * decide, for example, whether `azzurro` is `blue` or `light_blue`.
      *
-     * `q` resta linguaggio naturale nella lingua dell'utente; i facet sono
-     * linguaggio macchina.
+     * `q` stays natural language in the user's language; facets are
+     * machine language.
      */
     public static function normalize_facet_value( $value ): string {
         if ( ! is_scalar( $value ) ) {
@@ -2991,10 +2991,10 @@ class KaliCart_Bridge_Catalog_Engine {
     }
 
     /**
-     * @return array|null null se valido; altrimenti il payload d'errore strutturato.
-     *                    L'agente deve poter correggere al primo colpo, senza una
-     *                    chiamata informativa aggiuntiva: per questo l'errore porta
-     *                    gia' accepted_values.
+     * @return array|null null when valid; otherwise the structured error payload.
+     *                    The agent must be able to fix the call on the first try, without an
+     *                    extra informational call: that is why the error already carries
+     *                    accepted_values.
      */
     public static function validate_facet_value( string $facet, $raw ): ?array {
         $accepted  = self::accepted_facet_values( $facet );
@@ -3075,8 +3075,8 @@ class KaliCart_Bridge_Catalog_Engine {
             'price'      => 'meta_value_num',
             'title'      => 'title',
             'popularity' => 'comment_count',
-            // L'unico ordinamento su un campo che non cambia mai: e' quello che
-            // rende ripetibile la camminata di un catalogo intero.
+            // The only ordering on a field that never changes: it is what
+            // makes the walk over a whole catalog repeatable.
             'id'         => 'ID',
             default      => 'date',
         };
