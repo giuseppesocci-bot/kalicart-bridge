@@ -3,7 +3,7 @@
  * Plugin Name:       KaliCart Bridge – Agentic Commerce Catalog, ChatGPT Product Feed & MCP
  * Plugin URI:        https://bridge.kalicart.com
  * Description:       Makes your WooCommerce catalog agent-readable: product feed checked against the OpenAI spec, catalog REST API and MCP server, with the optional KaliCart Global connection. No LLM inside the plugin.
- * Version:           1.0.156
+ * Version:           1.0.157
  * Author:            KaliCart
  * Author URI:        https://kalicart.com
  * License:           GPL-2.0-or-later
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KALICART_BRIDGE_VERSION', '1.0.156' );
+define( 'KALICART_BRIDGE_VERSION', '1.0.157' );
 // Version of the catalog DATA format (fields, normalisation, exclusion/quarantine rules),
 // independent of the plugin version. Bump it ONLY when what the catalog returns changes:
 // KaliCart Global re-reads every catalog in full when this value changes, not on every

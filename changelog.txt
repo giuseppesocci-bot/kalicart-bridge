@@ -1,5 +1,10 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-30 - version 1.0.157
+
+* Source code comments are now in English throughout and no longer contain internal notes. The code itself is unchanged: with comments removed, every file is identical to 1.0.156.
+
+
 2026-10-29 - version 1.0.156
 
 * Before a delivered total is quoted, WooCommerce's cart checks run on the temporary cart (for example a minimum order amount set by the shop or by a plugin). If WooCommerce would refuse the order, the quote says so with the reason the shop shows to any visitor, instead of returning a total for an order that cannot be placed.
