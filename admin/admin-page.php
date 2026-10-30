@@ -416,18 +416,28 @@ if ( ! in_array( $kalicart_bridge_active_tab, $kalicart_bridge_allowed_tabs, tru
 
       <label class="kali-toggle-row">
         <div class="kali-toggle-info">
-          <strong><?php esc_html_e( 'Checkout sessions', 'kalicart-bridge' ); ?> <span style="font-size:11px;font-weight:500;background:var(--kb-acc-bg);color:var(--kb-acc);border:1px solid rgba(0,112,243,.2);border-radius:99px;padding:1px 8px;vertical-align:middle"><?php esc_html_e( 'optional', 'kalicart-bridge' ); ?></span></strong>
+          <strong><?php esc_html_e( 'Checkout sessions', 'kalicart-bridge' ); ?> <span class="kali-pill-important"><?php esc_html_e( 'Important', 'kalicart-bridge' ); ?></span></strong>
           <span><?php echo wp_kses_post( sprintf( /* translators: %s: the POST /checkout/session endpoint, shown as code */ __( 'Enables %s — agent creates a session, merchant gets a checkout URL, human completes payment on WooCommerce. No OAuth, no PII, no payment on the agent side.', 'kalicart-bridge' ), '<code>POST /checkout/session</code>' ) ); ?></span>
+          <span class="kali-important-why"><?php esc_html_e( 'Why it matters: without it, an agent cannot hand the chosen cart to the buyer, who has to start over on your site.', 'kalicart-bridge' ); ?></span>
         </div>
         <div class="kali-toggle"><input type="checkbox" id="toggleCheckout"><span class="kali-toggle__slider"></span></div>
       </label>
 
       <label class="kali-toggle-row">
         <div class="kali-toggle-info">
-          <strong><?php esc_html_e( 'WooCommerce cart quote', 'kalicart-bridge' ); ?></strong>
+          <strong><?php esc_html_e( 'WooCommerce cart quote', 'kalicart-bridge' ); ?> <span class="kali-pill-important"><?php esc_html_e( 'Important', 'kalicart-bridge' ); ?></span></strong>
           <span><?php esc_html_e( 'Allows agents to request a shipping and tax quote for a selected cart and destination. Uses a temporary WooCommerce cart; no order or checkout session is created. If the calculation is unavailable, the result is unknown.', 'kalicart-bridge' ); ?></span>
+          <span class="kali-important-why"><?php esc_html_e( 'Why it matters: without it, an agent cannot confirm the delivered price of a cart and usually leaves your products out rather than guess.', 'kalicart-bridge' ); ?></span>
         </div>
         <div class="kali-toggle"><input type="checkbox" id="toggleQuote"><span class="kali-toggle__slider"></span></div>
+      </label>
+
+      <label class="kali-toggle-row">
+        <div class="kali-toggle-info">
+          <strong><?php esc_html_e( 'Show exact stock quantities', 'kalicart-bridge' ); ?></strong>
+          <span><?php esc_html_e( 'Off by default: agents see whether a product is available and whether stock is low, following your WooCommerce low-stock threshold, but not the exact number of units. Turn on only if you want the exact quantity in the public catalog API.', 'kalicart-bridge' ); ?></span>
+        </div>
+        <div class="kali-toggle"><input type="checkbox" id="toggleStockQty"><span class="kali-toggle__slider"></span></div>
       </label>
 
       <label class="kali-toggle-row">

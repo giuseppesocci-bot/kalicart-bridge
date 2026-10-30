@@ -474,7 +474,7 @@ class KaliCart_Bridge_API {
                 'activate_when' => 'WooCommerce exposes programmatic payment API or Stripe AP2 mandate integration is available.',
             ],
 
-            'stock_rule'   => 'If stock.quantity is null, report availability status only. Do not invent or imply numeric inventory. stock.confidence clarifies the precision level.',
+            'stock_rule'   => 'If stock.quantity is null, report availability status only. Do not invent or imply numeric inventory. stock.confidence clarifies the precision level. stock.low_stock, when present, says whether stock is at or below the store\'s WooCommerce low-stock threshold.',
 
             'variation_discovery' => [
                 'required_for_variable_products' => true,
@@ -1891,6 +1891,7 @@ class KaliCart_Bridge_API {
                 'in_stock'         => $stock['in_stock'] ?? null,
                 'quantity'         => $stock['quantity'] ?? null,
                 'quantity_tracked' => $stock['quantity_tracked'] ?? null,
+                'low_stock'        => $stock['low_stock'] ?? null,
                 'confidence'       => $stock['confidence'] ?? null,
                 'agent_note'       => $stock['agent_note'] ?? null,
             ], fn( $value ) => $value !== null );

@@ -533,7 +533,8 @@ class KaliCart_Bridge_Snapshot {
 		if ( isset( $st['agent_note'] ) && 0 === strpos( (string) $st['agent_note'], 'Last unit available' ) ) {
 			unset( $st['agent_note'] );
 		}
-		if ( $show_scarcity ) {
+		if ( $show_scarcity && ! ( null === $qty && array_key_exists( 'low_stock', $st ) ) ) {
+			// 1.0.158: when the catalog already hid the quantity it also computed low_stock.
 			$st['low_stock'] = ( null !== $qty && ! empty( $st['quantity_tracked'] ) && $qty > 0 && $qty <= (int) $threshold( $id ) );
 		}
 		return $st;

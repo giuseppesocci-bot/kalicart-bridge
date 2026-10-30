@@ -1574,15 +1574,7 @@ class KaliCart_Bridge_Catalog_Engine {
                 'price'               => $price_data,
                 'in_stock'            => $var_in_stock,
                 'availability_status' => $var_in_stock ? 'in_stock' : ( $variation->get_stock_status() === 'onbackorder' ? 'backorder' : 'out_of_stock' ),
-                'stock'               => array_filter( [
-                    'in_stock'         => $var_in_stock,
-                    'quantity'         => $var_qty,
-                    'quantity_tracked' => $var_manage,
-                    'confidence'       => $var_manage ? 'numeric_stock_quantity' : 'availability_status_only',
-                    'agent_note'       => ( $var_manage && $var_qty === 1 )
-                                            ? 'Last unit available. Race condition possible — complete checkout immediately.'
-                                            : null,
-                ], fn( $v ) => $v !== null ),
+                'stock'               => self::variant_stock_block( (bool) $var_in_stock, (bool) $var_manage, null === $var_qty ? null : (int) $var_qty, (int) $variation_id ),
                 'sku'                 => $variation->get_sku() ?: null,
                 'barcodes'            => self::get_barcodes( $variation ),
                 'purchasable'         => $variation->is_purchasable(),
@@ -1601,6 +1593,50 @@ class KaliCart_Bridge_Catalog_Engine {
         if ( $gtin ) $out[] = [ 'type' => 'GTIN', 'value' => (string) $gtin ];
         if ( $upc )  $out[] = [ 'type' => 'UPC',  'value' => (string) $upc ];
         return $out;
+    }
+
+    /**
+     * STOCK-QUANTITY-PRIVATE-v1 (1.0.158): the exact stock quantity is a commercial
+     * figure that ages at once, and an agent only needs availability. It is left out
+     * of every public surface unless the merchant opts in; `low_stock` keeps the one
+     * useful signal, following WooCommerce's own low-stock threshold and display setting.
+     */
+    public static function stock_quantity_public(): bool {
+        return (bool) get_option( 'kalicart_bridge_stock_quantity_public', false );
+    }
+
+    /** true/false below/above the WooCommerce low-stock threshold; null when the store hides stock amounts. */
+    private static function low_stock_flag( ?int $qty, int $id ): ?bool {
+        if ( 'no_amount' === (string) get_option( 'woocommerce_stock_format', '' ) ) {
+            return null;
+        }
+        $threshold = class_exists( 'KaliCart_Bridge_Snapshot' ) ? KaliCart_Bridge_Snapshot::woo_threshold( $id )
+            : max( 0, (int) get_option( 'woocommerce_notify_low_stock_amount', 2 ) );
+        return null !== $qty && $qty > 0 && $qty <= $threshold;
+    }
+
+    private static function variant_stock_block( bool $in_stock, bool $manage, ?int $qty, int $variation_id ): array {
+        if ( $manage && null !== $qty && ! self::stock_quantity_public() ) {
+            $out = [
+                'in_stock'         => $in_stock,
+                'quantity_tracked' => true,
+                'confidence'       => 'availability_status_only',
+            ];
+            $low = self::low_stock_flag( $qty, $variation_id );
+            if ( null !== $low ) {
+                $out['low_stock'] = $low;
+            }
+            return $out;
+        }
+        return array_filter( [
+            'in_stock'         => $in_stock,
+            'quantity'         => $qty,
+            'quantity_tracked' => $manage,
+            'confidence'       => $manage ? 'numeric_stock_quantity' : 'availability_status_only',
+            'agent_note'       => ( $manage && $qty === 1 )
+                                    ? 'Last unit available. Race condition possible — complete checkout immediately.'
+                                    : null,
+        ], fn( $v ) => $v !== null );
     }
 
     private static function compute_stock( WC_Product $p ): array {
@@ -1633,17 +1669,29 @@ class KaliCart_Bridge_Catalog_Engine {
         };
 
         $backorder_raw = $p->get_backorders();
+        $hide_qty      = $manage_stock && $quantity !== null && ! self::stock_quantity_public();
+        if ( $hide_qty ) {
+            $confidence = 'availability_status_only';
+            $agent_note = null;
+        }
         $out = [
             'status'              => $wc_status,
             'availability_status' => $ucp_status,
             'in_stock'            => $p->is_in_stock(),
-            'quantity'            => $quantity,
+            'quantity'            => $hide_qty ? null : $quantity,
             'quantity_tracked'    => $manage_stock,
             'backorder'           => $backorder_raw,
             'backorder_allowed'   => in_array( $backorder_raw, [ 'notify', 'yes' ], true ),
             'manage_stock'        => $manage_stock,
             'confidence'          => $confidence,
         ];
+        if ( $hide_qty ) {
+            unset( $out['quantity'] );
+            $low = self::low_stock_flag( (int) $quantity, $p->get_id() );
+            if ( null !== $low ) {
+                $out['low_stock'] = $low;
+            }
+        }
         if ( $agent_note ) {
             $out['agent_note'] = $agent_note;
         }

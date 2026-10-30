@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
  * KaliCart_Bridge_Federation_Consent — local, append-only evidence of the
  * Federated Catalog consent (consent A), 1.0.139.
  *
- * - Text federated-catalog-1.1 applies to NEW activations. Each activation and
+ * - Text federated-catalog-1.2 applies to NEW activations (1.1 until 1.0.157). Each activation and
  *   revocation appends one record: text id, action, UTC time, WordPress user,
  *   locale, SHA-256 of the canonical English text and of the localized text the
  *   user saw, plugin version, previous record hash and own record hash (chain).
@@ -18,11 +18,11 @@ defined( 'ABSPATH' ) || exit;
 class KaliCart_Bridge_Federation_Consent {
 
 	const OPTION       = 'kalicart_bridge_federation_consent_log';
-	const TEXT_ID      = 'federated-catalog-1.1';
+	const TEXT_ID      = 'federated-catalog-1.2';
 	const LEGACY_ID    = 'federated-catalog-1-legacy';
 
 	/** Canonical, native-English text whose SHA-256 is recorded with every act. */
-	const CANONICAL_TEXT = 'By activating the Federated Catalog, I authorize KaliCart Global to read this store\'s public product catalog and include it in the KaliCart Federated Catalog, where AI assistants can find these products. The catalog includes product names, descriptions, categories, prices, availability, variants, image URLs and product links, as shown to any visitor of this store. KaliCart Global reads it from this site\'s public catalog API and from public files that this plugin creates on this site (in /.well-known/kalicart/, or in wp-content/uploads/kalicart/ when that folder cannot be written); the files do not contain exact stock quantities, are updated when products change, and are deleted when I revoke this consent or deactivate or uninstall the plugin. To prove that the catalog comes from this store, the plugin creates a signing key for this installation and sends KaliCart Global a signed signal about once a day (site address, a random identifier of this installation, consent state and consent text version, plugin, WordPress and PHP versions, catalog file status, whether the store is in coming-soon or maintenance mode and, only after a plugin error, a short error code with its time and a short hash; never error messages, file paths or stack traces). No customer, order, payment or account data is shared. I can revoke this consent at any time from this page.';
+	const CANONICAL_TEXT = 'By activating the Federated Catalog, I authorize KaliCart Global to read this store\'s public product catalog and include it in the KaliCart Federated Catalog, where AI assistants can find these products. The catalog includes product names, descriptions, categories, prices, availability, variants, image URLs and product links, as shown to any visitor of this store. KaliCart Global reads it from this site\'s public catalog API and from public files that this plugin creates on this site (in /.well-known/kalicart/, or in wp-content/uploads/kalicart/ when that folder cannot be written); the files do not contain exact stock quantities, are updated when products change, and are deleted when I revoke this consent or deactivate or uninstall the plugin. To prove that the catalog comes from this store, the plugin creates a signing key for this installation and sends KaliCart Global a signed signal about once a day (site address, a random identifier of this installation, consent state and consent text version, plugin, WordPress and PHP versions, catalog file status, whether the store is in coming-soon or maintenance mode, the daily totals of agent checkout activity on this store (sessions created, carts loaded, orders linked, orders paid and their net value; never individual orders) and, only after a plugin error, a short error code with its time and a short hash; never error messages, file paths or stack traces). No customer, payment or account data and no individual order is shared. I can revoke this consent at any time from this page. I am invited to reread this text periodically: it may be updated, and updates are shown on this page.';
 
 	public static function init(): void {
 		add_action( 'admin_init', [ __CLASS__, 'privacy_policy_content' ] );
@@ -50,7 +50,7 @@ class KaliCart_Bridge_Federation_Consent {
 
 	/** The same text, translated. Must be the text shown next to the activation button. */
 	public static function localized_text(): string {
-		return __( 'By activating the Federated Catalog, I authorize KaliCart Global to read this store\'s public product catalog and include it in the KaliCart Federated Catalog, where AI assistants can find these products. The catalog includes product names, descriptions, categories, prices, availability, variants, image URLs and product links, as shown to any visitor of this store. KaliCart Global reads it from this site\'s public catalog API and from public files that this plugin creates on this site (in /.well-known/kalicart/, or in wp-content/uploads/kalicart/ when that folder cannot be written); the files do not contain exact stock quantities, are updated when products change, and are deleted when I revoke this consent or deactivate or uninstall the plugin. To prove that the catalog comes from this store, the plugin creates a signing key for this installation and sends KaliCart Global a signed signal about once a day (site address, a random identifier of this installation, consent state and consent text version, plugin, WordPress and PHP versions, catalog file status, whether the store is in coming-soon or maintenance mode and, only after a plugin error, a short error code with its time and a short hash; never error messages, file paths or stack traces). No customer, order, payment or account data is shared. I can revoke this consent at any time from this page.', 'kalicart-bridge' );
+		return __( 'By activating the Federated Catalog, I authorize KaliCart Global to read this store\'s public product catalog and include it in the KaliCart Federated Catalog, where AI assistants can find these products. The catalog includes product names, descriptions, categories, prices, availability, variants, image URLs and product links, as shown to any visitor of this store. KaliCart Global reads it from this site\'s public catalog API and from public files that this plugin creates on this site (in /.well-known/kalicart/, or in wp-content/uploads/kalicart/ when that folder cannot be written); the files do not contain exact stock quantities, are updated when products change, and are deleted when I revoke this consent or deactivate or uninstall the plugin. To prove that the catalog comes from this store, the plugin creates a signing key for this installation and sends KaliCart Global a signed signal about once a day (site address, a random identifier of this installation, consent state and consent text version, plugin, WordPress and PHP versions, catalog file status, whether the store is in coming-soon or maintenance mode, the daily totals of agent checkout activity on this store (sessions created, carts loaded, orders linked, orders paid and their net value; never individual orders) and, only after a plugin error, a short error code with its time and a short hash; never error messages, file paths or stack traces). No customer, payment or account data and no individual order is shared. I can revoke this consent at any time from this page. I am invited to reread this text periodically: it may be updated, and updates are shown on this page.', 'kalicart-bridge' );
 	}
 
 	/** @return array<int,array<string,mixed>> */
@@ -67,7 +67,7 @@ class KaliCart_Bridge_Federation_Consent {
 
 	/**
 	 * Consent version currently in force, for the signed heartbeat and the panel:
-	 * federated-catalog-1.1 (activated with this text), federated-catalog-1-legacy
+	 * federated-catalog-1.2 or 1.1 (the text the store activated with), federated-catalog-1-legacy
 	 * (activated before 1.0.139, no record) or '' (no consent).
 	 */
 	public static function version(): string {

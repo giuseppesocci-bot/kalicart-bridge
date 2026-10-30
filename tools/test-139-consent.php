@@ -1,6 +1,6 @@
 <?php
 /**
- * 1.0.139: consent A (federated-catalog-1.1) receipt log.
+ * 1.0.139: consent A (federated-catalog-1.2) receipt log.
  * Leaves the site exactly as found: the log option is saved and restored, the real
  * consent flag is never changed (legacy status is checked by reading it only).
  * Run: wp eval-file wp-content/plugins/kalicart-bridge/tools/test-139-consent.php
@@ -16,10 +16,10 @@ try {
 	$ok( 0 === count( $C::records() ), 'the legacy state does not fabricate receipts' );
 
 	$g = $C::record( 'granted', 1 );
-	$ok( 'federated-catalog-1.1' === $g['text_id'] && 'granted' === $g['action'] && null === $g['previous_record_hash'], 'activation recorded: text_id, action, first of the chain' );
+	$ok( 'federated-catalog-1.2' === $g['text_id'] && 'granted' === $g['action'] && null === $g['previous_record_hash'], 'activation recorded: text_id, action, first of the chain' );
 	$ok( hash( 'sha256', $C::CANONICAL_TEXT ) === $g['canonical_text_hash'] && hash( 'sha256', $C::localized_text() ) === $g['consent_text_hash'], 'hash of the canonical text and of the displayed text' );
 	$ok( preg_match( '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $g['occurred_at_utc'] ) && 1 === $g['wp_user_id'] && KALICART_BRIDGE_VERSION === $g['plugin_version'], 'UTC time, user, plugin version' );
-	if ( $flag ) { $ok( 'federated-catalog-1.1' === $C::version(), 'with the receipt the version in force is 1.1' ); }
+	if ( $flag ) { $ok( 'federated-catalog-1.2' === $C::version(), 'with the receipt the version in force is 1.2' ); }
 	$again = $C::record( 'granted', 1 );
 	$ok( 1 === count( $C::records() ) && $again['record_hash'] === $g['record_hash'], 'identical second activation: idempotent, no extra record' );
 	$r = $C::record( 'revoked', 1 );

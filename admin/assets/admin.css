@@ -1249,3 +1249,7 @@
   .kali-external-visibility__header .kali-btn { align-self: flex-start; }
   .kali-visibility-facts { grid-template-columns: 1fr; }
 }
+
+/* 1.0.158: settings that agents depend on, shown as important (still switchable). */
+.kali-pill-important{font-size:11px;font-weight:600;background:#fff4e5;color:#8a4b00;border:1px solid #f0c27a;border-radius:99px;padding:1px 8px;vertical-align:middle}
+.kali-toggle-info .kali-important-why{display:block;margin-top:4px;color:#8a4b00}

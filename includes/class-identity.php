@@ -358,6 +358,18 @@ class KaliCart_Bridge_Identity {
 		return false;
 	}
 
+	/** Funnel totals for the heartbeat, or null when unavailable. */
+	private static function funnel_counts(): ?array {
+		if ( ! class_exists( 'KaliCart_Bridge_Checkout' ) || ! method_exists( 'KaliCart_Bridge_Checkout', 'daily_funnel_counts' ) ) {
+			return null;
+		}
+		try {
+			return KaliCart_Bridge_Checkout::daily_funnel_counts( 7 );
+		} catch ( \Throwable $e ) {
+			return null;
+		}
+	}
+
 	private static function heartbeat( array $s, string $sk, ?bool $consent = null ): bool {
 		$fatal = get_option( self::FATAL_OPT, null );
 		$snapshot_fields = class_exists( 'KaliCart_Bridge_Snapshot' ) ? KaliCart_Bridge_Snapshot::heartbeat_fields() : [];
@@ -373,6 +385,9 @@ class KaliCart_Bridge_Identity {
 			// 1.0.139: which consent text is in force (federated-catalog-1.1 or
 			// federated-catalog-1-legacy). A label only: the receipt stays on the site.
 			'consent_version' => class_exists( 'KaliCart_Bridge_Federation_Consent' ) ? KaliCart_Bridge_Federation_Consent::version() : '',
+			// 1.0.158: daily aggregate totals of agent checkout activity (no order ids,
+			// no customer data). Never allowed to break the heartbeat.
+			'funnel'          => self::funnel_counts(),
 		] + $snapshot_fields, $s, $sk, 10 );
 		if ( ! $err ) {
 			delete_option( self::FATAL_OPT );

@@ -60,6 +60,7 @@ class KaliCart_Bridge_Admin {
             'badge_position'      => get_option('kalicart_bridge_badge_position','bottom-right'),
             'checkout_enabled'   => (bool) get_option('kalicart_bridge_checkout_enabled', false),
             'quote_enabled'      => (bool) get_option('kalicart_bridge_quote_enabled', false),
+            'stock_quantity_public' => (bool) get_option('kalicart_bridge_stock_quantity_public', false),
             'well_known_enabled' => (bool) get_option('kalicart_bridge_well_known_enabled', true),
             'agent_hints_enabled' => (bool) get_option('kalicart_bridge_agent_hints_enabled', false),
             'hint_search'        => (bool) get_option('kalicart_bridge_hint_search', false),
@@ -306,6 +307,7 @@ class KaliCart_Bridge_Admin {
             'badge_position'   => sanitize_text_field( wp_unslash( $_POST['badge_position'] ?? 'bottom-right' ) ),
             'checkout_enabled'  => filter_input( INPUT_POST, 'checkout_enabled',  FILTER_VALIDATE_BOOLEAN ),
             'quote_enabled'     => filter_input( INPUT_POST, 'quote_enabled',     FILTER_VALIDATE_BOOLEAN ),
+            'stock_quantity_public' => filter_input( INPUT_POST, 'stock_quantity_public', FILTER_VALIDATE_BOOLEAN ),
             'well_known_enabled' => filter_input( INPUT_POST, 'well_known_enabled', FILTER_VALIDATE_BOOLEAN ),
             'hint_search'        => filter_input( INPUT_POST, 'hint_search',        FILTER_VALIDATE_BOOLEAN ),
             'hint_zero'          => filter_input( INPUT_POST, 'hint_zero',          FILTER_VALIDATE_BOOLEAN ),
@@ -328,6 +330,7 @@ class KaliCart_Bridge_Admin {
         update_option( 'kalicart_bridge_badge_position',   $settings['badge_position'] );
         update_option( 'kalicart_bridge_checkout_enabled',  $settings['checkout_enabled'] );
         update_option( 'kalicart_bridge_quote_enabled',     $settings['quote_enabled'] );
+        update_option( 'kalicart_bridge_stock_quantity_public', (bool) $settings['stock_quantity_public'] );
         update_option( 'kalicart_bridge_well_known_enabled', $settings['well_known_enabled'] );
         update_option( 'kalicart_bridge_hint_search',        $settings['hint_search'] );
         update_option( 'kalicart_bridge_hint_zero',          $settings['hint_zero'] );

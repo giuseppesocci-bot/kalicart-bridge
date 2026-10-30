@@ -1024,6 +1024,97 @@ class KaliCart_Bridge_Checkout {
         return $totals;
     }
 
+    /**
+     * Daily totals of agent checkout activity for the signed heartbeat (1.0.158).
+     *
+     * Aggregates only: per UTC day, sessions created, carts loaded, orders linked to
+     * a Bridge session, how many of those orders are paid and their net paid value
+     * (total minus refunds). No order id, customer, address or line is included.
+     * The last $days days are always sent, zeros included, so KaliCart Global can
+     * overwrite a day idempotently and a missed heartbeat is filled by the next one.
+     * Payment follows the same rule as get_funnel_report(): a date_paid is required.
+     *
+     * @return array{currency:string,days:array<int,array<string,mixed>>}
+     */
+    public static function daily_funnel_counts( int $days = 7 ): array {
+        $days  = max( 1, min( 31, $days ) );
+        $now   = time();
+        $by    = [];
+        for ( $i = $days - 1; $i >= 0; $i-- ) {
+            $by[ gmdate( 'Y-m-d', $now - ( $i * DAY_IN_SECONDS ) ) ] = [
+                'sessions_created' => 0, 'carts_loaded' => 0, 'orders_linked' => 0,
+                'orders_paid' => 0, 'net_paid_value' => 0.0,
+            ];
+        }
+        $first = array_key_first( $by );
+
+        $legacy = get_option( 'kalicart_bridge_agent_funnel', [] );
+        foreach ( is_array( $legacy ) ? $legacy : [] as $day => $bucket ) {
+            if ( isset( $by[ $day ] ) && is_array( $bucket ) ) {
+                foreach ( [ 'sessions_created', 'carts_loaded', 'orders_linked' ] as $k ) {
+                    $by[ $day ][ $k ] += max( 0, (int) ( $bucket[ $k ] ?? 0 ) );
+                }
+            }
+        }
+
+        global $wpdb;
+        $prefix = 'kalicart_bridge_agent_funnel_v2_';
+        $rows   = $wpdb->get_results( $wpdb->prepare(
+            "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
+            $wpdb->esc_like( $prefix ) . '%'
+        ) );
+        foreach ( (array) $rows as $row ) {
+            if ( ! preg_match( '/^' . preg_quote( $prefix, '/' ) . '(\d{8})_(sessions_created|carts_loaded|orders_linked)$/', (string) $row->option_name, $m ) ) {
+                continue;
+            }
+            $day = substr( $m[1], 0, 4 ) . '-' . substr( $m[1], 4, 2 ) . '-' . substr( $m[1], 6, 2 );
+            if ( isset( $by[ $day ] ) ) {
+                $by[ $day ][ $m[2] ] += max( 0, (int) $row->option_value );
+            }
+        }
+
+        if ( function_exists( 'wc_get_orders' ) ) {
+            $args = [
+                'meta_key'     => '_kalicart_bridge_source',
+                'meta_value'   => 'agent_checkout',
+                'date_created' => strtotime( $first . ' 00:00:00 UTC' ) . '...' . $now,
+                'return'       => 'objects',
+                'limit'        => 100,
+                'paginate'     => true,
+                'orderby'      => 'ID',
+                'order'        => 'ASC',
+            ];
+            $page = 1;
+            do {
+                $args['page'] = $page;
+                $result       = wc_get_orders( $args );
+                $orders       = is_object( $result ) && isset( $result->orders ) ? (array) $result->orders : (array) $result;
+                $max_pages    = is_object( $result ) && isset( $result->max_num_pages ) ? (int) $result->max_num_pages : 1;
+                foreach ( $orders as $order ) {
+                    if ( ! ( $order instanceof WC_Order ) || ! $order->get_date_paid() || ! $order->get_date_created() ) {
+                        continue;
+                    }
+                    $day = gmdate( 'Y-m-d', $order->get_date_created()->getTimestamp() );
+                    if ( isset( $by[ $day ] ) ) {
+                        $by[ $day ]['orders_paid']++;
+                        $by[ $day ]['net_paid_value'] += (float) $order->get_total() - (float) $order->get_total_refunded();
+                    }
+                }
+                $page++;
+            } while ( $page <= $max_pages );
+        }
+
+        $out = [];
+        foreach ( $by as $day => $c ) {
+            $c['net_paid_value'] = number_format( max( 0.0, (float) $c['net_paid_value'] ), 2, '.', '' );
+            $out[]               = [ 'day' => $day ] + $c;
+        }
+        return [
+            'currency' => function_exists( 'get_woocommerce_currency' ) ? (string) get_woocommerce_currency() : '',
+            'days'     => $out,
+        ];
+    }
+
     // ── HELPERS ───────────────────────────────────────────────────────────────
 
 	/** Fresh read of one of 256 fixed, bounded idempotency buckets. */

@@ -459,6 +459,7 @@
     if ( $( 'toggleBadge' ) )     $( 'toggleBadge' ).checked     = KaliBridge.badge_enabled;
     if ( $( 'toggleCheckout' ) )   $( 'toggleCheckout' ).checked   = KaliBridge.checkout_enabled;
     if ( $( 'toggleQuote' ) )      $( 'toggleQuote' ).checked      = KaliBridge.quote_enabled;
+    if ( $( 'toggleStockQty' ) )   $( 'toggleStockQty' ).checked   = KaliBridge.stock_quantity_public;
     if ( $( 'toggleWellKnown' ) )    $( 'toggleWellKnown' ).checked    = KaliBridge.well_known_enabled;
     if ( $( 'toggleHintSearch' ) )   $( 'toggleHintSearch' ).checked   = KaliBridge.hint_search;
     if ( $( 'toggleHintZero' ) )     $( 'toggleHintZero' ).checked     = KaliBridge.hint_zero;
@@ -1016,6 +1017,7 @@
     fd.append( 'sitemap_enabled',  $( 'toggleSitemap' )?.checked  ? '1' : '0' );
     fd.append( 'checkout_enabled',  $( 'toggleCheckout' )?.checked  ? '1' : '0' );
     fd.append( 'quote_enabled',     $( 'toggleQuote' )?.checked     ? '1' : '0' );
+    fd.append( 'stock_quantity_public', $( 'toggleStockQty' )?.checked ? '1' : '0' );
     fd.append( 'well_known_enabled', $( 'toggleWellKnown' )?.checked    ? '1' : '0' );
     fd.append( 'hint_search',        $( 'toggleHintSearch' )?.checked   ? '1' : '0' );
     fd.append( 'hint_zero',          $( 'toggleHintZero' )?.checked     ? '1' : '0' );
