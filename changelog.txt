@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-10-31 - version 1.0.158
+
+* With the Federated Catalog active, the daily signed signal now also carries the daily totals of agent checkout activity for the last seven days (sessions created, carts loaded, orders linked, orders paid and their net value). It never contains individual orders, customer details or payment data. The consent text for new activations (federated-catalog-1.2) says so and invites you to reread it periodically.
+* Cart quote and checkout sessions are marked as important in the settings, with a line explaining what agents cannot do without them. Both can still be switched off.
+* The exact stock quantity is no longer part of the public catalog API and MCP responses: agents see availability and whether stock is low, following your WooCommerce low-stock threshold. A new setting, off by default, shows the exact quantity for stores that want it.
+
+
 2026-10-30 - version 1.0.157
 
 * Source code comments are now in English throughout and no longer contain internal notes. The code itself is unchanged: with comments removed, every file is identical to 1.0.156.
