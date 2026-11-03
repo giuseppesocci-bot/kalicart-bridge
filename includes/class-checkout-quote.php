@@ -7,6 +7,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class KaliCart_Bridge_Quote {
 	private const MAX_ITEMS = 20;
+	private const MAX_LISTED_VARIATIONS = 50;
 	private const CORE_SHIPPING_METHODS = [ 'flat_rate', 'free_shipping', 'local_pickup', 'pickup_location' ];
 	private const PICKUP_METHODS = [ 'local_pickup', 'pickup_location' ];
 	private const MAX_BODY_BYTES = 8192;
@@ -284,6 +285,13 @@ final class KaliCart_Bridge_Quote {
 			$side_effects[] = 'http_request';
 			return new WP_Error( 'kalicart_quote_http_blocked', 'Quote outbound HTTP blocked.' );
 		};
+		// VARIATION-REQUIRED-v1 (1.0.159): a variable product without variation_id cannot be
+		// priced. Answer with its variations (read before the write guard, which would block
+		// WooCommerce's own cache writes) so the agent can fix the request in one call.
+		$needs_variation = self::variation_required( $items );
+		if ( null !== $needs_variation ) {
+			return $needs_variation;
+		}
 		add_filter( 'query', $read_only_sql, PHP_INT_MIN );
 		add_filter( 'pre_http_request', $no_http, PHP_INT_MIN, 3 );
 		try {
@@ -296,6 +304,45 @@ final class KaliCart_Bridge_Quote {
 			remove_filter( 'query', $read_only_sql, PHP_INT_MIN );
 			remove_filter( 'pre_http_request', $no_http, PHP_INT_MIN );
 		}
+	}
+
+	/** First line naming a variable product without variation_id, with that product's variations; null otherwise. */
+	private static function variation_required( array $items ): ?array {
+		if ( count( $items ) < 1 || count( $items ) > self::MAX_ITEMS ) {
+			return null;
+		}
+		foreach ( $items as $index => $line ) {
+			if ( ! is_array( $line ) || isset( $line['variation_id'] ) || ! isset( $line['product_id'] ) || ! is_int( $line['product_id'] ) || $line['product_id'] < 1 ) {
+				continue;
+			}
+			$parent = wc_get_product( $line['product_id'] );
+			if ( ! $parent || ! $parent->is_type( 'variable' ) || 'publish' !== get_post_status( $parent->get_id() ) ) {
+				continue;
+			}
+			$children   = array_map( 'intval', (array) $parent->get_children() );
+			$variations = [];
+			foreach ( array_slice( $children, 0, self::MAX_LISTED_VARIATIONS ) as $variation_id ) {
+				$variation = wc_get_product( $variation_id );
+				if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
+					continue;
+				}
+				$variations[] = [
+					'variation_id' => $variation_id,
+					'attributes'   => $variation->get_variation_attributes(),
+					'price'        => '' === $variation->get_price() ? null : wc_format_decimal( wc_get_price_to_display( $variation ), wc_get_price_decimals() ),
+					'in_stock'     => $variation->is_in_stock(),
+					'purchasable'  => $variation->is_purchasable(),
+				];
+			}
+			return self::unknown( 'variation_required' ) + [
+				'line'                 => (int) $index,
+				'product_id'           => $parent->get_id(),
+				'variations'           => $variations,
+				'variations_truncated' => count( $children ) > self::MAX_LISTED_VARIATIONS,
+				'next_step'            => 'Repeat the quote with variation_id set on this line to one of the listed variations.',
+			];
+		}
+		return null;
 	}
 
 	private static function calculate_guarded( array $items, array $destination ): array {

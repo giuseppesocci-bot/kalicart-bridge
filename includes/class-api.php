@@ -443,8 +443,9 @@ class KaliCart_Bridge_API {
                 'auth' => 'none',
                 'description' => 'Calculates one temporary WooCommerce basket for a destination. No order, checkout session or funnel event is created. Unsupported configurations return unknown.',
                 'payload' => [
-                    'items' => 'array of 1-20 {product_id:int, variation_id?:int, quantity:int}',
-                    'destination' => '{country:ISO-2, state?:string, postcode?:string, city?:string}',
+                    'items' => 'array of 1-20 {product_id:int, variation_id?:int, quantity:int}; variation_id is required for a variable product (without it the answer is unknown with reason variation_required and the list of variations to choose from)',
+                    'destination' => '{country:ISO-2, postcode:string, state?:string, city?:string}; postcode is required whenever the cart ships (reason postcode_required_for_shipping); state is required when the store has state-based shipping zones (reason state_required_for_shipping)',
+                    'tip' => 'Quote all the items the buyer wants in ONE request: free-shipping thresholds and shipping rates apply to the whole cart, not to each item.',
                 ],
                 'response' => 'status quoted | unknown; currency, destination, lines, subtotal, shipping, tax, total, rates, selected_rate_ids, calculated_at or reason',
                 'authority_note' => 'A quote reflects the selected WooCommerce cart and shipping method at calculation time. Checkout can change after coupons, address changes or other buyer actions.',
@@ -1015,7 +1016,9 @@ class KaliCart_Bridge_API {
             return $limited;
         }
         self::force_default_language();
-        $param_error = self::catalog_unknown_param_error( $req, [] );
+        // 1.0.159: `fields` is accepted (with no effect) as on the other catalog endpoints,
+        // so an agent that applies it everywhere does not get a 400.
+        $param_error = self::catalog_unknown_param_error( $req, [ 'fields' ] );
         if ( $param_error !== null ) {
             return $param_error;
         }
@@ -1050,7 +1053,7 @@ class KaliCart_Bridge_API {
             return $limited;
         }
         self::force_default_language();
-        $param_error = self::catalog_unknown_param_error( $req, [] );
+        $param_error = self::catalog_unknown_param_error( $req, [ 'fields' ] ); // 1.0.159: accepted, no effect
         if ( $param_error !== null ) {
             return $param_error;
         }
