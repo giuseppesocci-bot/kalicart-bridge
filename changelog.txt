@@ -1,5 +1,12 @@
 *** KaliCart Bridge Changelog ***
 
+2026-11-03 - version 1.0.159
+
+* A cart quote for a variable product without a chosen variation now answers with that product's variations (ID, attributes, price and availability), so the agent can repeat the quote with the right one at once.
+* The discovery document states what a quote needs: the variation for variable products, the postcode whenever the cart ships, the state where the store ships by state, and that the whole cart should be quoted in one request.
+* The categories and meta endpoints accept the `fields` parameter like the other catalog endpoints instead of rejecting the request.
+
+
 2026-10-31 - version 1.0.158
 
 * With the Federated Catalog active, the daily signed signal now also carries the daily totals of agent checkout activity for the last seven days (sessions created, carts loaded, orders linked, orders paid and their net value). It never contains individual orders, customer details or payment data. The consent text for new activations (federated-catalog-1.2) says so and invites you to reread it periodically.

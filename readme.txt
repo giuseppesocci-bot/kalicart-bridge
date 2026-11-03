@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.158
+Stable tag: 1.0.159
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,13 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.159 =
+**Fewer wasted calls for agents.**
+
+* A cart quote for a variable product without a chosen variation now answers with that product's variations (ID, attributes, price and availability), so the agent can repeat the quote with the right one at once.
+* The discovery document states what a quote needs: the variation for variable products, the postcode whenever the cart ships, the state where the store ships by state, and that the whole cart should be quoted in one request.
+* The categories and meta endpoints accept the `fields` parameter like the other catalog endpoints instead of rejecting the request.
 
 = 1.0.158 =
 **Daily checkout totals for KaliCart Global, clearer settings, exact stock kept private.**
