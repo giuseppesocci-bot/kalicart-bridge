@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.159
+Stable tag: 1.0.160
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,13 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.160 =
+**Quotes say which item cannot be quoted, and why.**
+
+* When one item of a cart quote cannot be quoted, the answer now names the line, the product and the variation, gives a specific reason (product not found, no price, not purchasable, out of stock, sold individually, quantity not available, shared stock insufficient) and the next step. Before, every case returned the same generic reason.
+* When the quantity is the problem, the answer includes the largest quantity WooCommerce accepts in the cart for that item, including the store's own purchase limits. When the store's cart rules refuse the basket, the lines above their limit are listed with their maximum. The exact stock in the catalog stays private unless you choose to show it.
+* The categories and meta endpoints accept every parameter that is valid on the other catalog endpoints, with no effect, instead of rejecting the request. Unknown parameters are still rejected.
 
 = 1.0.159 =
 **Fewer wasted calls for agents.**
