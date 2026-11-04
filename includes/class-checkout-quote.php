@@ -345,6 +345,55 @@ final class KaliCart_Bridge_Quote {
 		return null;
 	}
 
+	/**
+	 * Largest quantity of this product WooCommerce lets a shopper put in the cart: the quantity input maximum, which
+	 * applies remaining stock (when stock is managed without backorders), sold-individually and the shop's own limit
+	 * filters. Null when WooCommerce sets no maximum.
+	 */
+	private static function max_orderable( WC_Product $product ): ?int {
+		if ( $product->is_sold_individually() ) {
+			return 1;
+		}
+		$args = wc_get_quantity_input_args( [], $product );
+		$max  = isset( $args['max_value'] ) ? (int) $args['max_value'] : -1;
+		return $max > 0 ? $max : null;
+	}
+
+	private static function line_unknown( string $reason, int $index, array $line, ?int $max_quantity, string $next_step ): array {
+		return self::unknown( $reason ) + [
+			'line'         => $index,
+			'product_id'   => (int) $line['product_id'],
+			'variation_id' => isset( $line['variation_id'] ) ? (int) $line['variation_id'] : null,
+		] + ( null !== $max_quantity ? [ 'max_quantity' => $max_quantity ] : [] ) + [ 'next_step' => $next_step ];
+	}
+
+	/** Why this line cannot be quoted, or null when it can. Same conditions as before 1.0.160, each with its own reason. */
+	private static function line_rejection( int $index, array $line, $product ): ?array {
+		if ( ! $product || 'publish' !== get_post_status( $product->get_id() ) ) {
+			return self::line_unknown( 'product_not_found', $index, $line, null, 'Check product_id and variation_id against the catalog.' );
+		}
+		if ( ! $product->is_type( [ 'simple', 'variation' ] ) ) {
+			return self::line_unknown( 'product_type_not_quotable', $index, $line, null, 'Only simple products and variations can be quoted.' );
+		}
+		if ( '' === $product->get_price() ) {
+			return self::line_unknown( 'price_missing', $index, $line, null, 'This product has no price in the shop: choose another product.' );
+		}
+		if ( ! $product->is_purchasable() ) {
+			return self::line_unknown( 'not_purchasable', $index, $line, null, 'The shop does not sell this product online: choose another product.' );
+		}
+		if ( ! $product->is_in_stock() ) {
+			return self::line_unknown( 'out_of_stock', $index, $line, null, 'Out of stock: choose another product or variation.' );
+		}
+		if ( $product->is_sold_individually() && $line['quantity'] > 1 ) {
+			return self::line_unknown( 'sold_individually', $index, $line, 1, 'This product can be bought only once per order: use quantity 1.' );
+		}
+		if ( ! $product->has_enough_stock( $line['quantity'] ) ) {
+			return self::line_unknown( 'quantity_not_available', $index, $line, self::max_orderable( $product ),
+				'Not enough stock for this quantity: lower it to max_quantity or choose another product.' );
+		}
+		return null;
+	}
+
 	private static function calculate_guarded( array $items, array $destination ): array {
 		if ( ! function_exists( 'WC' ) || ! class_exists( 'WC_Cart' ) ) {
 			return self::unknown( 'woocommerce_unavailable' );
@@ -377,25 +426,26 @@ final class KaliCart_Bridge_Quote {
 				return self::unknown( 'invalid_item' );
 			}
 			$product = wc_get_product( $line['variation_id'] ?? $line['product_id'] );
-			if ( ! $product || ! $product->is_type( [ 'simple', 'variation' ] )
-				|| 'publish' !== get_post_status( $product->get_id() )
-				|| ! $product->is_purchasable() || ! $product->is_in_stock()
-				|| ! $product->has_enough_stock( $line['quantity'] )
-				|| ( $product->is_sold_individually() && $line['quantity'] > 1 )
-				|| '' === $product->get_price() ) {
-				return self::unknown( 'item_not_quotable' );
+			// LINE-REASONS-v1 (1.0.160): say which line cannot be quoted and why, with the largest quantity
+			// WooCommerce would accept where that is the problem, so the agent can fix the request in one call.
+			$rejected = self::line_rejection( (int) $index, $line, $product );
+			if ( null !== $rejected ) {
+				return $rejected;
 			}
 			$stock_owner_id = (int) $product->get_stock_managed_by_id();
 			$stock_requested[ $stock_owner_id ] = ( $stock_requested[ $stock_owner_id ] ?? 0 ) + $line['quantity'];
 			if ( $product->is_sold_individually() ) {
 				$sold_individually_requested[ $product->get_id() ] = ( $sold_individually_requested[ $product->get_id() ] ?? 0 ) + $line['quantity'];
 				if ( $sold_individually_requested[ $product->get_id() ] > 1 ) {
-					return self::unknown( 'item_not_quotable' );
+					return self::line_unknown( 'sold_individually', (int) $index, $line, 1,
+						'This product can be bought only once per order: keep it on one line with quantity 1.' );
 				}
 			}
 			$stock_owner = $stock_owner_id === $product->get_id() ? $product : wc_get_product( $stock_owner_id );
 			if ( ! $stock_owner || ! $stock_owner->has_enough_stock( $stock_requested[ $stock_owner_id ] ) ) {
-				return self::unknown( 'basket_stock_insufficient' );
+				return self::line_unknown( 'basket_stock_insufficient', (int) $index, $line,
+					$stock_owner ? self::max_orderable( $stock_owner ) : null,
+					'Several lines share the same stock: their quantities together must not exceed max_quantity.' );
 			}
 			$variation_id = 0;
 			$product_id = $line['product_id'];
@@ -470,7 +520,17 @@ final class KaliCart_Bridge_Quote {
 			// session. An error means the order cannot be placed, so no delivered total is quoted for it.
 			$cart_errors = self::run_cart_checks( $temp_cart, $previous_cart );
 			if ( $cart_errors ) {
-				return self::unknown( 'cart_not_orderable' ) + [ 'cart_errors' => $cart_errors ];
+				$over_limit = [];
+				foreach ( $items as $index => $line ) {
+					$limited = wc_get_product( $line['variation_id'] ?? $line['product_id'] );
+					$max = $limited ? self::max_orderable( $limited ) : null;
+					if ( null !== $max && $line['quantity'] > $max ) {
+						$over_limit[] = [ 'line' => (int) $index, 'product_id' => (int) $line['product_id'],
+							'variation_id' => isset( $line['variation_id'] ) ? (int) $line['variation_id'] : null, 'max_quantity' => $max ];
+					}
+				}
+				return self::unknown( 'cart_not_orderable' ) + [ 'cart_errors' => $cart_errors ]
+					+ ( $over_limit ? [ 'quantity_limits' => $over_limit ] : [] );
 			}
 			$calculated_contents = $temp_cart->get_cart();
 			if ( $temp_cart->get_applied_coupons() ) {

@@ -91,7 +91,7 @@ try {
 		[ [ 'product_id' => $product_id, 'quantity' => 1 ], [ 'product_id' => $product_id, 'quantity' => 1 ] ],
 		[ 'country' => 'FR', 'postcode' => '75001' ]
 	);
-	$checks['sold_individually_guard'] = 'item_not_quotable' === ( $sold_twice['reason'] ?? null );
+	$checks['sold_individually_guard'] = 'sold_individually' === ( $sold_twice['reason'] ?? null ) && 1 === ( $sold_twice['max_quantity'] ?? null );
 	$product->set_sold_individually( false );
 	$product->save();
 	$parent->set_manage_stock( true );

@@ -447,6 +447,7 @@ class KaliCart_Bridge_API {
                     'destination' => '{country:ISO-2, postcode:string, state?:string, city?:string}; postcode is required whenever the cart ships (reason postcode_required_for_shipping); state is required when the store has state-based shipping zones (reason state_required_for_shipping)',
                     'tip' => 'Quote all the items the buyer wants in ONE request: free-shipping thresholds and shipping rates apply to the whole cart, not to each item.',
                 ],
+                'line_reasons' => 'When one line cannot be quoted the answer is unknown with line, product_id, variation_id and next_step, and reason product_not_found, product_type_not_quotable, price_missing, not_purchasable, out_of_stock, sold_individually, quantity_not_available or basket_stock_insufficient. sold_individually, quantity_not_available and basket_stock_insufficient carry max_quantity, the largest quantity WooCommerce accepts in the cart. When the shop\'s own cart rules refuse the basket (minimum order, purchase limits) the reason is cart_not_orderable with the shop\'s messages in cart_errors, and quantity_limits lists the lines above their maximum.',
                 'response' => 'status quoted | unknown; currency, destination, lines, subtotal, shipping, tax, total, rates, selected_rate_ids, calculated_at or reason',
                 'authority_note' => 'A quote reflects the selected WooCommerce cart and shipping method at calculation time. Checkout can change after coupons, address changes or other buyer actions.',
             ],
@@ -1016,9 +1017,9 @@ class KaliCart_Bridge_API {
             return $limited;
         }
         self::force_default_language();
-        // 1.0.159: `fields` is accepted (with no effect) as on the other catalog endpoints,
-        // so an agent that applies it everywhere does not get a 400.
-        $param_error = self::catalog_unknown_param_error( $req, [ 'fields' ] );
+        // 1.0.160: every parameter valid on /catalog/products or /catalog/search is accepted here with no
+        // effect, so an agent that applies the same parameters everywhere does not get a 400.
+        $param_error = self::catalog_unknown_param_error( $req, self::catalog_side_params() );
         if ( $param_error !== null ) {
             return $param_error;
         }
@@ -1053,7 +1054,7 @@ class KaliCart_Bridge_API {
             return $limited;
         }
         self::force_default_language();
-        $param_error = self::catalog_unknown_param_error( $req, [ 'fields' ] ); // 1.0.159: accepted, no effect
+        $param_error = self::catalog_unknown_param_error( $req, self::catalog_side_params() ); // 1.0.160: accepted, no effect
         if ( $param_error !== null ) {
             return $param_error;
         }
@@ -1502,6 +1503,14 @@ class KaliCart_Bridge_API {
         return array_key_exists( $name, $req->get_query_params() );
     }
 
+    /** Canonical query parameters of /catalog/products; /catalog/search also accepts q. */
+    private const CATALOG_LIST_PARAMS = [ 'category', 'per_page', 'page', 'orderby', 'order', 'in_stock', 'on_sale', 'physical_only', 'min_price', 'max_price', 'gender', 'color', 'modified_after', 'fields', 'after_id' ];
+
+    /** Parameters /catalog/categories and /catalog/meta accept with no effect: the same list as products and search. */
+    private static function catalog_side_params(): array {
+        return array_merge( self::CATALOG_LIST_PARAMS, [ 'q' ] );
+    }
+
     private static function catalog_unknown_param_error( WP_REST_Request $req, array $accepted ): ?WP_REST_Response {
         $received = array_keys( $req->get_query_params() );
         $unknown  = array_values( array_diff( $received, $accepted ) );
@@ -1575,7 +1584,7 @@ class KaliCart_Bridge_API {
             $invalid['q'] = '/catalog/search?q=...';
         }
 
-        $accepted = [ 'category', 'per_page', 'page', 'orderby', 'order', 'in_stock', 'on_sale', 'physical_only', 'min_price', 'max_price', 'gender', 'color', 'modified_after', 'fields', 'after_id' ];
+        $accepted = self::CATALOG_LIST_PARAMS;
         if ( 'search' === $endpoint ) {
             $accepted[] = 'q';
         }
