@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.160
+Stable tag: 1.0.161
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,12 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.161 =
+**Every rate-limit answer says how long to wait, in the body too.**
+
+* When the catalog, the cart quote, checkout sessions or MCP answer 429, the wait in seconds is now also in the response body (`retry_after`, or `error.data.retry_after` for MCP), equal to the `Retry-After` header. Many agents only read the body.
+* A cart quote refused because another quote is being calculated now also says how long to wait.
 
 = 1.0.160 =
 **Quotes say which item cannot be quoted, and why.**

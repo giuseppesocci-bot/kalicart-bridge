@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-11-05 - version 1.0.161
+
+* When the catalog, the cart quote, checkout sessions or MCP answer 429, the wait in seconds is now also in the response body (`retry_after`, or `error.data.retry_after` for MCP), equal to the `Retry-After` header. Many agents only read the body.
+* A cart quote refused because another quote is being calculated now also says how long to wait.
+
+
 2026-11-04 - version 1.0.160
 
 * When one item of a cart quote cannot be quoted, the answer now names the line, the product and the variation, gives a specific reason (product not found, no price, not purchasable, out of stock, sold individually, quantity not available, shared stock insufficient) and the next step. Before, every case returned the same generic reason.
