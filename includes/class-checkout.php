@@ -450,7 +450,8 @@ class KaliCart_Bridge_Checkout {
 	public static function cancel_session_permission( WP_REST_Request $req ) {
 		$limited = self::check_access_rate_limit();
 		if ( true !== $limited ) {
-			return new WP_Error( 'kalicart_checkout_rate_limited', 'Too many checkout session requests.', [ 'status' => 429 ] );
+			$retry_after = $limited instanceof WP_REST_Response ? (int) ( $limited->get_data()['retry_after'] ?? 1 ) : 1;
+			return new WP_Error( 'kalicart_checkout_rate_limited', 'Too many checkout session requests.', [ 'status' => 429, 'retry_after' => max( 1, $retry_after ) ] );
 		}
         $id = (string) $req->get_param( 'id' );
         if ( ! self::is_valid_session_token( $id ) ) {
@@ -827,7 +828,7 @@ class KaliCart_Bridge_Checkout {
 
     private static function rate_limited_response( int $retry_after ): WP_REST_Response {
         $resp = new WP_REST_Response(
-            [ 'success' => false, 'error' => 'rate_limited', 'message' => 'Too many checkout session requests. Please slow down.' ],
+            [ 'success' => false, 'error' => 'rate_limited', 'message' => 'Too many checkout session requests. Please slow down.', 'retry_after' => max( 1, $retry_after ) ],
             429
         );
         $resp->header( 'Retry-After', (string) max( 1, $retry_after ) );
@@ -1331,7 +1332,7 @@ class KaliCart_Bridge_Checkout {
 	}
 
 	private static function idempotency_processing_response(): WP_REST_Response {
-		$response = self::error( 'A request with this Idempotency-Key is still being processed. Retry shortly.', 409 );
+		$response = self::error( 'A request with this Idempotency-Key is still being processed. Retry shortly.', 409, [ 'retry_after' => 1 ] );
 		$response->header( 'Retry-After', '1' );
 		$response->header( 'Cache-Control', 'no-store' );
 		return $response;
@@ -1376,7 +1377,7 @@ class KaliCart_Bridge_Checkout {
         return $value;
     }
 
-    private static function error( string $message, int $status = 400 ): WP_REST_Response {
-        return new WP_REST_Response( [ 'success' => false, 'message' => $message ], $status );
+    private static function error( string $message, int $status = 400, array $extra = [] ): WP_REST_Response {
+        return new WP_REST_Response( array_merge( [ 'success' => false, 'message' => $message ], $extra ), $status );
     }
 }

@@ -1341,8 +1341,10 @@ class KaliCart_Bridge_API {
     }
 
     private static function catalog_rate_limited_response( int $window ): WP_REST_Response {
+        // RETRY-AFTER-BODY-v1 (1.0.161): the wait is also in the body, for clients that only read JSON.
         $response = self::error( 'Too many catalog requests. Please slow down and retry.', 429, [
-            'error_code' => 'KALICART_CATALOG_RATE_LIMITED',
+            'error_code'  => 'KALICART_CATALOG_RATE_LIMITED',
+            'retry_after' => max( 1, $window ),
         ] );
         $response->header( 'Retry-After', (string) max( 1, $window ) );
         $response->header( 'Cache-Control', 'no-store' );

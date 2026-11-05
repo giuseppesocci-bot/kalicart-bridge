@@ -315,7 +315,9 @@ class KaliCart_Bridge_MCP {
 	}
 
 	private static function rate_limited_response( int $retry_after, string $message = 'MCP request rate limit exceeded' ): WP_REST_Response {
-		$resp = self::respond( self::rpc_error( null, -32002, $message ), 429 );
+		$error = self::rpc_error( null, -32002, $message );
+		$error['error']['data'] = array( 'retry_after' => max( 1, $retry_after ) ); // JSON-RPC error data: the wait in seconds.
+		$resp = self::respond( $error, 429 );
 		$resp->header( 'Retry-After', (string) max( 1, $retry_after ) );
 		return $resp;
 	}

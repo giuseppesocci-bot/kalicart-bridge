@@ -72,7 +72,9 @@ final class KaliCart_Bridge_Quote {
 		}
 		try {
 			if ( ! flock( $handle, LOCK_EX | LOCK_NB ) ) {
-				return new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'quote_busy' ], 429 );
+				$response = new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'quote_busy', 'retry_after' => 1 ], 429 );
+				$response->header( 'Retry-After', '1' );
+				return $response;
 			}
 			$state = json_decode( stream_get_contents( $handle ), true );
 			$now = time();
@@ -80,8 +82,9 @@ final class KaliCart_Bridge_Quote {
 				$state = [ 'start' => $now, 'count' => 0 ];
 			}
 			if ( (int) $state['count'] >= self::REQUESTS_PER_MINUTE ) {
-				$response = new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'quote_rate_limited' ], 429 );
-				$response->header( 'Retry-After', (string) max( 1, 60 - ( $now - (int) $state['start'] ) ) );
+				$retry_after = max( 1, 60 - ( $now - (int) $state['start'] ) );
+				$response = new WP_REST_Response( [ 'status' => 'unknown', 'reason' => 'quote_rate_limited', 'retry_after' => $retry_after ], 429 );
+				$response->header( 'Retry-After', (string) $retry_after );
 				return $response;
 			}
 			$state['count'] = (int) $state['count'] + 1;
