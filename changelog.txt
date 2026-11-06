@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-11-06 - version 1.0.162
+
+* A catalog search with search words and no sort order now returns results in WordPress relevance order, the same order as the store's own search: products with the words in their title come before products that only mention them in the description. Before, results were always sorted by date, so a recent product that only mentioned the word could come first.
+* An explicit sort order is respected as before, and pages stay repeatable when an agent walks through them.
+
+
 2026-11-05 - version 1.0.161
 
 * When the catalog, the cart quote, checkout sessions or MCP answer 429, the wait in seconds is now also in the response body (`retry_after`, or `error.data.retry_after` for MCP), equal to the `Retry-After` header. Many agents only read the body.

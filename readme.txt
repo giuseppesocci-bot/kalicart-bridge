@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.161
+Stable tag: 1.0.162
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,12 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.162 =
+**Catalog search puts the best matches first.**
+
+* A catalog search with search words and no sort order now returns results in WordPress relevance order, the same order as the store's own search: products with the words in their title come before products that only mention them in the description. Before, results were always sorted by date, so a recent product that only mentioned the word could come first.
+* An explicit sort order is respected as before, and pages stay repeatable when an agent walks through them.
 
 = 1.0.161 =
 **Every rate-limit answer says how long to wait, in the body too.**
