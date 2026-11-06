@@ -597,7 +597,7 @@ class KaliCart_Bridge_API {
             [ 'name' => 'in_stock',  'in' => 'query', 'description' => 'Only in-stock products when true.', 'schema' => [ 'type' => 'boolean' ] ],
             [ 'name' => 'on_sale',   'in' => 'query', 'description' => 'Only on-sale products when true.', 'schema' => [ 'type' => 'boolean' ] ],
             [ 'name' => 'physical_only', 'in' => 'query', 'description' => 'Only products that require shipping when true, per WooCommerce product semantics. Not a physical/digital switch: read fulfilment for shipped vs downloadable vs virtual vs collected in store. Opt-in; omitted, nothing is filtered.', 'schema' => [ 'type' => 'boolean' ] ],
-            [ 'name' => 'orderby',   'in' => 'query', 'description' => 'Sort field. Use id with order=asc to walk the whole catalog in repeatable pages: it is the only field that never changes, so pages already read do not shift under the reader.', 'schema' => [ 'type' => 'string', 'enum' => [ 'date', 'price', 'title', 'popularity', 'id' ], 'default' => 'date' ] ],
+            [ 'name' => 'orderby',   'in' => 'query', 'description' => 'Sort field. On /catalog/search with q and no orderby, results come in relevance order (title matches first, the store\'s own search order). Use id with order=asc to walk the whole catalog in repeatable pages: it is the only field that never changes, so pages already read do not shift under the reader.', 'schema' => [ 'type' => 'string', 'enum' => [ 'relevance', 'date', 'price', 'title', 'popularity', 'id' ], 'default' => 'date' ] ],
             [ 'name' => 'after_id',  'in' => 'query', 'description' => 'Return only products whose id is greater than this. A threshold, not a pointer: if that product has since been deleted, the boundary still works. Intended with orderby=id&order=asc to resume a full catalog walk.', 'schema' => [ 'type' => 'integer', 'minimum' => 0 ] ],
             [ 'name' => 'order',     'in' => 'query', 'description' => 'Sort direction.', 'schema' => [ 'type' => 'string', 'enum' => [ 'ASC', 'DESC' ], 'default' => 'DESC' ] ],
             [ 'name' => 'per_page',  'in' => 'query', 'description' => 'Items per page (1-100). Parameter name is per_page; do not use limit.', 'schema' => [ 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ] ],
@@ -870,6 +870,9 @@ class KaliCart_Bridge_API {
         }
 
         $args['search'] = $q;
+        if ( '' !== $q && ! self::query_param_present( $req, 'orderby' ) ) {
+            $args['orderby'] = 'relevance'; // SEARCH-RELEVANCE-v1: search words without an explicit order.
+        }
         $result = KaliCart_Bridge_Catalog_Engine::query_products( $args );
         $engine_error = self::catalog_engine_error( $result );
         if ( $engine_error !== null ) {
@@ -1195,7 +1198,7 @@ class KaliCart_Bridge_API {
                     'mode_note'        => 'A product with no detected colour family is excluded. This is deliberately the opposite of gender: colours are read from attributes, genders are inferred and excluding the unknown ones would lose too much.',
                 ],
                 'orderby'  => [
-                    'values'      => [ 'date', 'price', 'title', 'popularity' ],
+                    'values'      => [ 'relevance', 'date', 'price', 'title', 'popularity' ],
                     'default'     => 'date',
                     'default_order' => 'DESC',
 					'note'        => 'price sorts by WooCommerce product lookup minimum price with a stable product-ID tiebreaker. Price filters are verified against price.current for authoritative variable-product results.',
@@ -1401,7 +1404,7 @@ class KaliCart_Bridge_API {
             'category'  => substr( sanitize_text_field( $req->get_param( 'category' ) ?? '' ), 0, 200 ),
             'per_page'  => min( 100, max( 1, absint( $req->get_param( 'per_page' ) ?? 20 ) ) ),
             'page'      => max( 1, absint( $req->get_param( 'page' ) ?? 1 ) ),
-            'orderby'   => in_array( $req->get_param( 'orderby' ), [ 'date', 'price', 'title', 'popularity', 'id' ], true ) ? $req->get_param( 'orderby' ) : 'date',
+            'orderby'   => in_array( $req->get_param( 'orderby' ), [ 'relevance', 'date', 'price', 'title', 'popularity', 'id' ], true ) ? $req->get_param( 'orderby' ) : 'date',
             // CAMMINATA-STABILE-v1 (1.0.135) — a threshold, not a pointer: "give me
             // the ones after number N". See the comment in query_products().
             'after_id'  => $req->get_param( 'after_id' ) !== null ? absint( $req->get_param( 'after_id' ) ) : null,
@@ -1462,7 +1465,7 @@ class KaliCart_Bridge_API {
             'category'  => [ 'default' => '', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => $short_text ],
             'per_page'  => [ 'default' => 20, 'sanitize_callback' => 'absint', 'validate_callback' => static fn( $v ): bool => filter_var( $v, FILTER_VALIDATE_INT ) !== false && (int) $v >= 1 && (int) $v <= 100 ],
             'page'      => [ 'default' => 1,  'sanitize_callback' => 'absint', 'validate_callback' => static fn( $v ): bool => filter_var( $v, FILTER_VALIDATE_INT ) !== false && (int) $v >= 1 && (int) $v <= $max_page ],
-            'orderby'   => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( $v, [ 'date', 'price', 'title', 'popularity', 'id' ], true ) ],
+            'orderby'   => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( $v, [ 'relevance', 'date', 'price', 'title', 'popularity', 'id' ], true ) ],
             'after_id'  => [ 'default' => null, 'sanitize_callback' => 'absint', 'validate_callback' => static fn( $v ): bool => $v === null || ( filter_var( $v, FILTER_VALIDATE_INT ) !== false && (int) $v >= 0 ) ],
             'order'     => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static fn( $v ): bool => in_array( strtoupper( (string) $v ), [ 'ASC', 'DESC' ], true ) ],
             'in_stock'  => [ 'default' => null ],

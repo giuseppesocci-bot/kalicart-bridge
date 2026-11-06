@@ -524,7 +524,7 @@ class KaliCart_Bridge_MCP {
 				return $kc_err;
 			}
 		}
-		if ( isset( $args['orderby'] ) && ! in_array( $args['orderby'], array( 'date', 'price', 'title', 'popularity' ), true ) ) {
+		if ( isset( $args['orderby'] ) && ! in_array( $args['orderby'], array( 'relevance', 'date', 'price', 'title', 'popularity' ), true ) ) {
 			return 'orderby is not an accepted enum value';
 		}
 		if ( isset( $args['order'] ) && ! in_array( $args['order'], array( 'ASC', 'DESC' ), true ) ) {

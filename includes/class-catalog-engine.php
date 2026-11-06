@@ -175,6 +175,14 @@ class KaliCart_Bridge_Catalog_Engine {
             'orderby'        => $args['orderby'] === 'price' ? 'ID' : self::map_orderby( $args['orderby'] ),
             'order'          => $order,
         ];
+        // SEARCH-RELEVANCE-v1 (1.0.162): with search words, `relevance` is WordPress's own search order (title
+        // matches before matches found only in the description), the same order as the store's own search.
+        // Without search words it falls back to date.
+        $relevance = 'relevance' === $args['orderby'] && '' !== trim( (string) $args['search'] );
+        if ( 'relevance' === $args['orderby'] && ! $relevance ) {
+            $args['orderby']        = 'date';
+            $query_args['orderby'] = 'date';
+        }
 
         // CAMMINATA-STABILE-v1 (1.0.135) — walking a catalog in pages with
         // `orderby=date` is not repeatable. Mind the reason, which is not the
@@ -217,7 +225,7 @@ class KaliCart_Bridge_Catalog_Engine {
             // Dates, prices and titles are not unique. ID is the deterministic
             // tiebreaker required to walk a result set in bounded pages.
 			$primary_orderby                           = $args['orderby'] === 'price' ? 'ID' : self::map_orderby( $args['orderby'] );
-            $query_args['orderby']                = [ $primary_orderby => $order, 'ID' => $order ];
+            $query_args['orderby']                = $relevance ? 'relevance' : [ $primary_orderby => $order, 'ID' => $order ];
             $query_args['fields']                 = 'ids';
             $query_args['update_post_meta_cache'] = false;
             $query_args['update_post_term_cache'] = false;
@@ -226,6 +234,10 @@ class KaliCart_Bridge_Catalog_Engine {
 
         if ( ! empty( $args['search'] ) ) {
             $query_args['s'] = sanitize_text_field( $args['search'] );
+        }
+        if ( $relevance ) {
+            // Equal relevance and equal date are broken by ID, so pages stay repeatable.
+            $query_args['kalicart_bridge_relevance_tiebreak'] = true;
         }
 
         // CATALOG-VISIBILITY-v1 — the agentic catalog is the MIRROR of the store.
@@ -512,18 +524,31 @@ class KaliCart_Bridge_Catalog_Engine {
 	private static function run_product_query( array $query_args ): WP_Query {
 		$needs_price  = ! empty( $query_args['kalicart_bridge_price_lookup'] );
 		$needs_after  = ! empty( $query_args['kalicart_bridge_after_id'] );
-		if ( ! $needs_price && ! $needs_after ) {
+		$needs_tie    = ! empty( $query_args['kalicart_bridge_relevance_tiebreak'] );
+		if ( ! $needs_price && ! $needs_after && ! $needs_tie ) {
 			return new WP_Query( $query_args );
 		}
 
 		if ( $needs_price ) { add_filter( 'posts_clauses', [ __CLASS__, 'apply_price_lookup_clauses' ], 20, 2 ); }
 		if ( $needs_after ) { add_filter( 'posts_clauses', [ __CLASS__, 'apply_after_id_clause' ], 21, 2 ); }
+		if ( $needs_tie ) { add_filter( 'posts_clauses', [ __CLASS__, 'apply_relevance_tiebreak' ], 22, 2 ); }
 		try {
 			return new WP_Query( $query_args );
 		} finally {
 			if ( $needs_price ) { remove_filter( 'posts_clauses', [ __CLASS__, 'apply_price_lookup_clauses' ], 20 ); }
 			if ( $needs_after ) { remove_filter( 'posts_clauses', [ __CLASS__, 'apply_after_id_clause' ], 21 ); }
+			if ( $needs_tie ) { remove_filter( 'posts_clauses', [ __CLASS__, 'apply_relevance_tiebreak' ], 22 ); }
 		}
+	}
+
+	/** Public because WordPress invokes filter callbacks outside class scope. */
+	public static function apply_relevance_tiebreak( array $clauses, WP_Query $query ): array {
+		if ( ! $query->get( 'kalicart_bridge_relevance_tiebreak' ) || '' === trim( (string) $clauses['orderby'] ) ) {
+			return $clauses;
+		}
+		global $wpdb;
+		$clauses['orderby'] .= ", {$wpdb->posts}.ID DESC";
+		return $clauses;
 	}
 
 	/** Public because WordPress invokes filter callbacks outside class scope. */
@@ -3013,7 +3038,7 @@ class KaliCart_Bridge_Catalog_Engine {
         $map = [
             'gender'  => [ 'male', 'female', 'unisex', 'kids' ],
             'color'   => [ 'red', 'blue', 'green', 'black', 'white', 'grey', 'brown', 'yellow', 'orange', 'pink', 'purple', 'multi' ],
-            'orderby' => [ 'date', 'price', 'title', 'popularity' ],
+            'orderby' => [ 'relevance', 'date', 'price', 'title', 'popularity' ],
             'order'   => [ 'asc', 'desc' ],
         ];
         return $map[ $facet ] ?? [];
@@ -3123,6 +3148,7 @@ class KaliCart_Bridge_Catalog_Engine {
             'price'      => 'meta_value_num',
             'title'      => 'title',
             'popularity' => 'comment_count',
+            'relevance'  => 'relevance',
             // The only ordering on a field that never changes: it is what
             // makes the walk over a whole catalog repeatable.
             'id'         => 'ID',
