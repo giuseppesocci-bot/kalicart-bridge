@@ -1,5 +1,11 @@
 *** KaliCart Bridge Changelog ***
 
+2026-11-14 - version 1.0.163
+
+* A product now leaves the federated catalog only when it is published without a price. Short titles, short descriptions and missing categories still lower the quality score and are listed in the dashboard as improvements, but they no longer keep real, purchasable products out.
+* The dashboard quarantine list shows only products without a price; title, description and category issues each have their own clickable list, like images and SKUs.
+
+
 2026-11-06 - version 1.0.162
 
 * A catalog search with search words and no sort order now returns results in WordPress relevance order, the same order as the store's own search: products with the words in their title come before products that only mention them in the description. Before, results were always sorted by date, so a recent product that only mentioned the word could come first.

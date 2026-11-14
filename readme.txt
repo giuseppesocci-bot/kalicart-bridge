@@ -3,7 +3,7 @@ Contributors: carthub
 Tags: agentic commerce, chatgpt, product feed, mcp, ucp
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 1.0.162
+Stable tag: 1.0.163
 Requires PHP: 8.0
 WC requires at least: 7.0
 License: GPLv2 or later
@@ -169,6 +169,12 @@ This plugin works fully standalone. It connects to one external service **only a
 **Terms / documentation:** https://bridge.kalicart.com/docs/
 
 == Changelog ==
+
+= 1.0.163 =
+**Quarantine only for products that cannot be bought.**
+
+* A product now leaves the federated catalog only when it is published without a price. Short titles, short descriptions and missing categories still lower the quality score and are listed in the dashboard as improvements, but they no longer keep real, purchasable products out.
+* The dashboard quarantine list shows only products without a price; title, description and category issues each have their own clickable list, like images and SKUs.
 
 = 1.0.162 =
 **Catalog search puts the best matches first.**
