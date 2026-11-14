@@ -67,7 +67,7 @@ Documentation: https://bridge.kalicart.com/docs/
 
 **Catalog health / quarantine:**
 
-Products are scored 0–100 based on: title quality, description length, category assignment, price validity, image presence and SKU presence. Quarantine is reserved for blocking computability issues: ambiguous/too-short titles, missing or very short descriptions, missing real categories, and missing or zero prices. Missing images and SKUs remain clickable improvement suggestions but do not quarantine products.
+Products are scored 0–100 based on: title quality, description length, category assignment, price validity, image presence and SKU presence. Quarantine is reserved for products that cannot be bought: a published product without a price. Short titles, missing or very short descriptions, missing categories, missing images and missing SKUs lower the score and appear as clickable improvement suggestions, but they do not quarantine products.
 
 **Checkout sessions (optional):**
 

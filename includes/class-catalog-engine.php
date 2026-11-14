@@ -2898,8 +2898,18 @@ class KaliCart_Bridge_Catalog_Engine {
 
         $all_flags = array_merge( $flags, $improvement_flags );
 
+        // QUARANTINE-BLOCKING-v1 (1.0.163): only a blocking flag (no price: the product
+        // cannot be bought) keeps a product out of quarantine-sensitive consumers such as
+        // the federated catalog. A short title, a short description or a missing category
+        // say how well a product is described, not whether it exists and can be bought:
+        // they stay in `flags` and in the score, visible to merchant and agents, but they
+        // no longer exclude. Measured on 2026-11-14: a second-hand bookshop had 5,711 of
+        // 8,836 real books (title with author and year, price, image, category) left out
+        // only because the condition note was shorter than 40 characters.
+        $blocking = array_filter( $flags, static fn( $f ) => 'blocking' === ( $f['severity'] ?? '' ) );
+
         return [
-            'in_quarantine' => ! empty( $flags ),
+            'in_quarantine' => ! empty( $blocking ),
             'score'         => self::compute_quality_score( $all_flags ),
             'flags'         => $flags,
             'improvements'  => [

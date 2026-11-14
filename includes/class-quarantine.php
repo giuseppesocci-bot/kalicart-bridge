@@ -172,12 +172,10 @@ class KaliCart_Bridge_Quarantine {
 
         // ── Products flagged per issue ────────────────────────────────────────
         $issue_product_ids = self::get_issue_product_ids( $wpdb, $uncategorized_id );
-        $quarantine_ids = array_values( array_unique( array_merge(
-            $issue_product_ids['TITLE_TOO_SHORT'],
-            $issue_product_ids['NO_DESCRIPTION'],
-            $issue_product_ids['NO_CATEGORY'],
-            $issue_product_ids['ZERO_PRICE']
-        ) ) );
+        // QUARANTINE-BLOCKING-v1 (1.0.163): quarantine = products that cannot be bought
+        // (no price), the same rule as the catalog payload. Title, description and
+        // category issues keep their own clickable lists below as improvements.
+        $quarantine_ids = array_values( array_unique( $issue_product_ids['ZERO_PRICE'] ) );
         rsort( $quarantine_ids ); // most recent first, consistent with the per-issue lists
         $quarantine_count = count( $quarantine_ids );
 
@@ -187,6 +185,9 @@ class KaliCart_Bridge_Quarantine {
         $quarantined_products = self::build_quarantine_list( array_slice( $quarantine_ids, 0, 100 ), $uncategorized_id );
         $out_of_stock_products = self::build_out_of_stock_list( 100 );
         $issue_products = [
+            'TITLE_TOO_SHORT' => self::build_issue_list( array_slice( $issue_product_ids['TITLE_TOO_SHORT'], 0, 100 ), 'TITLE_TOO_SHORT', __( 'Title has fewer than 3 words', 'kalicart-bridge' ), 'high' ),
+            'NO_DESCRIPTION'  => self::build_issue_list( array_slice( $issue_product_ids['NO_DESCRIPTION'], 0, 100 ), 'NO_DESCRIPTION', __( 'Description is missing or too short', 'kalicart-bridge' ), 'high' ),
+            'NO_CATEGORY'     => self::build_issue_list( array_slice( $issue_product_ids['NO_CATEGORY'], 0, 100 ), 'NO_CATEGORY', __( 'No category assigned', 'kalicart-bridge' ), 'high' ),
             'NO_IMAGE' => self::build_issue_list( array_slice( $issue_product_ids['NO_IMAGE'], 0, 100 ), 'NO_IMAGE', 'No image', 'image' ),
             'NO_SKU'   => self::build_issue_list( array_slice( $issue_product_ids['NO_SKU'], 0, 100 ), 'NO_SKU', 'No SKU', 'sku' ),
             // 1.0.146: NO_BRAND had a count and a suggestion but no list
