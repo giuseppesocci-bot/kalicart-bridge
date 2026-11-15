@@ -390,11 +390,15 @@ class KaliCart_Bridge_ACP_Feed {
 			'image_url'            => $image,
 			'price'                => wc_format_decimal( $priceval, 2 ) . ' ' . $currency,
 			'availability'         => self::availability( $p ),
-			'condition'            => 'new',
 			'seller_name'          => (string) get_bloginfo( 'name' ),
 			'brand'                => $brand,
 		];
 		// Optional in the spec: emitted only when known and valid.
+		// 1.0.164: condition only when the merchant declares it (never assumed 'new').
+		$condition = self::resolve_condition( $p, $parent );
+		if ( '' !== $condition ) {
+			$row['condition'] = $condition;
+		}
 		$seller_url = home_url( '/' );
 		if ( self::is_http_url( $seller_url ) ) {
 			$row['seller_url'] = $seller_url;
@@ -453,6 +457,27 @@ class KaliCart_Bridge_ACP_Feed {
 	private static function weight_unit(): string {
 		$u = get_option( 'woocommerce_weight_unit', 'kg' );
 		return 'lbs' === $u ? 'lb' : $u; // Woo 'lbs' -> spec 'lb'
+	}
+
+	/**
+	 * 1.0.164: item condition as declared by the merchant, passed through unchanged.
+	 * Source: a product attribute named "condition" (custom or pa_condition), on the
+	 * variation first, then the parent, or the _condition meta. Only the spec values
+	 * new | refurbished | used are accepted (case-insensitive); anything else, or no
+	 * declaration, returns '' and the optional field is omitted. No inference, no translation.
+	 */
+	private static function resolve_condition( WC_Product $p, ?WC_Product $parent = null ): string {
+		foreach ( array_filter( [ $p, $parent ] ) as $prod ) {
+			$raw = (string) $prod->get_attribute( 'condition' );
+			if ( '' === trim( $raw ) ) {
+				$raw = (string) $prod->get_meta( '_condition', true );
+			}
+			$val = strtolower( trim( $raw ) );
+			if ( '' !== $val ) {
+				return in_array( $val, self::SCHEMA['condition'], true ) ? $val : '';
+			}
+		}
+		return '';
 	}
 
 	private static function resolve_brand( WC_Product $p ): string {

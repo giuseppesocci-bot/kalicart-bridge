@@ -170,6 +170,12 @@ This plugin works fully standalone. It connects to one external service **only a
 
 == Changelog ==
 
+= 1.0.164 =
+**The ChatGPT product feed reports item condition only when the store declares it.**
+
+* The feed no longer marks every product as new. `condition` is an optional field in the specification, so it is now included only when the store declares it.
+* To declare it, add a product attribute named "Condition" (or a `_condition` meta field) with one of the specification values: new, used or refurbished. A variation inherits the value from its parent product. Any other value, or no declaration, leaves the field out of the feed; the plugin does not guess or translate.
+
 = 1.0.163 =
 **Quarantine only for products that cannot be bought.**
 
